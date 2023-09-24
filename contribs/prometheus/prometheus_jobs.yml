@@ -1,0 +1,16 @@
+#--------- Start prometheus hp3par exporter  ---------#
+  - job_name: "hp3par"
+    metrics_path: /metrics
+    file_sd_configs:
+      - files: [ "/etc/prometheus/hp3par_nodes/*.yml" ]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      # if you use a shared passphrase between prometheus and exporter
+      - source_labels: [__auth_key]
+        target_label: __param_auth_key
+      # use the value set in __tmp_source_host as exporter host name
+      - source_labels: [__tmp_source_host]
+        target_label: __address__
+
+#--------- End prometheus hp3par exporter ---------#

@@ -1,0 +1,23 @@
+[Unit]
+Description= veeam_exporter (httpapi_exporter) for prometheus
+Wants=network-online.target
+After=network-online.target
+StartLimitBurst=4
+StartLimitIntervalSec=30
+
+[Service]
+User=node_exporter
+Group=node_exporter
+WorkingDirectory=/etc/httpapi_exporter/veeam/
+Restart=always
+RestartSec=2
+Type=simple
+
+ExecStart=/opt/httpapi_exporter/veeam_exporter \
+        --config.file=/etc/httpapi_exporter/veeam/config.yml \
+        --log.level=warn \
+        --web.listen-address=dal-v-survdadc.dassault-avion.val:9247
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

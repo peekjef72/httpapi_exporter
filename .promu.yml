@@ -1,0 +1,23 @@
+go:
+    cgo: false
+repository:
+    path: github.com/peekjef72/httpapi_exporter
+build:
+    binaries:
+        - name: httpapi_exporter
+          # path: httpapi_exporter
+        - name: passwd_encrypt
+          path: ./cmd/passwd_crypt
+    flags: -a -tags netgo,static
+    ldflags: |
+      -X github.com/prometheus/common/version.Version={{.Version}}
+      -X github.com/prometheus/common/version.Revision={{.Revision}}
+      -X github.com/prometheus/common/version.Branch={{.Branch}}
+      -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
+      -X github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+tarball:
+    prefix: .
+    files:
+      - LICENSE
+      - README.md
+      - contribs/
