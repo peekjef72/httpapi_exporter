@@ -1,0 +1,80 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Servers. Overview of Backup Repositories
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/backupservers.html?ver=120
+###
+#
+
+collector_name: backup_servers_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_backup_servers
+
+templates:
+  backupServerVersion: '
+    {{- $versionDef := dict
+        "12.0.0.1420" "12.0 GA"
+        "12.0.0.1402" "12.0 RTM"
+        "11.0.0.837"  "11.0 GA"
+        "11.0.0.825"  "11.0 RTM"
+        "10.0.1.4854" "10.0a GA"
+        "10.0.1.4848" "10.0a RTM"
+        "10.0.0.4461" "10.0 GA"
+        "10.0.0.4442" "10.0 RTM"
+        "9.5.4.2866"  "9.5 U4b GA"
+        "9.5.4.2753"  "9.5 U4a GA"
+        "9.5.4.2615"  "9.5 U4 GA"
+        "9.5.4.2399"  "9.5 U4 RTM"
+        "9.5.0.1922"  "9.5 U3a"
+        "9.5.0.1536"  "9.5 U3"
+        "9.5.0.1038"  "9.5 U2"
+        "9.5.0.823"   "9.5 U1"
+        "9.5.0.802"   "9.5 U1 RC"
+        "9.5.0.711"   "9.5 GA"
+        "9.5.0.580"   "9.5 RTM"
+        "9.0.0.1715"  "9.0 U2"
+        "9.0.0.1491"  "9.0 U1"
+        "9.0.0.902"   "9.0 GA"
+        "9.0.0.773"   "9.0 RTM"
+        "8.0.0.2084"  "8.0 U3"
+        "8.0.0.2030"  "8.0 U2b"
+        "8.0.0.2029"  "8.0 U2a"
+        "8.0.0.2021"  "8.0 U2 GA"
+        "8.0.0.2018"  "8.0 U2 RTM"
+        "8.0.0.917"   "8.0 P1"
+        "8.0.0.817"   "8.0 GA"
+        "8.0.0.807"   "8.0 RTM" }}
+    {{ $version := . | toString }}
+    {{ pluck $version $versionDef | first | default $version -}}'
+
+scripts:
+  get backup_servers:
+    - name: collect elements
+      query:
+        url: /backupServers?format=Entity
+        var_name: results
+
+    - name: procceed elements
+      scope: results
+      metrics:
+        - metric_name: config
+          help: config of each backup repository 
+          type: gauge
+          # implicit scopr item !
+          key_labels:
+            name: Name
+            description: Description
+            port: Port
+            version: '{{ template "backupServerVersion" .Version }}'
+            full_version: Version
+            # - name: version
+            #   value: "{{ item.Version | backup_server }}"
+            # - name: full_version
+            #   value: "{{ item.Version }}"
+          values:
+            _: 1
+          loop: BackupServers
+
+...

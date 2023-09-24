@@ -1,0 +1,35 @@
+name: netscalerhost
+scheme: https
+host: "1.2.3.4"
+port: 8080
+# baseUrl: /api/v1
+auth_mode:
+  # mode: basic(default)|token|[anything else:=> user defined login script]
+  user: prometheus
+  # password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+  password: "password"
+# proxy: ""
+# verifySSL: false
+# custom constant labels add to all metrics
+#labels:
+  # - name: value
+
+collectors:
+  # you can use operator~ and regexp pattern to select metrics name
+  #   from collector files
+  - ~.*_metrics
+  # or a list of collector names 
+  # - netscaler_overview_metrics
+  # - netscaler_nstats_metrics
+  # - netscaler_hanode_metrics
+  # - netscaler_system_metrics
+  # - netscaler_systemcpu_metrics
+  # - netscaler_systemmemory_metrics
+  # - netscaler_service_metrics
+  # - netscaler_aaa_metrics
+  # - netscaler_interface_metrics
+  # - netscaler_ip_metrics
+  # - netscaler_udp_metrics
+  # - netscaler_tcp_metrics
+  # - netscaler_http_metrics
+  # - netscaler_ssl_metrics

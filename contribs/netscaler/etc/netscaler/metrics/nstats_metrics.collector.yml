@@ -1,0 +1,34 @@
+---
+
+##
+## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/ns/ns/
+###
+#
+
+collector_name: netscaler_nstats_metrics
+metric_prefix: citrixadc_ns
+
+scripts:
+  get stat_ns:
+    - name: collect stat ns
+      query:
+        url: /stat/ns
+        var_name: results
+
+    - name: proceed elements
+      scope: results
+      metrics:
+        - metric_name: rx_mbits_rate
+          help: "Rate (/s) of megabytes received by the NetScaler appliance."
+          type: gauge
+          values:
+            _: "{{ .ns.rxmbitsrate }}"
+
+        - metric_name: tx_mbits_rate
+          help: "Rate (/s) of megabytes transmitted by the NetScaler appliance."
+          type: gauge
+          values:
+            _: "{{ .ns.txmbitsrate }}"
+
+...
+

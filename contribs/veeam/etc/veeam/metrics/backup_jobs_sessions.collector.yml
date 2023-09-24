@@ -1,0 +1,175 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Job Sessions. Overview of Backup Job Sessions
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/get_query_backupjobsession.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/backupsessions.html?ver=120
+###
+#
+collector_name: backup_jobs_sessions_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_jobs_sessions
+
+templates:
+  currentJobStatus: '
+    {{- $item := . }}
+    {{- if eq $item.Result "None" -}}
+      {{- $item.State -}}
+    {{- else -}}
+      {{- $item.Result -}}
+    {{- end -}}'
+
+  jobStatus: '
+    {{- $jobStatusDef := dict
+          "Unknown"   "0"
+          "Success"   "1"
+          "Warning"   "2"
+          "Failed"    "3"
+          "Idle"      "4"
+          "Working"   "5"
+    -}}
+    {{- pluck . $jobStatusDef | first | default "0" -}}'
+
+  buildJobs: '
+    {{- /* init vars with sent args list */ -}}
+    {{- $args := . -}}
+    {{- $jobs := index $args 0 -}}
+    {{- $item := index $args 1 -}}
+    {{- $hash := index $args 2 -}}
+    {{- $item_start := index $args 3 -}}
+    {{- $cur_endtimestamp := 0 -}}
+    {{- /* init vars depending on args conds */ -}}
+    {{ if hasKey $item "EndTimeUTC" -}}
+      {{- $cur_endtimestamp = mustToDate "2006-01-02T15:04:05Z" $item.EndTimeUTC | unixEpoch -}}
+    {{- else -}}
+      {{- $cur_endtimestamp = now | unixEpoch -}}
+    {{- end -}}
+
+    {{- /* check if current job''s hash is already in job''s map */ -}}
+    {{- if not (exporterHasKey $jobs $hash) -}}
+      {{- $job_entry := dict
+        "backupserver"    (index $item.Links 0).Name
+        "jobname"         $item.JobName
+        "name"            $item.Name
+        "jobtype"         $item.JobType
+        "state"           $item.current_state
+        "starttimestamp"  $item_start
+        "endtimestamp"    $cur_endtimestamp
+        "uid"             (( mustRegexSplit ":" $item.UID -1 ) | last )
+        "retries"         0
+      -}}
+      {{- $_ := exporterSet $jobs $hash $job_entry -}}
+    {{- else -}}
+      {{- /* old_job is a job set previously and is map[string]any */ -}}
+      {{- $old_job := exporterGet $jobs $hash -}}
+      {{- $retries := add ( $old_job.retries | int ) 1 -}}
+      {{/* if job[hash].starttimestamp < item_start */}}
+      {{- if lt $old_job.starttimestamp $item_start -}}
+        {{- $job_entry := dict
+          "state"           $item.current_state
+          "starttimestamp"  $item_start
+          "endtimestamp"    $cur_endtimestamp
+          "uid"             (( mustRegexSplit ":" $item.UID -1 ) | last )
+          "retries"         $retries
+        -}}
+        {{- $_ := mustMergeOverwrite $old_job $job_entry -}}
+      {{- else -}}
+        {{- $_ := set $old_job "retries" $retries -}}
+      {{- end -}}
+    {{- end -}}'
+
+scripts:
+  get backup_job_session:
+    - name: init vars
+      set_fact:
+        # warning sprig doc is wrong: format is time.Duration so
+        # Valid time units are only: "ns", "us" (or "µs"), "ms", "s", "m", "h".
+        timestart: '{{ now | mustDateModify .jobHistory | unixEpoch }}'
+        datestart: '{{ now | mustDateModify .jobHistory | date "2006-01-02T15:04:05" }}'
+        jobs: {}
+
+
+    - name: collect elements from last {{ .jobHistory }}
+      query:
+        # consider only last 24 hours jobs restricting query to now (-)jobHistory hours
+        url: '/query?type=BackupJobSession&format=Entities&filter=CreationTime>="{{ .datestart }}"'
+        var_name: results
+
+    - name: procceed elements
+      loop: "{{ .results.Entities.BackupJobSessions.BackupJobSessions | toRawJson }}"
+      actions:
+        - name: determine last job status from all jobs starts
+          set_fact:
+            # parse to time.Time, then convert to second unix epoch
+            item_start: '{{ mustToDate "2006-01-02T15:04:05Z" .item.CreationTimeUTC | unixEpoch }}'
+
+        - name: determine hask key & state of job
+          set_fact:
+            hash: "{{ print (index .item.Links 0).Name .item.JobName .item.JobType | sha1sum }}"
+            current_state: '{{ template "currentJobStatus" .item }}'
+
+        - name: determine hask key & state of job
+          set_fact:
+            # obtain corrsponding numerical value of string state
+            current_state: '{{ template "jobStatus" .current_state }}'
+
+        - name: update job state
+          set_fact:
+            dummy: '{{ set .item "current_state" .current_state }}'
+
+        - name: update jobs map
+          set_fact:
+            dummy: '
+              {{ $args := list .jobs .item .hash .item_start }}
+              {{ template "buildJobs" $args }}'
+
+        - name: debug job
+          debug:
+            msg: "job: {{ toRawJson (exporterGet .jobs .hash) }}"
+
+    - name: loop on aggregate jobs (values) to generate metric
+      # to debug: build a list with first element of the result
+      # loop: "{{ list (index (exporterValues .jobs) 0) | toRawJson }}"
+      loop: "{{ exporterValues .jobs | toRawJson }}"
+      loop_var: job
+      # default: scope: cur_var=> job
+      actions:
+        - name: build metrics from computed jobs
+          metrics:
+            - metric_name: state
+              help: "resulting status of the job (0: undefined - 1: Success - 2: Warning - 3: Failed - 4: Idle - 5: Working)"
+              type: gauge
+              key_labels:
+                backupserver: backupserver
+                name:         name
+                jobname:      jobname
+                jobtype:      jobtype
+              values: 
+                _: state
+
+            - metric_name: duration
+              help: 'operation duration in second'
+              type: gauge
+              key_labels:
+                backupserver: backupserver
+                name:         name
+                jobname:      jobname
+                jobtype:      jobtype
+              values: 
+                _: "{{ sub .endtimestamp .starttimestamp }}"
+
+            - metric_name: retries
+              help: "number of times of the job has been retried (0: no retry)"
+              type: gauge
+              key_labels:
+                backupserver: backupserver
+                name:         name
+                jobname:      jobname
+                jobtype:      jobtype
+              values: 
+                _: retries
+
+
+...

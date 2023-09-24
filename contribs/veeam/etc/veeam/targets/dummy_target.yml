@@ -1,0 +1,30 @@
+name: veeamhost
+scheme: https
+host: "1.2.3.4"
+port: 9398
+auth_mode:
+  # mode: basic|token|[anything else:=> user defined login script]
+  mode: script
+  user: prometheus
+  # password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+  password: "password"
+# proxy: ""
+# verifySSL: false
+# custom constant labels add to all metrics
+#labels:
+  # - name: value
+
+collectors:
+  # you can use operator~ and regexp pattern to select metrics name
+  #   from collector files
+  - ~.*_metrics
+  # or a list of collector names 
+  # - veeam_overview_metrics
+  # - job_overview_metrics
+  # - repositories_overview_metrics
+  # - backup_servers_metrics
+  # - veeam_agent_metrics
+  # # - veeam_nas_jobs_metrics
+  # - backup_jobs_sessions_metrics
+  # - veeam_overview_vms_metrics
+  # - vm_backup_jobs_sessions_metrics

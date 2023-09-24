@@ -1,0 +1,54 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Repositories. Overview of Repositories
+###
+
+
+collector_name: repositories_overview_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_overview_repositories
+
+scripts:
+  get repositories_overview_metrics:
+    - name: collect elements
+      query:
+        url: /repositories?format=Entity
+        var_name: results
+        # debug: true
+
+    - name: procceed elements
+      scope: results
+      metrics:
+        # - name: build metric
+        #   vars:
+        #     labels:
+        #       - name: name
+        #         value: "{{ item.Name }}"
+        #       - name: type
+        #         value: "{{ item.Kind }}"
+        # implicit scope to item element [=> repository]
+        - metric_name: capacity_total_bytes
+          help: total size in bytes of each repository by name and type
+          type: gauge
+          values: 
+            _: Capacity
+          key_labels:
+            name: Name
+            type: Kind
+            uid: UID
+          loop: Repositories
+
+        - metric_name: capacity_free_bytes
+          help: free size in bytes of each repository by name and type
+          type: gauge
+          values:
+            value: FreeSpace
+          key_labels:
+            name: Name
+            type: Kind
+            uid: UID
+          loop: Repositories
+...

@@ -1,0 +1,118 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: cpgs_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+scripts:
+  get cpgs:
+  #**************************************************************************************************
+  #* cpg
+  #* 200 OK
+  # {
+  #   "total": 3,
+  #   "members": [ {
+  #     "id": 0,
+  #     "uuid": "ae1a2213-ec4b-4e21-96b1-a9017c307452",
+  #     "name": "SSD_r1", 
+  #     "numFPVVs": 0,
+  #     "numTPVVs": 0, "numTDVVs": 0,
+  #     "UsrUsage": {
+  #       "totalMiB": 0,
+  #       "rawTotalMiB": 0,
+  #       "usedMiB": 0,
+  #       "rawUsedMiB": 0
+  #     },
+  #     "SAUsage": {
+  #       "totalMiB": 0,
+  #       "rawTotalMiB": 0,
+  #       "usedMiB": 0,
+  #       "rawUsedMiB": 0
+  #     },
+  #     "SDUsage": {
+  #       "totalMiB": 0, 
+  #       "rawTotalMiB": 0,
+  #       "usedMiB": 0,
+  #       "rawUsedMiB": 0
+  #     },
+  #     "privateSpaceMiB": { 
+  #       "base": 0,
+  #       "rawBase": 0,
+  #       "snapshot": 0,
+  #       "rawSnapshot": 0
+  #     },
+  #     "sharedSpaceMiB": 0,
+  #     "rawSharedSpaceMiB": 0,
+  #     "freeSpaceMiB": 0,
+  #     "rawFreeSpaceMiB": 0,
+  #     "totalSpaceMiB": 0, 
+  #     "rawTotalSpaceMiB": 0,
+  #     "SAGrowth": {
+  #       "incrementMiB": 8192,
+  #       "LDLayout": {
+  #         "diskPatterns": [ {
+  #           "diskType": 3
+  #         }, {
+  #           "diskType":3
+  #         }],
+  #         "RAIDType": 2
+  #       }
+  #     },
+  #     "SDGrowth": {
+  #       "incrementMiB": 8192,
+  #       "LDLayout": {
+  #         "setSize": 2,
+  #         "HA": 3,
+  #         "RAIDType": 2,
+  #         "diskPatterns": [{
+  #           "diskType":3
+  #         }]
+  #       }
+  #     },
+  #     "state": 1,
+  #     "failedStates": [],
+  #     "degradedStates": [],
+  #     "additionalStates": [],
+  #     "dedupCapable": true
+  #   },
+  #   {\"id\":1,\"uuid\":\"4118e53c-5eca-4f61-9893-2df433321745\",\"name\":\"CPG-SSD-RAID5\",\"numFPVVs\":1,\"numTPVVs\":0,\"numTDVVs\":26,\"UsrUsage\":{\"totalMiB\":11358208,\"rawTotalMiB\":1
+    - name: query cpgs
+      query:
+        url: /cpgs
+        debug: yes
+        var_name: results
+    - name: collect cpgs
+      scope: results
+      metrics:
+        - metric_name: cpg_available_bytes
+          help: avail byte of cpg (/cgps .freeSpaceMiB)
+          type: gauge
+          key_labels:
+            name: _
+          values:
+            _: '{{ convertToBytes .freeSpaceMiB "Mb" }}'
+          loop: members
+
+        - metric_name: cpg_total_bytes
+          help: avail byte of cpg (/cgps .totalSpaceMiB)
+          type: gauge
+          key_labels:
+            name: _
+          values:
+            _: '{{ convertToBytes .totalSpaceMiB "Mb" }}'
+          loop: members
+
+        - metric_name: cpg_snapshot_used_bytes
+          help: avail byte of cpg (/cgps .privateSpaceMiB.snapshot)
+          type: gauge
+          key_labels:
+            name: _
+          values:
+            _: '{{ convertToBytes .privateSpaceMiB.snapshot "Mb" }}'
+          loop: members

@@ -1,0 +1,163 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/aaa/aaa/
+### Statistics for aaa.
+#
+
+collector_name: netscaler_aaa_metrics
+metric_prefix: citrixadc_aaa
+
+scripts:
+  get stat_aaa:
+    - name: collect aaa stats
+      query:
+        url: /stat/aaa
+        var_name: results
+
+    - name: proceed elements
+      metrics:
+        - metric_name: auth_success
+          type: counter
+          values:
+            _: aaaauthsuccess
+
+        - metric_name: auth_fail
+          type: counter
+          values:
+            _: aaaauthfail
+
+        - metric_name: auth_only_http_success
+          type: counter
+          values:
+            _: aaaauthonlyhttpsuccess
+
+        - metric_name: auth_only_http_fail
+          type: counter
+          values:
+            _: aaaauthonlyhttpfail
+
+        - metric_name: auth_non_http_success
+          type: counter
+          values:
+            _: aaaauthnonhttpsuccess
+
+        - metric_name: auth_non_http_fail
+          type: counter
+          values:
+            _: aaaauthnonhttpfail
+
+        - metric_name: tot_sessions
+          type: counter
+          values:
+            _: aaatotsessions
+
+        - metric_name: tot_sessiontimeout
+          type: counter
+          values:
+            _: aaatotsessiontimeout
+
+        - metric_name: tot_tm_sessions
+          type: counter
+          values:
+            _: aaatottmsessions
+
+        - metric_name: cur_ica_sessions
+          type: gauge
+          values:
+            _: aaacuricasessions
+
+        - metric_name: cur_ica_only_conn
+          type: gauge
+          values:
+            _: aaacuricaonlyconn
+
+        - metric_name: cur_ica_conn
+          help: "Count of current SmartAccess ICA connections."
+          type: gauge
+          values:
+            _: aaacuricaconn
+
+        - metric_name: cur_tm_sessions
+          help: "Count of current AAATM sessions."
+          type: gauge
+          values:
+            _: aaacurtmsessions
+
+        - metric_name: cur_sessions
+          type: gauge
+          values:
+            _: aaacursessions
+
+        - metric_name: auth_success_rate
+          type: gauge
+          values:
+            _: aaaauthsuccessrate
+
+        - metric_name: auth_fail_rate
+          type: gauge
+          values:
+            _: aaaauthfailrate
+
+        - metric_name: auth_only_http_success_rate
+          type: gauge
+          values:
+            _: aaaauthonlyhttpsuccessrate
+
+        - metric_name: auth_only_http_fail_rate
+          type: gauge
+          values:
+            _: aaaauthonlyhttpfailrate
+
+        - metric_name: auth_non_http_success_rate
+          type: gauge
+          values:
+            _: aaaauthnonhttpsuccessrate
+
+        - metric_name: auth_non_http_fail_rate
+          type: gauge
+          values:
+            _: aaaauthnonhttpfailrate
+
+        - metric_name: cur_sessions_rate
+          type: gauge
+          values:
+            _: aaacursessionsrate
+
+        - metric_name: sessions_rate
+          type: gauge
+          values:
+            _: aaasessionsrate
+
+        - metric_name: session_timeout_rate
+          type: gauge
+          values:
+            _: aaasessiontimeoutrate
+
+        - metric_name: cur_ica_sessions_rate
+          type: gauge
+          values:
+            _: aaacuricasessionsrate
+
+        - metric_name: cur_ica_only_conn_rate
+          type: gauge
+          values:
+            _: aaacuricaonlyconnrate
+
+        - metric_name: cur_ica_conn_rate
+          type: gauge
+          values:
+            _: aaacuricaconnrate
+
+        - metric_name: cur_tm_sessions_rate
+          type: gauge
+          values:
+            _: aaacurtmsessionsrate
+
+        - metric_name: tm_sessions_rate
+          type: gauge
+          values:
+            _: aaatmsessionsrate
+
+...

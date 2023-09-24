@@ -1,0 +1,38 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager NAS Jobs. Overview of the NAS Jobs. Really useful to display the NAS Jobs
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/nas_jobs.html?ver=120
+###
+#
+
+collector_name: veeam_nas_jobs_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_nas_jobs
+
+scripts:
+  get veeam_nas_jobs:
+    - name: collect elements
+      query:
+        url: /nas/jobs?format=Entity
+        debug: true
+        var_name: results
+
+    - name: procceed elements
+      scope: results
+      metrics:
+        - metric_name: config
+          help: total size of the repository in bytes
+          type: gauge
+          key_labels:
+            name: Name
+            type: Kind
+            # item.Links[0].Name !
+            backupserver: "{{ (index .Links 0).Name }}"
+          values: 
+            _: 1
+          loop: NASJobs
+
+...

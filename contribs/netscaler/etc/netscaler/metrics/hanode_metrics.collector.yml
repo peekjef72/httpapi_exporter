@@ -1,0 +1,81 @@
+---
+
+##
+## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/ha/hanode/
+###
+#
+
+collector_name: netscaler_hanode_metrics
+metric_prefix: citrixadc_ha
+
+templates:
+  masterState: '
+    {{- $item := . | upper }}
+    {{- $masterStateDef := dict
+          "PRIMARY"     "1"
+          "SECONDARY"   "2"
+    }}
+    {{ pluck . $masterStateDef | first | default "0" }}'
+
+scripts:
+  get stat_hanode:
+    - name: collect stat hanode
+      query:
+        url: /stat/hanode
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      scope: results.hanode
+      metrics:
+        - metric_name: available
+          help: "Whether a NetScaler appliance is configured for high availability."
+          type: gauge
+          key_labels:
+            status: "{{ .hacurstatus | toString }}"
+          values:
+            _: '{{ if eq .hacurstatus "YES" }}1{{ else }}0{{ end }}'
+
+        - metric_name: state
+          help: "State of the HA node, based on its health, in a high availability setup 1 UP / 0 else"
+          type: gauge
+          key_labels:
+            state: "{{ .hacurstate | toString }}"
+          values:
+            _: '{{ if eq .hacurstate "UP" }}1{{ else }}0{{ end }}'
+          when: eq .hacurstatus "YES"
+
+        - metric_name: node_state
+          help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary"
+          type: gauge
+          key_labels:
+            node_state: "{{ .hacurmasterstate }}"
+          values:
+            _: '{{ template "masterState" .hacurmasterstate }}'
+          when: eq .hacurstatus "YES"
+
+        - metric_name: node_start_timestamp
+          help: "Timestamp when the last master state transition occurred."
+          type: gauge
+          key_labels:
+            node_transtime: "{{ .transtime }}"
+          values:
+            _: '{{ mustToDate "Mon Jan _2 15:04:05 2006" .transtime | unixEpoch }}'
+          when: eq .hacurstatus "YES"
+
+        - metric_name: node_propagation_timeout
+          help: "Number of times propagation timed out."
+          type: counter
+          values:
+            _: haerrproptimeout
+          when: eq .hacurstatus "YES"
+
+        - metric_name: node_sync_failure
+          help: "Number of times synchronization failed since that last transition."
+          type: counter
+          values: 
+            _: haerrsyncfailure
+          when: eq .hacurstatus "YES"
+
+...
+

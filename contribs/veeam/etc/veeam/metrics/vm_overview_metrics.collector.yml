@@ -1,0 +1,62 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+##
+## Veeam Enterprise Manager Overview. Overview of Virtual Machines
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/reports_summary_vms_overview.html?ver=120
+###
+#
+
+collector_name: veeam_overview_vms_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_overview_vms
+
+scripts:
+  get veeam_overview:
+    - name: collect elements
+      query:
+        url: /reports/summary/vms_overview
+        var_name: results
+        # debug: true
+
+    - name: proceed elements count
+      with_items:
+        - { type: "protected", value: "{{ .results.ProtectedVms }}" }
+        - { type: "backedup", value: "{{ .results.BackedUpVms }}" }
+        - { type: "replicated", value: "{{ .results.ReplicatedVms }}" }
+        - { type: "restore_points", value: "{{ .results.RestorePoints }}" }
+      metrics:
+        - metric_name: count
+          help: VMs count by protection type "protected","backedup","replicated","restore_points"
+          type: gauge
+          key_labels:
+            type: _
+          values:
+            _: value
+
+    - name: proceed elements total_bytes
+      with_items:
+        - { type: "full_backup_points", value: "{{ .results.FullBackupPointsSize }}" }
+        - { type: "incremental_backup_points", value: "{{ .results.IncrementalBackupPointsSize }}" }
+        - { type: "replica_restore_points", value: "{{ .results.ReplicaRestorePointsSize }}" }
+        - { type: "source_vms", value: "{{ .results.SourceVmsSize }}" }
+      metrics:
+        - metric_name: total_bytes
+          help: VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"
+          type: gauge
+          key_labels:
+            type: _
+          values:
+            _: value
+
+    - name: proceed elements total_bytes
+      metrics:
+        - metric_name: sucess_backup_percent
+          scope: none
+          help: percent of sucessful backup of VMs
+          type: gauge
+          values:
+            _: "{{ .results.SuccessBackupPercents }}"
+
+...

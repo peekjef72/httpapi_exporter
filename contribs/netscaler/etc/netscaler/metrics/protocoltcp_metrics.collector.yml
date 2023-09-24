@@ -1,0 +1,209 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/protocol/protocoltcp/
+### Statistics for protocoltcp.
+#
+
+collector_name: netscaler_tcp_metrics
+metric_prefix: citrixadc_tcp
+
+scripts:
+  get stat_protocoltcp:
+    - name: collect stat tcp
+      query:
+        url: /stat/protocoltcp
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      scope: results.protocoltcp
+      metrics:
+        - metric_name: tot_rx_packets
+          help: TCP packets received.
+          type: counter
+          values:
+            _: tcptotrxpkts
+
+        - metric_name: tot_rx_bytes
+          help: Bytes of TCP data received.
+          type: counter
+          values:
+            _: tcptotrxbytes
+
+        - metric_name: tot_tx_packets
+          help: TCP packets transmitted.
+          type: counter
+          values:
+            _: tcptottxpkts
+
+        - metric_name: tot_tx_bytes
+          help: Bytes of TCP data transmitted.
+          type: counter
+          values:
+            _: tcptottxbytes
+
+        - metric_name: tot_client_connections_opened
+          help: Client connections opened by the NetScaler since startup
+          type: counter
+          values:
+            _: tcptotclientconnopened
+
+        - metric_name: tot_server_connections_opened
+          help: Server connections initiated by the NetScaler since startup.
+          type: counter
+          values:
+            _: tcptotserverconnopened
+
+        - metric_name: tot_syn
+          help: SYN packets received
+          type: counter
+          values:
+            _: tcptotsyn
+
+        - metric_name: tot_syn_probe
+          help: Probes from the NetScaler to a server.
+          type: counter
+          values:
+            _: tcptotsynprobe
+
+        - metric_name: tot_server_fin
+          help: FIN packets received from the server.
+          type: counter
+          values:
+            _: tcptotsvrfin
+
+        - metric_name: tot_client_fin
+          help: FIN packets received from the clients.
+          type: counter
+          values:
+            _: tcptotcltfin
+
+        - metric_name: err_badchecksum
+          help: Packets received with a TCP checksum error.
+          type: counter
+          values:
+            _: tcperrbadchecksum
+
+        - metric_name: err_any_port_fail
+          help: Port allocations that have failed on mapped IP address
+          type: counter
+          values:
+            _: tcperranyportfail
+
+        - metric_name: err_ip_port_fail
+          help: Port allocations that have failed on a subnet IP address or vserver IP address
+          type: counter
+          values:
+            _: tcperripportfail
+
+        - metric_name: err_bad_connection_state
+          help: Connections that are not in a valid TCP state.
+          type: counter
+          values:
+            _: tcperrbadstateconn
+
+        - metric_name: err_reset_threshold
+          help: Reset packets dropped because the default threshold of 100 resets per 10 milliseconds has been exceeded.
+          type: counter
+          values:
+            _: tcperrrstthreshold
+
+        - metric_name: err_out_of_window
+          help: Packets received that are out of the current advertised window.
+          type: counter
+          values:
+            _: tcperroutofwindowpkts
+
+        - metric_name: err_syn_dropped_congestion
+          help: SYN packets dropped because of network congestion.
+          type: counter
+          values:
+            _: tcperrsyndroppedcongestion
+
+        - metric_name: err_full_retransmit
+          help: Full packets retransmitted by the client or the server.
+          type: counter
+          values:
+            _: tcperrfullretrasmit
+
+        - metric_name: active_server_connection
+          help: Connections to a server currently responding to requests.
+          type: gauge
+          values:
+            _: tcpactiveserverconn
+
+        - metric_name: current_client_connections_est
+          help: Current client connections in the Established state.
+          type: gauge
+          values:
+            _: tcpcurclientconnestablished
+
+        - metric_name: current_server_connections_est
+          help: Current server connections in the Established state.
+          type: gauge
+          values:
+            _: tcpcurserverconnestablished
+
+        - metric_name: rx_packets_rate
+          help: Rate (/s) TCP packets received.
+          type: gauge
+          values:
+            _: tcprxpktsrate
+
+        - metric_name: rx_bytes_rate
+          help: Rate (/s) bytes of TCP data received.
+          type: gauge
+          values:
+            _: tcprxbytesrate
+
+        - metric_name: tx_packets_rate
+          help: Rate (/s) TCP packets transmitted.
+          type: gauge
+          values:
+            _: tcptxpktsrate
+
+        - metric_name: tx_bytes_rate
+          help: Rate (/s) bytes of TCP data transmitted.
+          type: gauge
+          values:
+            _: tcptxbytesrate
+
+        - metric_name: client_connection_opened_rate
+          help: Rate (/s) of client connections opened by the NetScaler since startup
+          type: gauge
+          values:
+            _: tcpclientconnopenedrate
+
+        - metric_name: err_badchecksum_rate
+          help: Rate (/s) of packets received with a TCP checksum error.
+          type: gauge
+          values:
+            _: tcperrbadchecksumrate
+
+        - metric_name: syn_rate
+          help: Rate (/s) of SYN packets received.
+          type: gauge
+          values:
+            _: tcpsynrate
+
+        - metric_name: syn_probe_rate
+          help: Rate (/s) of Probes from the NetScaler to a server.
+          type: gauge
+          values:
+            _: tcpsynproberate
+
+        - metric_name: reset_packet_rate
+          help: Rate (/s) counter for tcperrsentrst
+          type: gauge
+          values:
+            _: tcperrsentrstrate
+
+        - metric_name: retransmit_packet_rate
+          help: Rate (/s) full packets retransmitted by the client or the server.
+          type: gauge
+          values:
+            _: tcperrfullretrasmitrate
+
+...

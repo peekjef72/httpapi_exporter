@@ -1,0 +1,47 @@
+---
+
+##
+## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/system/systemmemory/
+###
+#
+
+collector_name: netscaler_systemmemory_metrics
+metric_prefix: citrixadc_memory
+
+scripts:
+  get stat_system:
+    - name: collect stat systemmemory
+      query:
+        url: /stat/systemmemory
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      scope: results.systemmemory
+      metrics:
+        - metric_name: allocated_percent
+          help: Currently allocated memory in percent.
+          type: gauge
+          values:
+            _: memtotallocpcnt
+
+        - metric_name: usage_percent
+          help: Percentage of memory utilization on NetScaler.
+          type: gauge
+          values:
+            _: memusagepcnt
+
+        - metric_name: shared_usage_percent
+          help: Shared memory in use percent.
+          type: gauge
+          values:
+            _: shmemallocpcnt
+
+        - metric_name: total_available_bytes
+          help: Total system memory available for PE to grab from the system.
+          type: gauge
+          values:
+            _: '{{ convertToBytes .memtotavailint "Mb" }}'
+
+...
+

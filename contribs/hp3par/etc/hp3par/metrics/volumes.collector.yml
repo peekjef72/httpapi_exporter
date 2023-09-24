@@ -1,0 +1,339 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: volumes_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+templates:
+  # severity: |-
+  #   {{ $sev := . | toString }}
+  #   {{ $severityDef := dict 1 "fatal" 2 "critical" 3 "major" 4 "minor" 5 "degraded" 6 "info" 7 "debug" 99 "unknown" }}
+  #   {{ pluck $sev $severityDef | first | default "undef" }}
+  provisioningType: |-
+    {{ $type := . | toString }}
+    {{ $typeDef := dict 1 "FULL" 2 "TPVV" 3 "SNP" 4 "PEER" 5 "UNKNOWN" 6 "TDVV" 7 "DSS" }}
+    {{ pluck $type $typeDef | first | default "undef" }}
+
+scripts:
+  get volumes:
+  #*********************************************************************************
+  # volumes: use entity
+  # {
+  #   "total": 39,
+  #   "members": [ {
+  #       "id": 3,
+  #       "name": "VV-SAN.PROD.DC1-01", 
+  #       "deduplicationState": 1,
+  # => YES: 1 - Enables deduplication on the volume.
+  #    NO:  2 - Disables deduplication on the volume.
+  #    NA:  3 - Deduplication is not available
+
+  #       "compressionState": 2,
+  # => YES:  1 - Compression is enabled on the volume.
+  #     NO:  2 - Compression is disabled on the volume.
+  #     OFF: 3 - Compression is turned off.
+  #     NA:  4 - Compression is not available on the volume.
+
+  #       "provisioningType": 6,
+  # => FULL:  1 - A commonly provisioned VV with fully provisioned userspace and snapshot space associated with the snapCPGproperty.
+  #    TPVV:  2 - TPVV, with base volume space allocated from the userspace associated with the userCPG property.
+  #    SNP:   3 - The VV is a snapshot (Type vcopy) with space provisionedfrom the base volume snapshot space
+  #    PEER:  4 - Remote volume admitted into the local storage system
+  #    UNKNOWN: 5 - unknown
+  #    TDVV:  6 - The volume is a deduplicated volume
+  #    DSS:   7 - A system maintained deduplication storage volume shared byTDVV volumes in a CPG
+
+  #       "copyType": 1,
+  #  => BASE: 1 - Base volume (not a copy).
+  #     PHYSICAL_COPY: 2 - 2Physical copy (full copy).
+  #     VIRTUAL_COPY:  3 - Snapshot copy (virtual copy).
+
+  #       "baseId": 3,
+  #       "readOnly": false, 
+  #       "state": 1,
+  #       "failedStates": [],
+  #       "degradedStates": [],
+  #       "additionalStates": [],
+  #       "adminSpace": {
+  #         "reservedMiB": 512, 
+  #         "rawReservedMiB": 1536,
+  #         "usedMiB": 259,
+  #         "freeMiB": 253
+  #       },
+  #       "snapshotSpace": {
+  #         "reservedMiB": 512,
+  #         "rawReservedMiB": 614,
+  #         "usedMiB": 0,
+  #         "freeMiB": 512
+  #       },
+  #       "userSpace": {
+  #         "reservedMiB": 103296,
+  #         "rawReservedMiB": 123955,
+  #         "usedMiB":95592,
+  #         "freeMiB": 7704
+  #       },
+  #       "totalReservedMiB": 103808,
+  #       "totalUsedMiB": 95592,
+  #       "sizeMiB": 1048576,
+  #       "hostWriteMiB": 266725,
+  #       "wwn": "60002AC0000000000000000300022B2B",
+  #       "creationTimeSec": 1550846532,
+  #       "creationTime8601": "2019-02-22T15:42:12+01:00",
+  #       "ssSpcAllocWarningPct": 0,
+  #       "ssSpcAllocLimitPct": 0,
+  #       "usrSpcAllocWarningPct": 0, 
+  #       "usrSpcAllocLimitPct": 0,
+  #       "policies":{
+  #         "staleSS": true,
+  #         "oneHost": false,
+  #         "zeroDetect": false,
+  #         "system": false,
+  #         "caching": true,
+  #         "fsvc": false,
+  #         "hostDIF": 1
+  #       },
+  #       "userCPG": "CPG-SSD-RAID5",
+  #       "snapCPG": "CPG-SSD-RAID5",
+  #       "uuid": "975ce79c-8e09-40d9-9d0b-8fa12957cdd6",
+  #       "sharedParentId": 2,
+  #       "udid": 3,
+  #       "capacityEfficiency": {
+  #         "compaction": 10.97,
+  #         "deduplication": 2.79
+  #       },
+  #       "links": [ {
+  #           "href": "https://10.120.0.10:8080/api/v1/volumes/VV-SAN.PROD.DC1-01",
+  #           "rel": "self"
+  #           },{
+  #             "href": "https://10.120.0.10:8080/api/v1/volumespacedistribution/VV-SAN.PROD.DC1-01",
+  #             "rel": "volumeSpaceDistribution"
+  #           }
+  #       ]
+  #     },
+  #     {\"id\":4,\"nam...
+
+    - name: query volumes
+      query:
+        url: /volumes
+        # debug: true
+        var_name: results
+    - name: collect volumes
+      scope: results
+      metrics:
+        - metric_name: volume_total_bytes
+          help: total volume allocated in bytes
+          type: gauge
+          key_labels:
+            name: '{{ .item.name }}'
+            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+          values:
+            _: '{{ convertToBytes .item.sizeMiB "Mb" }}'
+          when:
+            # only base volume
+            - .item.copyType | int | eq 1
+            # not a system volume
+            - not .item.policies.system
+            # not a system maintained deduplication storage
+            - .item.provisioningType | int | eq 7 | not
+          loop: members
+          scope: none
+
+        - metric_name: volume_used_bytes
+          help: volume usage in bytes
+          type: gauge
+          key_labels:
+            name: '{{ .item.name }}'
+            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+          values:
+            _: '{{ convertToBytes .item.totalUsedMiB "Mb" }}'
+          when:
+            # only base volume
+            - .item.copyType | int | eq 1
+            # not a system volume
+            - not .item.policies.system
+            # not a system maintained deduplication storage
+            - .item.provisioningType | int | eq 7 | not
+          loop: members
+          scope: none
+
+        - metric_name: volume_available_bytes
+          help: volume available bytes
+          type: gauge
+          key_labels:
+            name: '{{ .item.name }}'
+            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+          values:
+            _: >-
+              {{ $avail := subf .item.sizeMiB .item.totalUsedMiB .item.totalReservedMiB }}
+              {{ convertToBytes $avail "Mb" }}
+          when:
+            # only base volume
+            - .item.copyType | int | eq 1
+            # not a system volume
+            - not .item.policies.system
+            # not a system maintained deduplication storage
+            - .item.provisioningType | int | eq 7 | not
+          loop: members
+          scope: none
+
+        - metric_name: volume_compaction_ratio
+          help: The compaction ratio indicates the overall amount of storage space saved with 3PAR thin technology.
+          type: gauge
+          key_labels:
+            name: '{{ .item.name }}'
+            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+          values:
+            _: '{{ .item.capacityEfficiency.compaction }}'
+          when:
+              # only base volume
+              - .item.copyType | int | eq 1
+              # not a system volume
+              - not .item.policies.system
+              # not a system maintained deduplication storage
+              - .item.provisioningType | int | eq 7 | not
+          loop: members
+          scope: none
+
+        - metric_name: volume_deduplication_ratio
+          help: The deduplication ratio indicates the amount of storage space saved with 3PAR thin deduplication.
+          type: gauge
+          key_labels:
+            name: '{{ .item.name }}'
+            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+          values:
+            _: '{{ .item.capacityEfficiency.deduplication }}'
+          when:
+            # only base volume
+            - .item.copyType | int | eq 1
+            # not a system volume
+            - not .item.policies.system
+            # not a system maintained deduplication storage
+            - .item.provisioningType | int | eq 7 | not
+          loop: members
+          scope: none
+
+# volume IO stats: from vluns group by volume
+# {
+#   "sampleTime": "2022-11-12T16:55:00+01:00",
+#   "sampleTimeSec": 1668268500,
+#   "total": 25,
+#   "members": [ {
+#     "volumeName": "VV-SAN.DCN.DC1-DC2-01",
+#     // Number of IO per second: gauge : operation by sec
+#     "IO": {
+#       "read": 1.6,
+#       "write": 183.5,
+#       "total": 185.1
+#     },
+#     // Number of kilobytes per second
+#     "KBytes": {
+#       "read": 135.4,
+#       "write": 1810.2,
+#       "total": 1945.6
+#     },
+#     "serviceTimeMS": {
+#       "read": 0.28,
+#       "write": 1.43,
+#       "total": 1.42
+#     },
+#     // IO size in kilobytes statistic data
+#     "IOSizeKB": {
+#       "read": 84.9,
+#       "write": 9.9,
+#       "total": 10.5
+#     },
+#     "queueLength": 0,
+#     "busyPct": 1.3
+#   },
+#   {\"volumeName\":\"VV-SAN.DCN.DC2-DC1-01\",\"IO\":{\"read\":0.0,\"write\":0.0,\"total\":0.0},...
+#   } ]
+# }
+  get volumes io:
+    - name: query volumes_io
+      query:
+        url: "/systemreporter/attime/vlunstatistics/hires;groupby:volumeName"
+        # debug: true
+        var_name: results
+    - name: collect volumes_io
+      scope: results
+      metrics:
+        # read and write io per second
+        - metric_name: volume_read_io_per_second
+          help: Number of IO read operations per second.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ .item.IO.read }}'
+          loop: members
+          scope: none
+
+        - metric_name: volume_write_io_per_second
+          help: Number of IO write operations per second.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ .item.IO.write }}'
+          loop: members
+          scope: none
+
+        # read and write bytes per seconds
+        - metric_name: volume_read_bytes_per_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ convertToBytes .item.KBytes.read "Kb"}}'
+          loop: members
+          scope: none
+
+        - metric_name: volume_write_bytes_per_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ convertToBytes .item.KBytes.write "Kb" }}'
+          loop: members
+          scope: none
+
+        # read and write latency Service Time
+        - metric_name: volume_read_latency_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ mulf .item.serviceTimeMS.read 1E-3}}'
+          loop: members
+          scope: none
+
+        - metric_name: volume_write_latency_second
+          help: Write service time in millisecond statistic data.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ mulf .item.serviceTimeMS.write 1E-3 }}'
+          loop: members
+          scope: none
+
+        # busy percent
+        - metric_name: volume_busy_percent
+          help: Busy percentage.
+          type: gauge
+          key_labels:
+            name: "{{ .item.volumeName }}"
+          values:
+            _: '{{ .item.busyPct }}'
+          loop: members
+          scope: none
+

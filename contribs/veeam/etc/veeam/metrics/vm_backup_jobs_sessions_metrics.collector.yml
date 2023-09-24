@@ -1,0 +1,228 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Job Sessions per VM. Overview of Backup Job Sessions per VM. Really useful to display if a VM it is protected or not
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/get_query_backuptasksession.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/backupsessions_id_tasksessions.html?ver=120
+###
+#
+collector_name: vm_backup_jobs_sessions_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_vmjobs_sessions
+
+templates:
+  currentTaskStatus: '
+    {{- $item := . }}
+    {{- if eq $item.Result "None" -}}
+      {{- $item.State -}}
+    {{- else -}}
+      {{- $item.Result -}}
+    {{- end -}}'
+
+  taskStatus: '
+    {{- $taskStatusDef := dict
+          "Unknown"     "0"
+          "Success"     "1"
+          "Warning"     "2"
+          "Failed"      "3"
+          "Pending"     "4"
+          "InProgress"  "5"
+    }}
+    {{ pluck . $taskStatusDef | first | default "0" }}'
+
+  # loop over Links of item 
+  # try ot find .item.Links[x].Type eq $type
+  # then set item.attr with the value of .item.Links[x].Name
+  findLinkElement: '
+    {{- $args := . -}}
+    {{- $item := index $args 0 -}}
+    {{- $type := index $args 1 -}}
+    {{- $attr := index $args 2 -}}
+    {{- $links := $item.Links -}}
+    {{- range $links -}}
+      {{- $link := . -}}
+      {{- if eq $link.Type $type -}}
+        {{- set $item $attr $link.Name -}}
+        {{- break -}}
+      {{- end -}}
+    {{- end -}}'
+
+  buildTasks: '
+    {{- /* init vars with sent args list */ -}}
+    {{- $args := . -}}
+    {{- $tasks := index $args 0 -}}
+    {{- $item := index $args 1 -}}
+    {{- $hash := index $args 2 -}}
+    {{- $cur_endtimestamp := 0 -}}
+    {{- /* init vars depending on args conds */ -}}
+    {{ if hasKey $item "EndTimeUTC" -}}
+      {{- $cur_endtimestamp = mustToDate "2006-01-02T15:04:05Z" $item.EndTimeUTC | unixEpoch -}}
+    {{- else -}}
+      {{- $cur_endtimestamp = now | unixEpoch -}}
+    {{- end -}}
+
+    {{- /* check if current job''s hash is already in job''s map */ -}}
+    {{- if not (exporterHasKey $tasks $hash) -}}
+      {{- $args := list $item "BackupServerReference" "backupserver" -}}
+      {{- template "findLinkElement" $args -}}
+      {{- $args := list $item "BackupJobSessionReference" "jobname" -}}
+      {{- template "findLinkElement" $args -}}
+      {{- $task_entry := dict
+        "backupserver"      $item.backupserver
+        "jobname"           $item.jobname
+        "taskname"          $item.Name
+        "vmname"            $item.VmDisplayName
+        "state"             $item.current_state
+        "starttimestamp"    $item.starttime
+        "endtimestamp"      $cur_endtimestamp
+        "uid"               (( mustRegexSplit ":" $item.UID -1 ) | last )
+        "total_size_bytes"  $item.TotalSize
+        "reason"            $item.Reason
+        "retries"           0
+      -}}
+      {{- $_ := exporterSet $tasks $hash $task_entry -}}
+    {{- else -}}
+      {{- /* old_task is a job set previously and is map[string]any */ -}}
+      {{- $old_task := exporterGet $tasks $hash -}}
+      {{- $retries := add ( $old_task.retries | int ) 1 -}}
+      {{/* if job[hash].starttimestamp < item.starttime */}}
+      {{- if lt $old_task.starttimestamp $item.starttime -}}
+        {{- $task_entry := dict
+          "state"             $item.current_state
+          "starttimestamp"    $item.starttime
+          "endtimestamp"      $cur_endtimestamp
+          "uid"               (( mustRegexSplit ":" $item.UID -1 ) | last )
+          "total_size_bytes"  $item.TotalSize
+          "reason"            $item.Reason
+          "retries"           $retries
+        -}}
+        {{- $_ := mustMergeOverwrite $old_task $task_entry -}}
+      {{- else -}}
+        {{- $_ := set $old_task "retries" $retries -}}
+      {{- end -}}
+    {{- end -}}'
+
+scripts:
+  get backup_job_session:
+    - name: init vars
+      set_fact:
+        # warning sprig doc is wrong: format is time.Duration so
+        # Valid time units are only: "ns", "us" (or "µs"), "ms", "s", "m", "h".
+        timestart: '{{ now | mustDateModify .taskHistory | unixEpoch }}'
+        datestart: '{{ now | mustDateModify .taskHistory | date "2006-01-02T15:04:05" }}'
+        tasks: {}
+
+    - name: "collect elements from last {{ .taskHistory }}"
+      query:
+        url: '/query?type=BackupTaskSession&format=Entities&filter=CreationTime>="{{ .datestart }}"'
+        var_name: results
+        timeout: 10
+
+    - name: debug task
+      debug:
+        msg: "tasks count: {{ len .results.Entities.BackupTaskSessions.BackupTaskSessions }}"
+
+    - name: procceed elements
+      loop: "{{ .results.Entities.BackupTaskSessions.BackupTaskSessions | toRawJson }}"
+      actions:
+        - name: determine last task status from all tasks starts
+          set_fact:
+            # parse to time.Time, then convert to second unix epoch
+            item_start: '{{ mustToDate "2006-01-02T15:04:05Z" .item.CreationTimeUTC | unixEpoch }}'
+
+        - name: determine hask key & state of task
+          set_fact:
+            # job.backupserver + job.jobname + item.VmDisplayName 
+            hash: "{{ print .item.BackupServerName .item.JobName .item.VmDisplayName | sha1sum }}"
+            current_state: '{{ template "currentTaskStatus" .item }}'
+
+        - name: determine hask key & state of task
+          set_fact:
+            # obtain corrsponding numerical value of string state
+            current_state: '{{ template "taskStatus" .current_state }}'
+
+        - name: update task state
+          set_fact:
+            _: '{{ set .item "current_state" .current_state }}
+                    {{ set .item "starttime" .item_start }}'
+
+        - name: update tasks map
+          set_fact:
+            _: '
+              {{ $args := list .tasks .item .hash }}
+              {{ template "buildTasks" $args }}'
+
+        # - name: debug task
+        #   debug:
+        #     msg: "task: {{ toRawJson (exporterGet .tasks .hash) }}"
+
+    - name: loop on aggregate tasks (values) to generate metric
+      # to debug: build a list with first element of the result
+      # loop: "{{ list (index (exporterValues .tasks) 0) | toRawJson }}"
+      loop: "{{ exporterValues .tasks | toRawJson }}"
+      loop_var: task
+      # default: scope: cur_var=> task
+      actions:
+        - name: build metrics from computed jobs
+          metrics:
+            - metric_name: state
+              help: "vm backup task status (0 undefined / 1 Success / 2 Warning / 3 Failed / 4 Pending-Idle / 5 Working-In Progress)"
+              type: gauge
+              key_labels:
+                backupserver: _
+                jobname:      _
+                taskname:     _
+                vmname:       _
+              values: 
+                _: state
+
+            - metric_name: duration
+              help: 'vm backup task operation duration in second'
+              type: gauge
+              key_labels:
+                backupserver: _
+                jobname:      _
+                taskname:     _
+                vmname:       _
+              values: 
+                _: "{{ sub .endtimestamp .starttimestamp }}"
+
+            - metric_name: retries
+              help: "number of times of the vm backup task has been retried (0: no retry)"
+              type: gauge
+              key_labels:
+                backupserver: _
+                jobname:      _
+                taskname:     _
+                vmname:       _
+              values: 
+                _: retries
+
+            - metric_name: total_bytes
+              help: "total bytes save by the vm backup task for vm"
+              type: gauge
+              key_labels:
+                backupserver: _
+                jobname:      _
+                taskname:     _
+                vmname:       _
+              values: 
+                _: retries
+
+            - metric_name: error
+              help: "use to set error's message label"
+              type: gauge
+              key_labels:
+                backupserver: _
+                jobname:      _
+                taskname:     _
+                vmname:       _
+                message:      reason
+              values: 
+                _: state
+              when:
+                - or ( eq .task.state "2" ) ( eq .task.state "3" )
+
+...

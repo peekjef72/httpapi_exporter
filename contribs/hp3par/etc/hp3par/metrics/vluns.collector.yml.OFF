@@ -1,0 +1,247 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+# p 278 - 287
+#*********************************************************************************
+
+collector_name: vluns_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+templates:
+  vlunType: >-
+    {{- $typeDef := dict "1" "empty" "2" "port" "3" "host" "4" "match_set" "5" "host_set"}}
+    {{ $type := . | toString }}
+    {{ pluck $type $typeDef | first | default "undef" -}}
+
+
+scripts:
+  #*********************************************************************************
+  # vlun definitions
+  # { 
+  #   "total": 852,
+  #   "members": [
+  #     {
+  #       "lun": 10,
+  #       "volumeName": "VV-SAN.PROD.DC2-01",
+  #       "hostname": "wdaesx002", 
+  #       "remoteName": "10007E353F20000C",
+  #       "portPos": {
+  #         "node": 1,
+  #         "slot": 0,
+  #         "cardPort": 1
+  #       },
+  #       "type": 5,
+  #       "volumeWWN": "60002AC0000000000000000300022B2A",
+  #       "multipathing": 1,
+  #       "failedPathPol": 1,
+  #       "failedPathInterval": 0, 
+  #       "active": true,
+  #       "serial": "53707268956357254"
+  #     },
+  #     { 
+  #       "lun": 11,
+  #       ...
+  #     }
+  #   ]
+  # }
+  # get vluns_def:
+  #   - name: query vluns_def
+  #     query:
+  #       url: /vluns
+  #       # debug: yes
+  #       var_name: results
+  #   - name: collect vluns_def
+  #     scope: results
+  #     metrics:
+  #       - metric_name: vluns_status
+  #         help: 'vluns active definition no metric at all: return 1'
+  #         type: gauge
+  #         key_labels:
+  #           node: '{{ .portPos.node }}'
+  #           slot: '{{ .portPos.slot }}'
+  #           cardport: '{{ .portPos.cardPort }}'
+  #           lun: _
+  #           volumename: volumeName
+  #           hostname: _
+  #           type: '{{ template "vlunType" .type }}'
+  #         values:
+  #           _: '{{ .active | int }}'
+  #         when:
+  #           - .active
+  #         loop: members
+
+  # vlun stats: collect reports
+  # {
+  #   "sampleTime": "2022-11-10T19:15:00+01:00",
+  #   "sampleTimeSec": 1668104100,
+  #   "total": 708,
+  #   "members":[
+  #     {
+  #       "volumeName": "VV-SAN.DCN.DC1-DC2-01",
+  #       "hostname": "wdaesx101",
+  #       "lun": 200,
+  #       "hostWWN": "1000DE768E10001C", 
+  #       "node": 0,
+  #       "slot": 0,
+  #       "cardPort": 1,
+  #       "vvsetName": "RCP_RC-SAN.DCN.DC1-DC2-01",
+  #       "hostsetName": "wwda_DCN",
+  #       "IO": {
+  #         "read": 0.4,
+  #         "write": 55.0,
+  #         "total": 55.4
+  #       },
+  #       "KBytes": {
+  #         "read": 54.6,
+  #         "write": 557.9,
+  #         "total": 612.5
+  #       },
+  #       "serviceTimeMS": {
+  #         "read": 0.3,
+  #         "write": 1.5,
+  #         "total": 1.49
+  #       },
+  #       "IOSizeKB": {
+  #         "read": 124.9,
+  #         "write": 10.2,
+  #         "total": 11.1
+  #       },
+  #       "queueLength": 0,
+  #       "busyPct": 5.7
+  #     },
+  #     {"volumeName":"VV-SAN.DCN.DC1-DC2-01","hostname":"wdaesx101","lun":200,"hostWWN":"1000DE768E10001C","node":0,"slot":2,"cardPort":1,"vvsetName":"RCP_RC-SAN.DCN.DC1-DC2-01","hostsetName":"wwda_DCN","IO":{"read":0.2,"write":55.1,"total":55.3},"KBytes":{"read":5.7,"write":537.9,"total":543.6},"serviceTimeMS":{"read":0.26,"write":1.4,"total":1.4},"IOSizeKB":{"read":27.1,"write":9.8,"total":9.8},"queueLength":0,"busyPct":5.2},{"volumeName":"VV-SAN.DCN.DC1-DC2-01","hostname":"wdaesx101","lun":200,"hostWWN":"1000DE768E10001E","node":0,"slot":0,"cardPort":2,"vvsetName":"RCP_RC-SAN.DCN.DC1-DC2-01","hostsetName":"wwda_DCN","IO":{"read":0.0,"write":20.1,\
+  get vluns_stats:
+    - name: query vluns_stats
+      query:
+        url: /systemreporter/attime/vlunstatistics/hires
+        # debug: yes
+        var_name: results
+    - name: collect vluns_stats
+      scope: results
+      metrics:
+        - metric_name: vluns_read_io_per_second
+          help: Number of IO read operations per second.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ .IO.read }}'
+          # when:
+          #   - .active 
+          loop: members
+
+        - metric_name: vluns_write_io_per_second
+          help: Number of IO write operations per second.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ .IO.write }}'
+          # when:
+          #   - .active 
+          loop: members
+
+        # read and write bytes per seconds
+        - metric_name: vluns_read_bytes_per_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ convertToBytes .KBytes.read "Kb" }}'
+          # when:
+          #   - .active 
+          loop: members
+
+
+        - metric_name: vluns_write_bytes_per_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ convertToBytes .KBytes.write "Kb" }}'
+          results: [ members ]
+          # when:
+          #   - .active 
+          loop: members
+
+        # read and write latency Service Time
+        - metric_name: vluns_read_latency_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ mulf .serviceTimeMS.read 1E-3}}'
+          # when:
+          #   - .active 
+          loop: members
+
+        - metric_name: vluns_write_latency_second
+          help: Write service time in millisecond statistic data.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ mulf .serviceTimeMS.write 1E-3 }}'
+          # when:
+          #   - .active 
+          loop: members
+
+        # busy percent
+        - metric_name: vluns_busy_percent
+          help: Busy percentage.
+          type: gauge
+          key_labels:
+            node: _
+            slot: _
+            cardport: cardPort
+            lun: _
+            volumename: volumeName
+            hostname: _
+            # type: '{{ template "vlunType" .type }}'
+          values:
+            _: '{{ .busyPct }}'
+          # when:
+          #   - .active 
+          loop: members

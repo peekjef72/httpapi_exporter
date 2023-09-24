@@ -1,0 +1,216 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: system_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+scripts:
+  get system_overall:
+    - name: query system_overall
+      query:
+        url: /system
+        debug: yes
+        var_name: results
+    - name: collect data system
+      scope: results
+      metrics:
+        - metric_name: system_id
+          help: system info id labeled by model, version, serial, patches
+          type: gauge
+          key_labels:
+            model: _
+            serial: serialNumber
+            version: systemVersion
+            patches: _
+          values:
+            _: id
+
+        - metric_name: system_nodes_total
+          help: total nodes in system
+          type: gauge
+          values:
+            _: totalNodes
+
+        - metric_name: system_nodes_active
+          help: total active nodes in system
+          type: gauge
+          values:
+            _: '{{ len .onlineNodes }}'
+
+  #**************************************************************************************************
+  #* cpu usage : collect reports
+  #* 200 OK
+  # {
+  #     "sampleTime": "2022-11-10T18:25:00+01:00",
+  #     "sampleTimeSec": 1668101100,
+  #     "total": 24,
+  #     "members": [
+  #       {"node":0, "cpu":0, "userPct": 1.8, "systemPct":8.5, "idlePct":89.7, "interruptsPerSec":40452.9, "contextSwitchesPerSec":84915.9},
+  #       {"node":0, "cpu":1, "userPct":1.2, "systemPct":24.8, "idlePct":73.9, "interruptsPerSec":0.0, "contextSwitchesPerSec":0.0},
+  #       ...
+  get system_cpu_stats:
+    - name: query system_cpu_stats
+      query:
+        url: /systemreporter/attime/cpustatistics/hires
+        var_name: results
+        debug: yes
+    - name: collect data cpu
+      scope: results
+      metrics:
+        - metric_name: cpu_usage_percent
+          help: cpu percent usage over last 5 min for system, user and idle (labeled mode) by node and cpu core
+          type: gauge
+          key_labels:
+            node: _
+            cpu: _
+          value_label: mode
+          values:
+            user: userPct
+            system: systemPct
+            idle: idlePct
+          loop: members
+
+  #**************************************************************************************************
+  # memory stats: collect reports
+  # { 
+  #     "sampleTime": "2022-11-10T18:30:00+01:00",
+  #     "sampleTimeSec": 1668101400,
+  #     "total": 2,
+  #     "members": [
+  #       { 
+  #         "node":0,
+  #         "hitIO": {
+  #           "read":410.9, "write":281.4
+  #         },
+  #         "missIO": {
+  #           "read":444.0,
+  #           "write":888.6
+  #         },
+  #         "accessIO": {
+  #           "read": 854.9,
+  #           "write":1170.0
+  #         },
+  #         "hitPct": {
+  #           "read": 48.1,
+  #           "write": 24.1
+  #         },
+  #         "totalAccessIO": 2025.0,
+  #         "lockBulkIO": 0.0, 
+  #         "pageStatistic": {
+  #           "pageStates": {
+  #               "free": 63516.0,
+  #               "clean": 839502.0,
+  #               "writeOnce": 1187.0,
+  #               "writeMultiple": 1732.0,
+  #               "writeScheduled": 268.0, 
+  #               "writing": 0.0,
+  #               "dcowpend": 0.0
+  #           },
+  #           "dirtyPages": {
+  #             "FC_10": 0.0,
+  #             "FC_15": 0.0,
+  #             "NL_7": 0.0,
+  #             "SSD_100": 4357.0,
+  #             "SSD_150": 4357.0
+  #           },
+  #           "maxDirtyPages": {
+  #             "FC_10": 0.0,
+  #             "FC_15": 0.0,
+  #             "NL_7": 0.0,
+  #             "SSD_100": 57600.0,
+  #             "SSD_150":57600.0
+  #           },
+  #           "delayAckPages":{ 
+  #             "FC_10": 0.0,
+  #             "FC_15": 0.0,
+  #             "NL_7": 0.0,
+  #             "SSD_100": 0.0,
+  #             "SSD_150":0.0
+  #           }
+  #         }
+  #       },
+  #     {\"node\":1,\"hitIO\":{\"read\":429.9,\"write\":335.9},\"missIO\":{\"read\":441.9,\"write\":889.7},\"accessIO\":{\"read\":871.8,\"write\":1225.6},\"hitPct\":{\"read\":49.3,\"write\":27.4},\"totalAccessIO\":2097.4,\"lockBulkIO\":0.0,\"pageStatistic\":{\"pageStates\":{\"free\":63522.0,\"clean\":839196.0,\"writeOnce\":409.0,\"writeMultiple\":2118.0,\"writeScheduled\":269.0,\"writing\":0.0,\"dcowpend\":0.0},\"dirtyPages\":{\"FC_10\":0.0,\"FC_15\":0.0,\"NL_7\":0.0,\"SSD_100\":3581.0,\"SSD_150\":3581.0},\"maxDirtyPages\":{\"FC_10\":0.0,\"FC_15\":0.0,\"NL_7\":0.0,\"SSD_100\":57600.0,\"SSD_150\":57600.0},\"delayAckPages\":{\"FC_10\":0.0,\"FC_15\":0.0,\"NL_7\":0.0,\"SSD_100\":0.0,\"SSD_150\":0.0}}}
+  # ],\"links\":[{\"href\":\"https://10.120.0.10:8080/api/v1/systemreporter/attime/cachememorystatistics/hires\",\"rel\":\"self\"}]}
+
+  get system_memory_stats:
+    - name: get memory_usage
+      query:
+        url: /systemreporter/attime/cachememorystatistics/hires
+        # debug: yes
+        var_name: results
+
+    - name: collect data memory
+      scope: results
+      metrics:
+        - metric_name: memory_hitIO
+          help: Number of Read/Write I/Os per second in which data was already in cache
+          type: gauge
+          key_labels:
+            node: _
+          value_label: mode
+          values:
+            read: '{{ .hitIO.read }}'
+            write: '{{ .hitIO.write }}'
+          loop: members
+
+        - metric_name: memory_missIO
+          help: Number of Read/Write I/Os per second in which data was not already in cache
+          type: gauge
+          key_labels:
+            node: _
+          value_label: mode
+          values:
+            read: '{{ .missIO.read }}'
+            write: '{{ .missIO.write }}'
+          loop: members
+
+        - metric_name: memory_accessIO
+          help: Number of read/write I/Os per second.
+          type: gauge
+          key_labels:
+            node: _
+          value_label: mode
+          values:
+            read: '{{ .accessIO.read }}'
+            write: '{{ .accessIO.write }}'
+          loop: members
+
+        - metric_name: memory_hit_percent
+          help: Hits divided accesses displayed in percentage. (hitIO / accessIO percent)
+          type: gauge
+          key_labels:
+            node: _
+          value_label: mode
+          values:
+            read: '{{ .hitPct.read }}'
+            write: '{{ .hitPct.write }}'
+          loop: members
+
+        - metric_name: memory_page_stats
+          help: "mode: 
+            free: Number of cache pages without valid data on them.
+            clean: Number of clean cache pages (valid data on page). A page is clean when data in cache matches data on disk.
+            writeOne: Number of dirty pages modified exactly 1 time. A dirty page is one that is modified in cache but not written to disk.
+            writeMultiple: Number of dirty pages that have been modified more than 1 time.
+            writeScheduled: Number of pages scheduled to be written to disk.
+            writing: Number of pages being written to disk.
+            dcowpend: Number of pages waiting for delayed copy on write resolution."
+          type: gauge
+          key_labels:
+            node: _
+          value_label: mode
+          values:
+            free: "{{ .pageStatistic.pageStates.free }}"
+            clean: "{{ .pageStatistic.pageStates.clean }}"
+            writeOne: "{{ .pageStatistic.pageStates.writeOnce }}"
+            writeMultiple: "{{ .pageStatistic.pageStates.writeMultiple }}"
+            writeScheduled: "{{ .pageStatistic.pageStates.writeScheduled }}"
+            writing: "{{ .pageStatistic.pageStates.writing }}"
+            dcowpend: "{{ .pageStatistic.pageStates.dcowpend }}"
+          loop: members

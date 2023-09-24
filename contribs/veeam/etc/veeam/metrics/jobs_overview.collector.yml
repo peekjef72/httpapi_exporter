@@ -1,0 +1,69 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+##
+## Veeam Enterprise Manager Overview. Overview of Job Statistics
+###
+
+collector_name: job_overview_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_overview_jobs
+
+scripts:
+  get jobs_overview:
+    - name: collect elements
+      query:
+        url: /reports/summary/job_statistics
+        var_name: results
+
+    - name: procceed elements count
+      with_items: 
+        - type: "running"
+          value: "{{ .results.RunningJobs }}"
+        - type: "scheduled"
+          value: "{{ .results.ScheduledJobs }}"
+        - type: "scheduled_backup"
+          value: "{{ .results.ScheduledBackupJobs }}"
+        - type: "scheduled_replica"
+          value: "{{ .results.ScheduledReplicaJobs }}"
+      metrics:
+        - metric_name: count
+          help: various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"
+          type: gauge
+          key_labels:
+            type: _
+          values: 
+            _: value
+
+    - name: procceed elements count
+      with_items: 
+          - { type: "total", value: "{{ .results.TotalJobRuns }}" }
+          - { type: "successfull", value: "{{ .results.SuccessfulJobRuns }}" }
+          - { type: "warning", value: "{{ .results.WarningsJobRuns }}" }
+          - { type: "failed", value: "{{ .results.FailedJobRuns }}" }
+      metrics:
+        - metric_name: runs_count
+          help: total number of job runs by type "total", "successfull", "warning", "failed"
+          type: gauge
+          key_labels:
+            type: _
+          values: 
+            _: value
+
+    - name: procceed elements duration
+      with_items: 
+          - { type: "job", jobname: "", value: "{{ .results.MaxJobDuration }}" }
+          - { type: "backupjob", jobname: "{{ .results.MaxDurationBackupJobName }}", value: "{{ .results.MaxBackupJobDuration }}" }
+          - { type: "replicajob", jobname: "{{ .results.MaxDurationReplicaJobName }}", value: "{{ .results.MaxReplicaJobDuration }}" }
+      metrics:
+        - metric_name: max_duration
+          help: max duration for job by type and name of longuest
+          type: gauge
+          key_labels:
+            type: _
+            jobname: _
+          values: 
+            _: value
+
+...

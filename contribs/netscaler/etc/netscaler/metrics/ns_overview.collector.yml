@@ -1,0 +1,54 @@
+---
+
+##
+## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/configuration/ns/nscapacity/
+## url: https://developer-docs.citrix.com/projects/citrix-adc-nitro-api-reference/en/latest/configuration/ns/nscapacity/
+###
+#
+
+collector_name: netscaler_overview_metrics
+metric_prefix: citrixadc_bandwidth
+
+scripts:
+  get ns_config:
+    # - name: collect ns version
+    #   query:
+    #     url: /config/nsversion
+    #     var_name: results
+
+    - name: collect ns capacity
+      query:
+        url: /config/nscapacity
+        var_name: results
+
+    - name: proceed elements
+      metrics:
+        - metric_name: max
+          help: "Configured maximum Bandwidth."
+          type: gauge
+          values:
+            _: "{{ .results.nscapacity.maxbandwidth }}"
+
+        - metric_name: min
+          help: "Configured minimum Bandwidth."
+          type: gauge
+          values:
+            _: "{{ .results.nscapacity.minbandwidth }}"
+
+        - metric_name: actual
+          help: "Bandwidth in MBPS."
+          type: gauge
+          values:
+            _: "{{ .results.nscapacity.actualbandwidth }}"
+
+        - metric_name: licensed
+          help: "System bandwidth limit."
+          type: gauge
+          values:
+            _: "{{ .results.nscapacity.bandwidth | default '0' }}"
+          key_labels:
+            edition: "{{ .results.nscapacity.edition }}"
+            version: "{{ .nsversion.nsversion.version }}"
+
+...
+

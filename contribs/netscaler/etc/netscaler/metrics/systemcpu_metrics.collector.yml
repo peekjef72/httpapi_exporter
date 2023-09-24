@@ -1,0 +1,31 @@
+---
+
+##
+## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/system/systemcpu/
+###
+#
+
+collector_name: netscaler_systemcpu_metrics
+metric_prefix: citrixadc_cpu_core
+
+scripts:
+  get stat_system:
+    - name: collect stat systemcpu
+      query:
+        url: /stat/systemcpu
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      loop: "{{ .results.systemcpu | toRawJson }}"
+      metrics:
+        - metric_name: usage_percent
+          help: cpu uage percent by core id
+          type: gauge
+          values:
+            _: percpuuse
+          key_labels:
+            citrixadc_cpu_core_id: id
+
+...
+

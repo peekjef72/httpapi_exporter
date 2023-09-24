@@ -1,0 +1,375 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/network/interface/
+### Statistics for interface.
+#
+
+collector_name: netscaler_interface_metrics
+metric_prefix: citrixadc_interface
+
+scripts:
+  get stat_interface:
+    - name: collect stat interface
+      query:
+        url: /stat/interface
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      loop: '{{ .results.Interface | toRawJson }}'
+      metrics:
+
+            - metric_name: tot_multicast_packets
+              help: Number of multicast packets received.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: nictotmulticastpkts
+
+            - metric_name: rx_crc_errors
+              help: Number of packets received with the wrong checksum.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: rxcrcerrors
+
+            - metric_name: tot_mac_moved
+              help: Number of MAC moves between ports.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: totmacmoved
+
+            - metric_name: trunk_packets_transmitted
+              help: Number of Tagged Packets transmitted on this Trunk interface through Allowed VLan List.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: trunkpktstransmitted
+
+            - metric_name: err_dropped_rx_packets
+              help: Number of inbound packets dropped by the specified interface.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errdroppedrxpkts
+
+            - metric_name: link_reinitializations
+              help: Number of times the link has been re-initialized
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: linkreinits
+
+            - metric_name: err_ifin_discards
+              help: Number of error-free inbound packets discarded
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errifindiscards
+
+            - metric_name: err_ifout_discards
+              help: Number of error-free outbound packets discarded
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: nicerrifoutdiscards
+
+            - metric_name: err_dropped_tx_packets
+              help: Number of packets dropped in transmission by the specified interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errdroppedtxpkts
+
+            - metric_name: tot_tx_bytes
+              help: Number of bytes transmitted by an interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: tottxbytes
+
+            - metric_name: jumbo_packets_transmitted
+              help: Number of Jumbo packets transmitted
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: jumbopktstransmitted
+
+            - metric_name: tot_packets
+              help: Number of packets, destined to the NetScaler, received
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: totnetscalerpkts
+
+            - metric_name: err_tx_packets
+              help: Number of outbound packets dropped by the hardware on a specified interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errpkttx
+
+            - metric_name: tot_rx_bytes
+              help: Number of bytes received by an interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: totrxbytes
+
+            - metric_name: trunk_packets_received
+              help: Number of Tagged Packets received on this Trunk interface through Allowed VLan List.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: trunkpktsreceived
+
+            - metric_name: err_rx_packets
+              help: Number of inbound packets dropped by the hardware on a specified interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errpktrx
+
+            - metric_name: rx_lacpdu
+              help: Number of Link Aggregation Control Protocol Data Units(LACPDUs) received.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: rxlacpdu
+
+            - metric_name: tx_lacpdu
+              help: Number of Link Aggregation Control Protocol Data Units(LACPDUs) transmitted
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: txlacpdu
+
+            - metric_name: jumbo_packets_received
+              help: Number of Jumbo Packets received on this interface.
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: jumbopktsreceived
+
+            - metric_name: tot_rx_packets
+              help: Number of packets received by an interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: totrxpkts
+
+            - metric_name: tot_tx_packets
+              help: Number of packets transmitted by an interface
+              type: counter
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: tottxpkts
+
+            - metric_name: err_packets_rx_rate
+              help: Rate (/s) of inbound packets dropped by the hardware on a specified interface
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errpktrxrate
+
+            - metric_name: rx_lacpdu_rate
+              help: Rate (/s) of Link Aggregation Control Protocol Data Units(LACPDUs) received.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: rxlacpdurate
+
+            - metric_name: err_dropped_rx_packets_rate
+              help: Rate (/s) of inbound packets dropped by the specified interface.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errdroppedrxpktsrate
+
+            - metric_name: rx_packets_rate
+              help: Rate (/s) of packets received by an interface
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: rxpktsrate
+
+            - metric_name: err_ifin_discards_rate
+              help: Rate (/s) of error-free inbound packets discarded
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errifindiscardsrate
+
+            - metric_name: err_if_out_discards_rate
+              help: Rate (/s) of error-free outbound packets discarded
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: nicerrifoutdiscardsrate
+
+            - metric_name: mac_moved_rate
+              help: Rate (/s) of MAC moves between ports.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: macmovedrate
+
+            - metric_name: rx_crc_errors_rate
+              help: Rate (/s) of packets received with the wrong checksum.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: rxcrcerrorsrate
+
+            - metric_name: jumbo_packets_transmitted_rate
+              help: Rate (/s) of Jumbo packets transmitted
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: jumbopktstransmittedrate
+
+            - metric_name: jumbo_packets_received_rate
+              help: Rate (/s) of Jumbo Packets received on this interface.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: jumbopktsreceivedrate
+
+            - metric_name: rx_bytes_rate
+              help: Rate (/s) of bytes received by an interface
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: rxbytesrate
+
+            - metric_name: trunk_packets_received_rate
+              help: Rate (/s) of Tagged Packets received on this Trunk interface through Allowed VLan List.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: trunkpktsreceivedrate
+
+            - metric_name: err_dropped_tx_packets_rate
+              help: Rate (/s) of packets dropped in transmission by the specified interface
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: errdroppedtxpktsrate
+
+            - metric_name: tx_lacpdu_rate
+              help: Rate (/s) of Link Aggregation Control Protocol Data Units(LACPDUs) transmitted
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: txlacpdurate
+
+            - metric_name: tx_bytes_rate
+              help: Rate (/s) of bytes transmitted by an interface
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: txbytesrate
+
+            - metric_name: tx_packets_rate
+              help: Rate (/s) of packets transmitted by an interface
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: txpktsrate
+
+            - metric_name: packets_rate
+              help: Rate (/s) of packets, destined to the NetScaler, received
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: netscalerpktsrate
+
+            - metric_name: trunk_packets_transmitted_rate
+              help: Rate (/s) of Tagged Packets transmitted on this Trunk interface through Allowed VLan List.
+              type: gauge
+              key_labels:
+                citrixadc_interface_alias: interfacealias
+                citrixadc_interface_id: id
+              values:
+                _: trunkpktstransmittedrate
+
+...

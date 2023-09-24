@@ -1,0 +1,121 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/ssl/sslvserver/
+### Statistics for sslvserver.
+#
+- name: sslvserver
+  actions:
+    - name: collect elements
+      url: /stat/sslvserver
+      var_name: _root
+    - name: proceed elements
+      with_items: "{{ sslvserver }}"
+      actions:
+        - name: build labels
+          set_fact:
+            labels:
+              - name: citrixadc_sslvserver_name
+                value: "{{ item.vservername }}"
+              - name: citrixadc_sslvserver_type
+                value: "{{ item.type }}"
+              - name: citrixadc_sslvserver_ip
+                value: "{{ item.primaryipaddress }}"
+              - name: citrixadc_sslvserver_state
+                value: "{{ item.state }}"
+
+        - name: build metrics
+          metric_prefix: citrixadc_sslvserver
+          metrics:
+            - name: decrypt_bytes_total
+              type: counter
+              value: "{{ item.sslctxtotdecbytes }}"
+              labels: "{{ labels }}"
+
+            - name: encrypt_bytes_total
+              type: counter
+              value: "{{ item.sslctxtotencbytes }}"
+              labels: "{{ labels }}"
+
+            - name: decrypt_hardware_bytes_total
+              type: counter
+              value: "{{ item.sslctxtothwdec_bytes }}"
+              labels: "{{ labels }}"
+
+            - name: encrypt_hardware_bytes_total
+              type: counter
+              value: "{{ item.sslctxtothwencbytes }}"
+              labels: "{{ labels }}"
+
+            - name: session_new_total
+              type: counter
+              value: "{{ item.sslctxtotsessionnew }}"
+              labels: "{{ labels }}"
+
+            - name: session_hits_total
+              type: counter
+              value: "{{ item.sslctxtotsessionhits }}"
+              labels: "{{ labels }}"
+
+            - name: auth_success_total
+              type: counter
+              value: "{{ item.ssltotclientauthsuccess }}"
+              labels: "{{ labels }}"
+
+            - name: auth_failure_total
+              type: counter
+              value: "{{ item.ssltotclientauthfailure }}"
+              labels: "{{ labels }}"
+
+            - name: health
+              type: gauge
+              value: "{{ item.vslbhealth }}"
+              labels: "{{ labels }}"
+
+            - name: active_services
+              type: gauge
+              value: "{{ item.actsvcs }}"
+              labels: "{{ labels }}"
+
+            - name: auth_success_rate
+              type: gauge
+              value: "{{ item.sslclientauthsuccessrate }}"
+              labels: "{{ labels }}"
+
+            - name: auth_failure_rate
+              type: gauge
+              value: "{{ item.sslclientauthfailurerate }}"
+              labels: "{{ labels }}"
+
+            - name: encrypt_bytes_rate
+              type: gauge
+              value: "{{ item.sslctxencbytesrate }}"
+              labels: "{{ labels }}"
+
+            - name: decrypt_bytes_rate
+              type: gauge
+              value: "{{ item.sslctxdecbytesrate }}"
+              labels: "{{ labels }}"
+
+            - name: hw_encrypt_bytes_rate
+              type: gauge
+              value: "{{ item.sslctxhwencbytesrate }}"
+              labels: "{{ labels }}"
+
+            - name: hw_decrypt_bytes_rate
+              type: gauge
+              value: "{{ item.sslctxhwdec_bytesrate }}"
+              labels: "{{ labels }}"
+
+            - name: session_new_rate
+              type: gauge
+              value: "{{ item.sslctxsessionnewrate }}"
+              labels: "{{ labels }}"
+
+            - name: session_hits_rate
+              type: gauge
+              value: "{{ item.sslctxsessionhitsrate }}"
+              labels: "{{ labels }}"
+
+...

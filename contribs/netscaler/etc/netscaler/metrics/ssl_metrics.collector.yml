@@ -1,0 +1,95 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/ssl/ssl/
+### Statistics for ssl.
+#
+
+collector_name: netscaler_ssl_metrics
+metric_prefix: citrixadc_ssl
+
+scripts:
+  get stat_ssl:
+    - name: collect stat ssl
+      query:
+        url: /stat/ssl
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      scope: results.ssl
+      metrics:
+        - metric_name: _tot_tlsv11_sessions
+          help: Number of TLSv1.1 sessions on the NetScaler appliance.
+          type: counter
+          values:
+            _: ssltottlsv11sessions
+
+        - metric_name: tot_v2_sessions
+          help: Number of SSLv2 sessions on the NetScaler appliance.
+          type: counter
+          values:
+            _: ssltotsslv2sessions
+
+        - metric_name: tot_sessions
+          help: Number of SSL sessions on the NetScaler appliance.
+          type: counter
+          values:
+            _: ssltotsessions
+
+        - metric_name: tot_v2_handshakes
+          help: Number of handshakes on SSLv2 on the NetScaler appliance.
+          type: counter
+          values:
+            _: ssltotsslv2handshakes
+
+        - metric_name: tot_encode
+          help: Number of bytes encrypted on the NetScaler appliance.
+          type: counter
+          values:
+            _: ssltotenc
+
+        - metric_name: crypto_utilization_stat
+          help: Utilization of the hardware crypto resource. Only valid values are 0-100. Only works on platforms with Nitrox-3 chips.
+          type: counter
+          values:
+            _: sslcryptoutilizationstat
+
+        - metric_name: tot_new_sessions
+          help: Number of new SSL sessions created on the NetScaler appliance.
+          type: counter
+          values:
+            _: ssltotnewsessions
+
+        - metric_name: session_rate
+          help: Rate by s counter for ssltotsessions
+          type: gauge
+          values:
+            _: sslsessionsrate
+
+        - metric_name: dec_rate
+          help: Rate by s counter for ssltotdec
+          type: gauge
+          values:
+            _: ssldecrate
+
+        - metric_name: encode_rate
+          help: Rate by s counter for ssltotenc
+          type: gauge
+          values:
+            _: sslencrate
+
+        - metric_name: v2_handshakes_rate
+          help: Rate by s counter for ssltotsslv2handshakes
+          type: gauge
+          values:
+            _: sslsslv2handshakesrate
+
+        - metric_name: new_sessions_rate
+          help: Rate by s counter for ssltotnewsessions
+          type: gauge
+          values:
+            _: sslnewsessionsrate
+
+...

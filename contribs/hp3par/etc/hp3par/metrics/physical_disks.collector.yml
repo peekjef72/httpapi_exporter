@@ -1,0 +1,146 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+# P 510
+# https://support.hpe.com/resource3/docDisplay/pdfjs/web/viewer.html?file=%2Fhpesc%2Fpublic%2Fapi%2Fdocument%2Fc03606339%3FdocVersion%3D9.0&locale=fr&rangeChunkSize=256000&disableAutoFetch=false&disableCache=true&version=20221025092321#_OPENTOPIC_TOC_PROCESSING_d95e202248
+#*********************************************************************************
+
+collector_name: physical_disks_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+templates:
+  diskType: |-
+    {{ $type := . | toString }}
+    {{ $typeDef := dict 1 "FC" 2 "NL" 3 "SSD" 4 "SCM" }}
+    {{ pluck $type $typeDef | first | default "undef" }}
+
+scripts:
+  #**************************************************************************************************
+  #* physical disk description: 
+  #* 200 OK
+  # {
+  #   "sampleTime": "2022-11-12T17:35:00+01:00",
+  #   "sampleTimeSec": 1668270900,
+  #   "total": 12,
+  #   "members": [ {
+  #       "id": 10, 
+  #       "cageID": 0,
+  #       "cageSide": 0,
+  #       "mag": 10,
+  #       "diskPos": 0,
+  #       "type": 3,
+  #       "RPM": 100,
+  #       "normalChunklets": {
+  #         "usedOK": 1331,
+  #         "usedFailed": 0,
+  #         "availClean": 1649,
+  #         "availDirty": 0,
+  #         "availFailed": 0,
+  #       }
+  #       "spareChunklets": {
+  #         "usedOK": 0,
+  #         "usedFailed": 0,
+  #         "availClean": 595,
+  #         "availDirty": 0,
+  #         "availFailed": 0
+  #       },
+  #       "lifeLeftPct": 100, 
+  #       "temperatureC": 33
+  #     },
+  #     {\"id\":11, ...}
+  #   ]
+  # }
+  get physical_disk_usage:
+    - name: get physical_disk_usage
+      query:
+        url: /systemreporter/attime/physicaldiskspacedata/hires
+        # debug: yes
+        var_name: results
+
+    - name: collect physical_disk_usage
+      scope: results
+      metrics:
+        - metric_name: physical_disk_life_left_percent
+          help: Percentage of life left
+          type: gauge
+          key_labels:
+            id: _
+            cageID: _
+            cageSide: _
+            magazine: mag
+            diskPos: _
+            type: '{{ template "diskType" .type }}'
+          values:
+            _: lifeLeftPct
+          loop: members
+
+        - metric_name: physical_disk_temperature
+          help: Temperature in Celsius
+          type: gauge
+          key_labels:
+            id: _
+            cageID: _
+            cageSide: _
+            magazine: mag
+            diskPos: _
+            type: '{{ template "diskType" .type }}'
+          values:
+            _: temperatureC
+          loop: members
+
+
+  get physical_disk_capacity:
+    - name: get physical_disk_capacity
+      query:
+        url: /systemreporter/attime/physicaldiskcapacity/hires
+        # debug: yes
+        var_name: results
+
+    - name: collect physical_disk_capacity
+      scope: results
+      metrics:
+
+        - metric_name: physical_disk_total_bytes
+          help: Total physical disk capacity in the system in bytes
+          type: gauge
+          key_labels:
+            id: _
+            cageID: _
+            cageSide: _
+            magazine: mag
+            diskPos: _
+            type: '{{ template "diskType" .type }}'
+          values:
+            _: '{{ convertToBytes .totalMiB "Mb" }}'
+          loop: members
+
+        - metric_name: physical_disk_free_bytes
+          help: Free physical disk capacity in the system in bytes
+          type: gauge
+          key_labels:
+            id: _
+            cageID: _
+            cageSide: _
+            magazine: mag
+            diskPos: _
+            type: '{{ template "diskType" .type }}'
+          values:
+            _: '{{ convertToBytes .freeMiB "Mb" }}'
+          loop: members
+
+        - metric_name: physical_disk_failed_bytes
+          help: Failed physical disk capacity in the system in bytes
+          type: gauge
+          key_labels:
+            id: _
+            cageID: _
+            cageSide: _
+            magazine: mag
+            diskPos: _
+            type: '{{ template "diskType" .type }}'
+          values:
+            _: '{{ convertToBytes .failedMiB "Mb" }}'
+          loop: members

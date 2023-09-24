@@ -3,6 +3,6 @@
     __tmp_source_host: "hp3par_exporter_host.domain.name:9321"
    # if you have activated password encrypted passphrass
     __auth_key: __shared__auth_passphrase__
-    host: " hp3par_node_1_fullqualified.domain.name"
+    host: "hp3par_node_1_fullqualified.domain.name"
     #custom labels…
     environment: "DEV"

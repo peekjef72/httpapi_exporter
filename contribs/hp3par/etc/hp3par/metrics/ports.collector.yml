@@ -1,0 +1,248 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+# p 254 /ports
+# p 264 /portdevices
+# p 518 portstatistics
+#*********************************************************************************
+
+collector_name: ports_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+templates:
+  modeType: >-
+    {{- $modeDef := dict "1" "suspended" "2" "target" "3" "initiator" "4" "peer" }}
+    {{ $mode := . | toString }}
+    {{ pluck $mode $modeDef | first | default "undef" -}}
+
+  portType: '
+    {{- $portTypeDef := dict 
+        "1" "HOST" 
+        "2" "disk"
+        "3" "FREE"
+        "4" "IPORT"
+        "5" "RCFC"
+        "6" "PEER"
+        "7" "RCIP"
+        "8" "ISCSI"
+        "9" "CNA"
+        "10" "FS"}}
+    {{ $portType := . | toString }}
+    {{ pluck $portType $portTypeDef | first | default "undef" -}}'
+
+  protocolType: >-
+    {{- $protocolDef := dict "1" "FC" "2" "iSCSI" "3" "FCOE" "4" "IP" -}}
+    {{- $protocol := . | toString -}}
+    {{- pluck $protocol $protocolDef | first | default "undef" -}}
+
+
+scripts:
+  get port_status:
+  #**************************************************************************************************
+  #* ports status
+  #* 200 OK
+  #* result example:
+    # "members":[
+    #   { 
+    #     "portPos":{
+    #       "node":0,
+    #       "slot":0,
+    #       "cardPort":1
+    #     },
+    #     "mode":2,
+    #     "linkState":4,
+    #     "nodeWWN": "2FF70002AC022B2B",
+    #     "portWWN": "20010002AC022B2B",
+    #     "type": 1, 
+    #     "protocol":1,
+    #     "partnerPos": {
+    #       "node": 1, 
+    #       "slot": 0, 
+    #       "cardPort": 1
+    #     },
+    #     "failoverState":1,
+    #     "device":
+    #       [ "wdaesx001", "wdaesx003", "wdaesx005", "wdaesx101","wdaesx007"]
+    #   },
+    #   ...
+    - name: query port_status
+      query:
+        url: /ports
+        # debug: yes
+        var_name: results
+    - name: collect port_status
+      scope: results
+      metrics:
+        - metric_name: port_status
+          help: "port state by node slot port: 1:CONFIG_WAIT - 2:ALPA_WAIT - 3:LOGIN_WAIT - 4:READY - 5:LOSS_SYNC - 6:ERROR_STATE - 7:XXX - 8:NONPARTICIPATE - 9:COREDUMP - 10:OFFLINE"
+          type: gauge
+          key_labels:
+            source: Node-{{ .portPos.node | default "undef" | toString }}/Port-{{ .portPos.slot | default "undef" | toString }}/Card-{{ .portPos.cardPort | default "undef" | toString }}
+            target: Node-{{ .partnerPos.node | default "undef" | toString }}/Port-{{ .partnerPos.slot | default "undef" | toString}}/Card-{{ .partnerPos.cardPort | default "undef" | toString }}
+            label: '{{ .label | default "undef" }}'
+            mode: '{{ template "modeType" .mode }}'
+            porttype: '{{ template "portType" .type }}'
+            protocol: '{{ template "protocolType" .protocol }}'
+          values: 
+            _: linkState
+          loop: members
+          when:
+            # don't collect unconfigure/unplug ports (free port)
+            - ne .type 3.0
+
+        - metric_name: port_failover_state
+          help: "port failover state by node slot port: 1:NONE - 2:FAILOVER_PENDINF - 3:FAILED_OVER - 4:ACTIVE - 5:ACTIVE_DOWN - 6:ACTIVE_FAILED - 7:FAILBACK_PENDING"
+          type: gauge
+          key_labels:
+            source: Node-{{ .portPos.node | default "undef" | toString }}/Port-{{ .portPos.slot | default "undef" | toString }}/Card-{{ .portPos.cardPort | default "undef" | toString }}
+            target: Node-{{ .partnerPos.node | default "undef" | toString }}/Port-{{ .partnerPos.slot | default "undef" | toString}}/Card-{{ .partnerPos.cardPort | default "undef" | toString }}
+            label: '{{ .label | default "undef" }}'
+            mode: '{{ template "modeType" .mode }}'
+            porttype: '{{ template "portType" .type }}'
+            protocol: '{{ template "protocolType" .protocol }}'
+            # mode: '{{ $modeDef := dict "1" "suspended" "2" "target" "3" "initiator" "4" "peer" }}{{ $mode := .mode | toString }}{{ pluck $mode $modeDef | first | default "undef" }}'
+            # porttype: '{{ $portTypeDef := dict "1" "HOST" "2" "disk" "3" "FREE" "4" "IPORT" "5" "RCFC" "6" "PEER" "7" "RCIP" "8" "ISCSI" "9" "CNA" "10" "FS"}}{{ $portType := .type | toString }}{{ pluck $portType $portTypeDef | first | default "undef" }}'
+            # protocol: '{{ $protocolDef := dict "1" "FC" "2" "iSCSI" "3" "FCOE" "4" "IP" }}{{ $protocol := .protocol | toString }}{{ pluck $protocol $protocolDef | first | default "undef" }}'
+          values: 
+            _: failoverState
+          loop: members
+          when:
+            - ne .type 3.0
+
+    # ports statistics
+    # {
+    #   "sampleTime": "2022-11-16T07:25:00+01:00",
+    #   "sampleTimeSec": 1668579900,
+    #   "total": 18,
+    #   "members": [
+    #     {
+    #       "node": 0,
+    #       "slot": 0,
+    #       "cardPort": 1,
+    #       "type": 1, 
+    #       "speed": 16,
+    #       "IO": {
+    #         "read": 5.4, 
+    #         "write": 7.3,
+    #         "total": 12.7
+    #       },
+    #       "KBytes": {
+    #         "read": 26.7,
+    #         "write": 11.0,
+    #         "total": 37.7
+    #       },
+    #       "serviceTimeMS": {
+    #         "read": 0.08,
+    #         "write": 2.1,
+    #         "total": 1.24
+    #       },
+    #       "IOSizeKB": {
+    #         "read": 4.9,
+    #         "write": 1.5,
+    #         "total": 3.0
+    #       },
+    #       "queueLength": 0,
+    #       "busyPct": 0.7
+    #     },
+    #     {"node":0,"slot":0,... }
+    #   ]
+    # }
+  get port_stats:
+    - name: query port_stats
+      query:
+        url: /systemreporter/attime/portstatistics/hires
+        # debug: yes
+        var_name: results
+    - name: collect port_stats
+      scope: results
+      metrics:
+
+        # read and write io per second
+        - metric_name: port_read_io_per_second
+          help: Number of IO read operations per second.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+            # porttype: '{{ $portTypeDef := dict "1" "HOST" "2" "disk" "3" "FREE" "4" "IPORT" "5" "RCFC" "6" "PEER" "7" "RCIP" "8" "ISCSI" "9" "CNA" "10" "FS"}}{{ $portType := .type | toString }}{{ pluck $portType $portTypeDef | first | default "undef" }}'
+          values:
+            _: '{{ .IO.read }}'
+          when:
+            - ne .type 3.0
+          loop: members
+
+        - metric_name: port_write_io_per_second
+          help: Number of IO write operations per second.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+          values:
+            _: '{{ .IO.write }}'
+          loop: members
+          when:
+            - ne .type 3.0
+
+        # read and write bytes per seconds
+        - metric_name: port_read_bytes_per_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+          values:
+            _: '{{ convertToBytes .KBytes.read "Kb" }}'
+          loop: members
+          when:
+            - ne .type 3.0
+
+        - metric_name: port_write_bytes_per_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+          values:
+            _: '{{ convertToBytes .KBytes.write "Kb" }}'
+          loop: members
+          when:
+            - ne .type 3.0
+
+        # read and write latency Service Time
+        - metric_name: port_read_latency_second
+          help: Number of kilobytes per second.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+          values:
+            _: '{{ mulf .serviceTimeMS.read 1E-3}}'
+          loop: members
+          when:
+            - ne .type 3.0
+
+        - metric_name: port_write_latency_second
+          help: Write service time in millisecond statistic data.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+          values:
+            _: '{{ mulf .serviceTimeMS.write 1E-3 }}'
+          loop: members
+
+        # busy percent
+        - metric_name: port_busy_percent
+          help: Busy percentage.
+          type: gauge
+          key_labels:
+            source: Node-{{ .node | default "undef" | toString }}/Port-{{ .slot | default "undef" | toString }}/Card-{{ .cardPort | default "undef" | toString }}
+            porttype: '{{ template "portType" .type }}'
+          values:
+            _: '{{ .busyPct }}'
+          loop: members
+          when:
+            - ne .type 3.0

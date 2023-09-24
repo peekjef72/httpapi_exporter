@@ -1,0 +1,39 @@
+---
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+##
+## Veeam Enterprise Manager Overview. Overview of Backup Infrastructure and Job Status
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/get_reports_summary_overview.html?ver=110
+###
+#
+
+collector_name: veeam_overview_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_overview
+
+scripts:
+  get veeam_overview:
+    - name: collect elements
+      query:
+        url: /reports/summary/overview
+        var_name: results
+    - name: proceed elements
+      loop:
+          - { type: "backup", count_type: "server", value: "{{ .results.BackupServers }}" }
+          - { type: "proxy", count_type: "server", value: "{{ .results.ProxyServers }}" }
+          - { type: "repository", count_type: "server", value: "{{ .results.RepositoryServers }}" }
+          - { type: "scheduled_jobs", count_type: "tasks", value: "{{ .results.ScheduledJobs }}" }
+          - { type: "successful_vms", count_type: "tasks", value: "{{ .results.SuccessfulVmLastestStates }}" }
+          - { type: "warning_vms", count_type: "tasks", value: "{{ .results.WarningVmLastestStates }}" }
+          - { type: "failed_vms", count_type: "tasks", value: "{{ .results.FailedVmLastestStates }}" }
+      metrics:
+        - metric_name: element_count
+          help: count by type "backup", "proxy", "repository", "scheduled_jobs", "successful_vms", "warning_vms"
+          type: gauge
+          key_labels:
+            type: _
+            count_type: _
+          values:
+            _: value
+
+...

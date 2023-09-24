@@ -1,0 +1,266 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/cs/csvserver/
+### Statistics for csvserver.
+#
+
+collector_name: netscaler_csvserver_metrics
+metric_prefix: citrixadc_csvserver
+
+scripts:
+  get stat_lbvserver:
+    - name: init csvserver var
+      set_fact:
+         csvserv: {}
+    - name: collect csvservers' lb bindings
+      query:
+        url: /config/csvserver
+        var_name: results
+        debug: true
+    - name: proceed bindings
+      with_items: "{{ .results.csvserver | toRawJson }}"
+      when:
+        - exporterHasKey .item "name"
+      set_fact:
+        _: '{{ exporterSet .csvserv .item.name .item.lbvserver }}'
+
+    - name: debug
+      debug:
+        msg: "csvserver: {{ .csvserv | exporterToRawJson }}"
+    - name: collect csvserver stats
+      query:
+        url: /stat/csvserver
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      with_items: "{{ .results.csvserver | toRawJson }}"
+      vars:
+        key_labels:
+          citrixadc_cs_name: "{{ .name }}"
+          citrixadc_lb_name: "{{ exporterGet .root.csvserv .name }}"
+          citrixadc_cs_type: "{{ .type }}"
+          citrixadc_cs_state: "{{ .state }}"
+      when:
+        - exporterHasKey .item "name"
+      metrics:
+        # because scope is set to item "var", need to access labels by .root.key_labels
+        - metric_name: packets_sent_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: "{{ .totalpktssent }}"
+
+        - metric_name: hits_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: tothits
+
+        - metric_name: request_bytes_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totalrequestbytes
+
+        - metric_name: packets_received_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totalpktsrecvd
+
+        - metric_name: responses_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totalresponses
+
+        - metric_name: tolerating_ttlb_transactions_count
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: toleratingttlbtransactionsrate
+
+        - metric_name: ttlb_calculated_transactions_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totcltttlbtransactions
+
+        - metric_name: deferred_requests_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: deferredreq
+
+        - metric_name: spillover_count_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totspillovers
+
+        - metric_name: invalid_response_request_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: invalidrequestresponse
+
+        - metric_name: requests_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totalrequests
+
+        - metric_name: invalid_response_request_dropped_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: invalidrequestresponsedropped
+
+        - metric_name: frustrating_transactions_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: frustratingttlbtransactions
+
+        - metric_name: tolerating_ttlb_transactions_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: toleratingttlbtransactions
+
+        - metric_name: backup_server_divert_count_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totvserverdownbackuphits
+
+        - metric_name: response_bytes_received_total
+          type: counter
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: totalresponsebytes
+
+        - metric_name: request_rate_bytes
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: requestbytesrate
+
+        - metric_name: request_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: requestsrate
+
+        - metric_name: packets_received_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: pktsrecvdrate
+
+        - metric_name: frustrating_transactions_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: frustratingttlbtransactionsrate
+
+        - metric_name: client_response_time_adex
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: cltresponsetimeapdex
+
+        - metric_name: spill_over_threshold
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: sothreshold
+
+        - metric_name: actual_server_current_connections
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: cursrvrconnections
+
+        - metric_name: labeled_connections_count
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: labelledconn
+
+        - metric_name: current_tcp_sessions_count
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: curmptcpsessions
+
+        - metric_name: deferred_requets_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: deferredreqrate
+
+        - metric_name: average_ttlb
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: avgcltttlb
+
+        - metric_name: ttlb_transactions_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: cltttlbtransactionsrate
+
+        - metric_name: total_responses_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: responsesrate
+
+        - metric_name: total_packets_sent_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: pktssentrate
+
+        - metric_name: current_tcp_subflows_count
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: cursubflowconn
+
+        - metric_name: current_client_connection_count
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: curclntconnections
+
+        - metric_name: push_label_count
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: pushlabel
+
+        - metric_name: hits_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: hitsrate
+
+        - metric_name: established_connections_count
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: establishedconn
+
+        - metric_name: response_bytes_received_rate
+          type: gauge
+          key_labels: "{{ .root.key_labels | toRawJson }}"
+          values:
+            _: responsebytesrate
+
+...

@@ -1,0 +1,62 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Agent Status. Overview of the Veeam Agents. Really useful to display if an Agent it is uo to date and also the status
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/agents.html?ver=120
+###
+
+collector_name: veeam_agent_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_agents
+
+templates:
+  agentStatus: '
+    {{- $agentStatusDef := dict
+        "Online"  "1"
+        "Offline" "2"
+        "Unknown" "0"
+    }}
+    {{ pluck . $agentStatusDef | first | default "0" -}}'
+
+scripts:
+  get veeam_agents:
+    - name: collect elements
+      query:
+        url: /agents/discoveredComputers?format=Entity
+        # debug: true
+        var_name: results
+
+    - name: init loop
+      set_fact:
+        agents:  {}
+
+    - name: loop elements
+      actions:
+        - name: proceed elements
+          # scope: results
+          loop: '{{ .results.DiscoveredComputers | toRawJson }}'
+          loop_var: agent
+          actions:
+            - name: add element
+              when: not (exporterHasKey .agents .agent.UID)
+              metrics:
+                - metric_name: status
+                  help: backup agent status 0 Unkwonw / 1 Online / 2 Offline
+                  type: gauge
+                  key_labels:
+                    # item.Links[0].Name !
+                    backupserver: "{{ (index .Links 0).Name }}"
+                    name: Name
+                    version: AgentVersion
+                    osversion: OsVersion
+                  values: 
+                    _: '{{ template "agentStatus" .HostStatus }}'
+
+            - name: set element presence
+              set_fact:
+                _: '{{ $_ := exporterSet .agents .agent.UID 1 }}'
+
+...
+

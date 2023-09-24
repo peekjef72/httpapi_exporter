@@ -1,0 +1,29 @@
+name: hp3parhost
+scheme: https
+host: "1.2.3.4"
+port: 8080
+baseUrl: /api/v1
+auth_mode:
+  # mode: basic|token|[anything else:=> user defined login script]
+  user: prometheus
+  # password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+  password: "password"
+  # e.g.
+  # password: /encrypted/base64_encrypted_password
+# proxy: ""
+# verifySSL: false
+# custom constant labels add to all metrics
+#labels:
+  # - name: value
+collectors:
+  # you can use operator~ and regexp pattern to select metrics name
+  #   from collector files
+  - ~.*_statistics
+  # or a list of collector names 
+  # - netscaler_overview_metrics
+  # - capacities_statistics
+  # - cpgs_statistics
+  # - physical_disks_statistics
+  # - ports_statistics
+  # - system_statistics
+  # - volumes_statistics

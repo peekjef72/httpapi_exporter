@@ -1,0 +1,73 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: test_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+
+metrics:
+
+  #*********************************************************************************
+  # volumedistribution
+  # format example:
+  # Response: {
+  #   "total":29,
+  #   "members": [ 
+  #     {"volumeName":"admin","CPGs":[],"links":[{"href":"https://10.120.0.10:8080/api/v1/volumes/admin","rel":"volume"}]},
+  #     { "volumeName": ".srdata","CPGs":[],"links":[{"href":"https://10.120.0.10:8080/api/v1/volumes/.srdata","rel":"volume"}]},
+  #     { 
+  #       "volumeName": ".shared.CPG-SSD-RAID5_0",
+  #       "CPGs": [ {
+  #           "cpgName": "CPG-SSD-RAID5",
+  #           "currentDistribution": {
+  #             "adminSpaceMiB": 66944,
+  #             "snapshotSpaceMiB": 0,
+  #             "userSpaceMiB": 3558656
+  #           },
+  #           "newDistribution": {
+  #             "adminSpaceMiB": 0,
+  #             "snapshotSpaceMiB": 0,
+  #             "userSpaceMiB": 0
+  #           },
+  #           "links": [
+  #             {"href":"https://10.120.0.10:8080/api/v1/cpgs/CPG-SSD-RAID5", "rel":"CPG"}
+  #           ]
+  #         } 
+  #       ],
+  #       "links": [ {"href":"https://10.120.0.10:8080/api/v1/volumes/.shared.CPG-SSD-RAID5_0","rel":"volume"} ]
+  #     },
+  #     {"volumeName":"VV-SAN.PROD.DC1-01","CPGs":[{"cpgName":"CPG-SSD-RAID5","currentDistribution":{ ...
+
+  - metric_name: eventlog .
+    help: event log
+    type: gauge
+    key_labels:
+      # - category
+      # - class
+      severity: '{{ $severityDef := dict 1 "fatal" 2 "critical" 3 "major" 4 "minor" 5 "degraded" 6 "info" 7 "debug" 99 "unknown" }}{{ $sev := .severity | toString }}{{ pluck $sev $severityDef | first | default "undef" }}'
+      components: _
+      resourceName: _
+      description: _
+      # alertstate: '{{ .alertInfo}}'
+      time: _
+    values:
+      _:  timeSecs
+    results: [ members ]
+    when:
+      - eq .category 2.0
+    query: 
+      uri: "/volumespacedistribution"
+      debug: true
+
+# common definition
+# queries:
+#   - query_name: port_status
+#     query:
+#       uri: /ports
+#       # debug: true

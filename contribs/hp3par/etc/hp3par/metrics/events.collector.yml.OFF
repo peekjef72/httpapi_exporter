@@ -1,0 +1,67 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: events_last_minutes
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+
+scripts:
+  get event log last minute:
+
+  #*********************************************************************************
+  # event log last minute
+  # format example:
+  # Response: {
+  #  "members":[
+    # { 
+    #   "time":"2022-06-17T12:27:30+02:00",
+    #   "timeSecs":1655461650,
+    #   "id":"208293749",
+    #   "category":1,
+    #   "class":2,
+    #   "severity":6,
+    #   "type":"Object added",
+    #   "isDataChanged":true,
+    #   "components":"sw_vv:48944:rcpy.3.9.3",
+    #   "resource":4,
+    #   "resourceId":"48944",
+    #   "resourceName":"rcpy.3.9.3",
+    #   "component":4,
+    #   "componentId":"48944",
+    #   "componentName":"rcpy.3.9.3",
+    #   "description":"Virtual Volume 48944(rcpy.3.9.3) (WWN 60002AC0000000000600BF3000022B2B) added",
+    #   "links":[{"href":"https://10.120.0.10:8080/api/v1/volumes/rcpy.3.9.3","rel":"volumes"}]
+    # },
+    # {"time":"2022-06-17T12:27:54+02:00","timeSecs":1655461674,"id":"208293854","category":1,"class":3,"severity":6,"type":"Object removed","isDataChanged":true,"components":"sw_vv:48934:.ssr_0rcpy.17.38939.3","resource":4,"resourceId":"48934","resourceName":".ssr_0rcpy.17.38939.3","component":4,"componentId":"48934","componentName":".ssr_0rcpy.17.38939.3","description":"Virtual Volume 48934(.ssr_0rcpy.17.38939.3) (WWN FFFFFFFFFFFFFFF6FFFFFFFFFFFFFFF6) removed"},{"time":"2022-06-17T12:28:02+02:00","timeSecs":1655461682,"id":"208293873","category":1,"class":2,"severity":6,"type":"Object added","isDataChanged":true,"components":"sw_vv:48945:rcpy.20.38948.3.1","resource":4,"resourceId":"48945","resourceName":"rcpy.20.38948.3.1","component":4,"componentId":"48945","componentName":"rcpy.20.38948.3.1","description":"Virtual Volume 48945(rcpy.20.38948.3.1) (WWN 60002AC0000000000600BF3100022B2B) added","links":[{"href":"https://10.120.0.10:8080/api/v1/volumes/rcpy.20.38948.3.1","rel":"volumes"}]}],"total":3}
+    - name: query event log
+      query:
+        url: /eventlog/minutes:1
+        debug: yes
+        var_name: results
+    - name: collect event log
+      scope: results
+      metrics:
+        - metric_name: eventlog
+          help: event log
+          type: gauge
+          key_labels:
+            # - category
+            # - class
+            severity: '{{ $severityDef := dict 1 "fatal" 2 "critical" 3 "major" 4 "minor" 5 "degraded" 6 "info" 7 "debug" 99 "unknown" }}{{ $sev := .severity | toString }}{{ pluck $sev $severityDef | first | default "undef" }}'
+            components: _
+            resourceName: _
+            description: _
+            # alertstate: '{{ .alertInfo}}'
+            time: _
+          values:
+            _:  timeSecs
+          loop: members
+          when:
+            - eq .category 2.0
+

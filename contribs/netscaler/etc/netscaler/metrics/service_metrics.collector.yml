@@ -1,0 +1,247 @@
+
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/basic/service/
+### Statistics for service.
+#
+
+
+collector_name: netscaler_service_metrics
+metric_prefix: citrixadc_service
+
+scripts:
+  get stat_service:
+    - name: collect stat service
+      query:
+        url: /stat/service
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      loop: '{{ .results.service | toRawJson }}'
+      when:
+        - hasKey .item "name"
+      # scope: none
+      metrics:
+            - metric_name: throughput
+              help: Number of bytes received or sent by this service (Mbps).
+              type: counter
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .throughput }}"
+
+            - metric_name: tot_requests
+              help: Total number of requests received on this service or virtual server.
+              type: counter
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .totalrequests }}"
+
+            - metric_name: tot_responses
+              help: Number of responses received on this service or virtual server.
+              type: counter
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .totalresponses }}"
+
+            - metric_name: tot_request_bytes
+              help: Total number of request bytes received on this service or virtual server.
+              type: counter
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .totalrequestbytes }}"
+
+            - metric_name: tot_response_bytes
+              help: Number of response bytes received by this service or virtual server.
+              type: counter
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .totalresponsebytes }}"
+
+            - metric_name: throughput_rate
+              help: Rate (/s) of bytes received or sent by this service
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .throughputrate }}"
+
+            - metric_name: average_server_ttfb
+              help: Average TTFB between the NetScaler appliance and the server.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .avgsvrttfb }}"
+
+            - metric_name: requests_rate
+              help: Rate (/s) of requests received on this service or virtual server.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .requestsrate }}"
+
+            - metric_name: responses_rate
+              help: Rate (/s) of responses received on this service or virtual server.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .responsesrate }}"
+
+            - metric_name: request_bytes_rate
+              help: Rate (/s) of request bytes received on this service or virtual server.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .requestbytesrate }}"
+
+            - metric_name: response_bytes_rate
+              help: Rate (/s) of response bytes received by this service or virtual server.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .responsebytesrate }}"
+
+            - metric_name: current_client_connections
+              help: Number of current client connections.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .curclntconnections }}"
+
+            - metric_name: current_server_connections
+              help: Number of current connections to the actual servers behind the virtual server.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .cursrvrconnections }}"
+
+            - metric_name: max_clients
+              help: Maximum open connections allowed on this service.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .maxclients }}"
+
+            - metric_name: surge_count
+              help: Number of requests in the surge queue.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .surgecount }}"
+
+            - metric_name: server_established_connections
+              help: Number of server connections in ESTABLISHED state.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .svrestablishedconn }}"
+
+            - metric_name: vsvr_hits
+              help: Number of times that the service has been provided.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .vsvrservicehits }}"
+
+            - metric_name: current_pool_use
+              help: Number of requests in the idle queue/reuse pool.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .curreusepool }}"
+
+            - metric_name: current_load
+              help: Load on the service that is calculated from the bound load based monitor.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .curload }}"
+
+            - metric_name: current_flags
+              help: Current flags on the service for internal use in display handlers.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .curtflags }}"
+
+            - metric_name: vsvr_hits_rate
+              help: Rate (/s) of times that the service has been provided
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .vsvrservicehitsrate }}"
+
+            - metric_name: active_transactions
+              help: Number of active transactions handled by this service.
+              type: gauge
+              key_labels:
+                citrixadc_service_name: "{{ .name }}"
+                citrixadc_service_type: "{{ .servicetype }}"
+                citrixadc_service_state: "{{ .state }}"
+              values:
+                _: "{{ .activetransactions }}"
+
+...

@@ -1,0 +1,118 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: capacities_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+scripts:
+  #**************************************************************************************************
+  #* capacity
+  # 200 OK
+  # e.g.:
+  # "SSDCapacity": {
+  #   "totalMiB": 43929600, 
+  #   "allocated ":{
+  #     "totalAllocatedMiB": 21939200,
+  #     "volumes":{
+  #       "totalVolumesMiB": 13996032,
+  #       "nonCPGsMiB": 0,
+  #       "nonCPGUserMiB": 0,
+  #       "nonCPGSnapshotMiB": 0,
+  #       "nonCPGAdminMiB": 0,
+  #       "CPGsMiB": 13996032,
+  #       "CPGUserMiB": 13794339,
+  #       "CPGUserUsedMiB": 13794339,
+  #       "CPGUserUsedBulkVVMiB": 0,
+  #       "CPGUserUnusedMiB": 0,
+  #       "CPGSnapshotMiB": 201693,
+  #       "CPGSnapshotUsedMiB": 140098, 
+  #       "CPGSnapshotUsedBulkVVMiB": 0,
+  #       "CPGSnapshotUnusedMiB": 61595,
+  #       "CPGAdminMiB": 368640,
+  #       "CPGAdminUsedMiB": 301824,
+  #       "CPGAdminUsedBulkVVMiB": 0,
+  #       "CPGAdminUnusedMiB": 66816,
+  #       "CPGSharedMiB": 5625588,
+  #       "CPGPrivateMiB": 8308849,
+  #       "CPGBasePrivateMiB": 8168751,
+  #       "CPGBasePrivateReservedMiB": 8168751,
+  #       "CPGBasePrivatevSphereVVolsMiB": 0,
+  #       "CPGSnapshotPrivateMiB": 140098,
+  #       "CPGSnapshotPrivateReservedMiB": 140098,
+  #       "CPGSnapshotPrivatevSphereVVolsMiB":0,
+  #       "CPGFreeMiB": 61595,
+  #       "unmappedMiB": 0,
+  #       "capacityEfficiency": {
+  #         "compaction": 7.05,
+  #         "deduplication": 1.37,
+  #         "dataReduction": 1.37,
+  #         "overProvisioning": 0.48
+  #       }
+  #     },
+  #     "system":{
+  #       "totalSystemMiB": 7943168,
+  #       "internalMiB": 252928,
+  #       "spareMiB": 7321600,
+  #       "spareUsedMiB": 0,
+  #       "spareUnusedMiB": 7321600,
+  #       "adminMiB": 368640
+  #     }
+  #   },
+  #   "freeMiB": 21990400,
+  #   "freeInitializedMiB": 21990400,
+  #   "freeUninitializedMiB": 0,
+  #   "unavailableCapacityMiB": 0,
+  #   "failedCapacityMiB": 0,
+  #   "overProvisionedVirtualSizeMiB": 17424324,
+  #   "overProvisionedUsedMiB": 14047078,
+  #   "overProvisionedAllocatedMiB": 61593,
+  #   "overProvisionedFreeMiB":21990400
+  # }
+  get capacity:
+    - name: query capacity
+      query:
+        url: /capacity
+        var_name: results
+        # debug: yes
+    - name: collect capacity
+      # build a list of results each typed by each disk type
+      loop: |-
+        {{ $v1 := dict "type" "FC" "result" .results.FCCapacity }}
+        {{ $v2 := dict "type" "NL" "result" .results.NLCapacity }}
+        {{ $v3 := dict "type" "SSD" "result" .results.SSDCapacity }}
+        {{ list $v1 $v2 $v3 | toRawJson }}
+      # restrict symtab to current item
+      scope: item
+      metrics:
+        - metric_name: capacity_total_bytes
+          help: total capacty in bytes for type
+          type: gauge
+          key_labels:
+            type: _
+          values:
+            _: '{{ convertToBytes .result.totalMiB "Mb" }}' # convert MiB to bytes
+          # when:
+          #   - eq .item.type "SSD"
+          # default scope
+          # scope: item
+
+
+        - metric_name: capacity_free_bytes
+          help: free capacty in bytes for type
+          type: gauge
+          key_labels:
+            type: _
+          values:
+            _: '{{ convertToBytes .result.freeMiB "Mb" }}' # convert MiB to bytes
+          # results: 
+          #   # build a list of results each typed by each disk type
+          #   - '{{ $v1 := dict "type" "FC" "result" .FCCapacity }}{{ $v2 := dict "type" "NL" "result" .NLCapacity }}{{ $v3 := dict "type" "SSD" "result" .SSDCapacity }}{{ list $v1 $v2 $v3 | toRawJson }}'
+          # when:
+          #   - eq .item.type "SSD"
+          scope: none

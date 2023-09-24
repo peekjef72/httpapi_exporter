@@ -1,5 +1,5 @@
 [Unit]
-Description=hp3par_exporter (httpapi_exporter) for prometheus
+Description= netscaler_exporter (httpapi_exporter) for prometheus
 Wants=network-online.target
 After=network-online.target
 StartLimitBurst=4
@@ -8,15 +8,15 @@ StartLimitIntervalSec=30
 [Service]
 User=node_exporter
 Group=node_exporter
-WorkingDirectory=/etc/httpapi_exporter/hp3par/
+WorkingDirectory=/etc/httpapi_exporter/netscaler/
 Restart=always
 RestartSec=2
 Type=simple
 
-ExecStart=/opt/httpapi_exporter/hp3par_exporter \
-        --config.file=/etc/httpapi_exporter/hp3par/config.yml \
+ExecStart=/opt/httpapi_exporter/netscaler_exporter \
+        --config.file=/etc/httpapi_exporter/netscaler/config.yml \
         --log.level=warn \
-        --web.listen-address=dal-v-survdadc.dassault-avion.val:9321
+        --web.listen-address=:9259
 ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]

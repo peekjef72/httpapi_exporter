@@ -1,0 +1,41 @@
+#*********************************************************************************
+# documentation from HP site:
+# https://support.hpe.com/hpesc/public/docDisplay?docId=c03606339
+#
+#*********************************************************************************
+
+collector_name: disks_statistics
+# no cache
+# min_interval: 0s
+# use global metric_prefix
+# metric_prefix: ""
+
+
+scripts:
+
+  #**************************************************************************************************
+  #* disks status
+  #* 501 : not implemented
+  # => {"code":9, "desc":"unsupported operation for the resource"}
+
+  get disks:
+    - name: query disks
+      query:
+        url: /disks
+        debug: yes
+        var_name: results
+    - name: collect disks
+      scope: results
+      metrics:
+
+        - metric_name: disk_status
+          help: "physical disk status: 0: normal - 1: degraded - 2: New - 4: Failed - 99: Unknown"
+          type: gauge
+          key_labels:
+            model: _
+            serial: serialNumber
+            position: cage-{{ .position.cage | default "undef" }}/Port-{{ .position.slot | default "undef" }}/diskPos-{{ .position.diskPos | default "undef" }}
+            capacity: mfgCapacityGB
+          values:
+            _ : state
+          loop: members
