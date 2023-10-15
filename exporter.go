@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -25,6 +26,8 @@ type Exporter interface {
 	Logger() log.Logger
 	FindTarget(string) (Target, error)
 	GetFirstTarget() (Target, error)
+	SetStartTime(time.Time)
+	GetStartTime() string
 }
 
 type exporter struct {
@@ -34,6 +37,7 @@ type exporter struct {
 	cur_target Target
 	ctx        context.Context
 	logger     log.Logger
+	start_time string
 }
 
 // NewExporter returns a new Exporter with the provided config.
@@ -195,4 +199,12 @@ func (e *exporter) GetFirstTarget() (Target, error) {
 		t_found = e.targets[0]
 	}
 	return t_found, nil
+}
+
+func (e *exporter) GetStartTime() string {
+	return e.start_time
+}
+
+func (e *exporter) SetStartTime(ti time.Time) {
+	e.start_time = ti.Format("2006-01-02T15:04:05.000Z07:00")
 }

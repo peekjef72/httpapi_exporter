@@ -12,6 +12,17 @@ require (
 )
 
 require (
+	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
+	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
+	golang.org/x/oauth2 v0.8.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
+
+require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/google/uuid v1.3.1 // indirect
@@ -35,6 +46,7 @@ require (
 	github.com/go-resty/resty/v2 v2.8.0
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/prometheus/exporter-toolkit v0.10.0
 	github.com/prometheus/procfs v0.12.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/sys v0.12.0 // indirect

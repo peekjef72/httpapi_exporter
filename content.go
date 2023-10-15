@@ -97,6 +97,10 @@ const (
 				<th>GoVersion</th>
 				<td>{{ .Version.GoVersion }}</td>
 			</tr>
+			<tr class="odd" >
+				<th>Server start</th>
+				<td>{{ .Version.StartTime }}</td>
+			</tr>
 		</tbody>
 	</table>
   {{- end }}
@@ -115,6 +119,7 @@ type versionInfo struct {
 	BuildUser string
 	BuildDate string
 	GoVersion string
+	StartTime string
 }
 type tdata struct {
 	ExporterName string
@@ -186,6 +191,7 @@ func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 			BuildUser: version.BuildUser,
 			BuildDate: version.BuildDate,
 			GoVersion: runtime.Version(),
+			StartTime: exporter.GetStartTime(),
 		}
 
 		statusTemplate.Execute(w, &tdata{
