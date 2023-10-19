@@ -60,7 +60,10 @@ func (a *DebugAction) Type() int {
 func (a *DebugAction) GetName(symtab map[string]any, logger log.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
@@ -147,6 +150,7 @@ func (a *DebugAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 // specific behavior for the DebugAction
 func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: DebugAction] Name: %s", Name(a.Name, symtab, logger)))
 
@@ -154,11 +158,13 @@ func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	if err != nil {
 		str = a.Debug.MsgVal
 		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"msg", fmt.Sprintf("invalid template for debug message '%s': %v", str, err))
 	}
 
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("    message: %s", str))
 

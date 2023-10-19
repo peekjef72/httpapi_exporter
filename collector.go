@@ -19,6 +19,9 @@ type Collector interface {
 	Collect(context.Context, chan<- Metric, chan<- int)
 	SetClient(*Client)
 	GetClient() *Client
+	GetName() (id string)
+	GetId() (id string)
+	GetStatus() int
 }
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
@@ -29,6 +32,7 @@ type collector struct {
 	logContext     []interface{}
 	collect_script []*YAMLScript
 	// metricFamilies []*MetricFamily
+	status int
 	logger log.Logger
 }
 
@@ -109,14 +113,34 @@ func NewCollector(
 	return &c, nil
 }
 
-// SetClient implement SetClient for Client
+// GetClient implement GetClient for collector
+// obtain pointer to client
 func (c *collector) GetClient() (client *Client) {
 	return c.client
 }
 
-// SetClient implement SetClient for Client
+// SetClient implement SetClient for collector
+// obtain pointer to client
 func (c *collector) SetClient(client *Client) {
 	c.client = client
+}
+
+// GetId implement GetId for collector
+// obtain collector id for log purpose
+func (c *collector) GetId() (id string) {
+	return c.config.id
+}
+
+// GetName implement GetName for collector
+// obtain collector name for collector_status metric
+func (c *collector) GetName() (id string) {
+	return c.config.Name
+}
+
+// GetStatus implement GetStatus for collector
+// obtain the status of collector scripts execution
+func (c *collector) GetStatus() int {
+	return c.status
 }
 
 // type CollectContext struct {
@@ -129,7 +153,12 @@ func (c *collector) SetClient(client *Client) {
 // }
 
 // Collect implements Collector.
-func (c *collector) Collect(ctx context.Context, ch chan<- Metric, coll_ch chan<- int) {
+func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_ch chan<- int) {
+	var (
+		reset_coll_id bool = false
+		status        int  = 0
+	)
+
 	// var wg sync.WaitGroup
 	// wg.Add(len(c.queries))
 	// for _, q := range c.queries {
@@ -153,25 +182,63 @@ func (c *collector) Collect(ctx context.Context, ch chan<- Metric, coll_ch chan<
 
 	c.client.symtab["__method"] = c.client.callClientExecute
 	// c.client.symtab["__context"] = ctx
-	c.client.symtab["__channel"] = ch
+	c.client.symtab["__metric_channel"] = metric_ch
 	c.client.symtab["__coll_channel"] = coll_ch
 	// c.client.symtab["__metricfamilies"] = c.metricFamilies
 	// c.client.symtab["__wake_cond"] = wake_cond
 	// c.client.symtab["__logcontext"] = c.logContext
 
 	// c.client.symtab["__collect_context"] = cctx
+	cid := GetMapValueString(c.client.symtab, "__collector_id")
+	if cid == "" {
+		c.client.symtab["__collector_id"] = "--"
+		reset_coll_id = true
+	}
 
+	c.status = 0
+	status = 1
 	for _, scr := range c.collect_script {
-		level.Debug(c.logger).Log("msg", fmt.Sprintf("starting script '%s'", scr.name))
+		level.Debug(c.logger).Log(
+			"collid", CollectorId(c.client.symtab, c.logger),
+			"msg", fmt.Sprintf("starting script '%s/%s'", c.config.Name, scr.name))
 		if err := scr.Play(c.client.symtab, false, c.logger); err != nil {
 			if err != ErrInvalidLogin {
-				level.Warn(c.logger).Log("script", scr.name, "errmsg", err)
+				level.Warn(c.logger).Log(
+					"collid", CollectorId(c.client.symtab, c.logger),
+					"script", ScriptName(c.client.symtab, c.logger),
+					"errmsg", err)
+				status = 0
 				coll_ch <- MsgQuit
+				break
 			}
+			status = 0
 		}
 	}
-	delete(c.client.symtab, "__channel")
+
+	// set collector execution status
+	c.status = status
+
+	// tell calling target that this collector is over.
+	if r_val, ok := c.client.symtab["__coll_channel"]; ok {
+		if coll_channel, ok := r_val.(chan<- int); ok {
+			coll_channel <- MsgDone
+			level.Debug(c.logger).Log(
+				"collid", CollectorId(c.client.symtab, c.logger),
+				"script", ScriptName(c.client.symtab, c.logger),
+				"msg", "MsgDone sent to channel.")
+		}
+	}
+
+	// clean up
+	level.Debug(c.logger).Log(
+		"collid", CollectorId(c.client.symtab, c.logger),
+		"msg", fmt.Sprintf("removing metric channel for '%s'", c.config.Name))
+
+	delete(c.client.symtab, "__metric_channel")
 	delete(c.client.symtab, "__coll_channel")
+	if reset_coll_id {
+		delete(c.client.symtab, "__collector_id")
+	}
 	// delete(c.client.symtab, "__metricfamilies")
 }
 
@@ -199,14 +266,31 @@ type cachingCollector struct {
 	cache []Metric
 }
 
-// SetClient implement SetClient()for Client
+// SetClient implement SetClient()for cachingCollector
 func (cc *cachingCollector) SetClient(client *Client) {
 	cc.rawColl.client = client
 }
 
-// SetClient implement SetClient for Client
+// SetClient implement SetClient for cachingCollector
 func (cc *cachingCollector) GetClient() (client *Client) {
 	return cc.rawColl.client
+}
+
+// GetName implement GetName for cachingCollector
+// obtain collector name for collector_status metric
+func (cc *cachingCollector) GetName() (id string) {
+	return cc.rawColl.config.Name
+}
+
+// GetId implement GetId for cachingCollector
+func (cc *cachingCollector) GetId() (id string) {
+	return cc.rawColl.config.id
+}
+
+// GetStatus implement GetStatus for collector
+// obtain the status of collector scripts execution
+func (cc *cachingCollector) GetStatus() int {
+	return cc.rawColl.status
 }
 
 // Collect implements Collector.

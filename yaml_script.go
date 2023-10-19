@@ -90,6 +90,20 @@ func (sc *YAMLScript) AddCustomTemplate(customTemplate *exporterTemplate) error 
 	}
 	return nil
 }
+func CollectorId(symtab map[string]any, logger log.Logger) string {
+	raw_id, ok := symtab["__collector_id"]
+	if !ok {
+		level.Warn(logger).Log("msg", "invalid collector id")
+		return ""
+	}
+	str, ok := raw_id.(string)
+	if !ok {
+		level.Warn(logger).Log("msg", "invalid collector id")
+		return ""
+
+	}
+	return str
+}
 
 func ScriptName(symtab map[string]any, logger log.Logger) string {
 	raw_name, ok := symtab["__name__"]
@@ -301,7 +315,10 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, cur_level
 		for r_key, r_value := range curval {
 			key, err := ValorizeValue(symtab, r_key, logger, cur_level+1)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("error building map key: %v", r_key), "errmsg", err)
+				level.Warn(logger).Log(
+					"collid", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+					"msg", fmt.Sprintf("error building map key: %v", r_key), "errmsg", err)
 				continue
 			}
 			key_val := ""
@@ -312,7 +329,10 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, cur_level
 			}
 			value, err := ValorizeValue(symtab, r_value, logger, cur_level+1)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("error building map value for key '%s'", key_val), "errmsg", err)
+				level.Warn(logger).Log(
+					"collid", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+					"msg", fmt.Sprintf("error building map value for key '%s'", key_val), "errmsg", err)
 				continue
 			}
 			ldata[key_val] = value
@@ -325,7 +345,10 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, cur_level
 		for idx, r_value := range curval {
 			values, err := ValorizeValue(symtab, r_value, logger, cur_level+1)
 			if err != nil {
-				level.Warn(logger).Log("msg", fmt.Sprintf("error building list value for index: %d", idx), "errmsg", err)
+				level.Warn(logger).Log(
+					"collid", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+					"msg", fmt.Sprintf("error building list value for index: %d", idx), "errmsg", err)
 				continue
 			}
 			ldata[idx] = values
@@ -334,7 +357,10 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, cur_level
 			data = ldata
 		}
 	default:
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid type for with_items: %s", item))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid type for with_items: %s", item))
 	}
 	return data, nil
 }
@@ -390,7 +416,10 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 					final_items = append(final_items, data)
 				}
 			} else {
-				level.Warn(logger).Log("msg", fmt.Sprintf("no data found for with_items: %s", err))
+				level.Warn(logger).Log(
+					"collid", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+					"msg", fmt.Sprintf("no data found for with_items: %s", err))
 			}
 		}
 		items = final_items
@@ -432,6 +461,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 					}
 					if tmp_res.String() != "true" {
 						level.Debug(logger).Log(
+							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
 							"msg", fmt.Sprintf("Name: '%s' skipped : when condition false: '%s'", ba.GetName(symtab, logger), baWhen[i].Tree.Root.String()))
 
@@ -463,11 +493,15 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 				err := ((*template.Template)(condTpl)).Execute(tmp_res, &symtab)
 				if err != nil {
 					err := fmt.Errorf("invalid template value for 'until' %s: %s", baUntil[i].Tree.Root.String(), err)
-					level.Warn(logger).Log("msg", err)
+					level.Warn(logger).Log(
+						"collid", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+						"msg", err)
 					return err
 				}
 				if tmp_res.String() != "true" {
 					level.Debug(logger).Log(
+						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
 						"msg", fmt.Sprintf("Name: '%s' until limit cond reached : '%s'", ba.GetName(symtab, logger), baUntil[i].Tree.Root.String()))
 
@@ -477,7 +511,10 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 			}
 			if !valid_value || idx >= script.UntilLimit {
 				if idx >= script.UntilLimit {
-					level.Warn(logger).Log("msg", fmt.Sprintf("max iteration reached for until action (%d)", script.UntilLimit))
+					level.Warn(logger).Log(
+						"collid", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+						"msg", fmt.Sprintf("max iteration reached for until action (%d)", script.UntilLimit))
 				}
 				break
 			}

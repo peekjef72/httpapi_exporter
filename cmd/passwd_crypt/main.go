@@ -27,7 +27,7 @@ import (
 
 func main() {
 
-	app := kingpin.New("passwd_crypt", "encrypt password with a shared key.")
+	app := kingpin.New("passwd_crypt", "encrypt password wyth a shared key.")
 	var (
 		decrypt = app.Flag("decrypt", "Decrypt the provided password with key.").Short('d').Default("false").Bool()
 		hexa    = app.Flag("hexa", "Encode password in hexastring.(default base64).").Short('x').Default("false").Bool()

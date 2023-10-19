@@ -119,7 +119,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 		}
 	}()
 
-	level.Debug(e.logger).Log("msg", fmt.Sprintf("exporter.Gather(): **** Target launch is OVER :'%s' ****", e.cur_target.Name()))
+	level.Debug(e.logger).Log("msg", fmt.Sprintf("exporter.Gather(): **** Target collect() launch is OVER :'%s' ****", e.cur_target.Name()))
 	// Gather.
 	dtoMetricFamilies := make(map[string]*dto.MetricFamily, 10)
 	// level.Debug(e.logger).Log("msg", "exporter.Gather(): just before for chan")

@@ -36,7 +36,10 @@ func (a *PlayScriptAction) Type() int {
 func (a *PlayScriptAction) GetName(symtab map[string]any, logger log.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
@@ -124,6 +127,7 @@ func (a *PlayScriptAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 func (a *PlayScriptAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
 	// var err error
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: PlayScriptAction] Name: %s", a.GetName(symtab, logger)))
 

@@ -35,7 +35,10 @@ func (a *ActionsAction) Type() int {
 func (a *ActionsAction) GetName(symtab map[string]any, logger log.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
@@ -138,6 +141,7 @@ func (a *ActionsAction) SetPlayAction(script map[string]*YAMLScript) error {
 // specific behavior for the ActionsAction
 func (a *ActionsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: ActionsAction] Name: %s - %d Actions to play", a.GetName(symtab, logger), len(a.Actions)))
 	for _, cur_act := range a.Actions {

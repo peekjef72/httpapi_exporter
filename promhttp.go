@@ -27,9 +27,6 @@ const (
 // ExporterHandlerFor returns an http.Handler for the provided Exporter.
 func ExporterHandlerFor(exporter Exporter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ctx, cancel := contextFor(req, exporter)
-		defer cancel()
-
 		params := req.URL.Query()
 		tname := params.Get("target")
 		if tname == "" {
@@ -48,6 +45,8 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 		if auth_key != "" {
 			t.SetSymbol("auth_key", auth_key)
 		}
+		ctx, cancel := contextFor(req, exporter)
+		defer cancel()
 
 		// Go through prometheus.Gatherers to sanitize and sort metrics.
 		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t)}

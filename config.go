@@ -84,7 +84,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	// Populate collector references for the target/jobs.
 	colls := make(map[string]*CollectorConfig)
-	for _, coll := range c.Collectors {
+	for id, coll := range c.Collectors {
 		// Set the min interval to the global default if not explicitly set.
 		if coll.MinInterval < 0 {
 			coll.MinInterval = c.Globals.MinInterval
@@ -115,6 +115,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 			}
 		}
+		coll.id = fmt.Sprintf("%02d", id)
 	}
 
 	// read the target config with a TargetsFiles specfied
@@ -166,8 +167,12 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 		tnames[t.Name] = nil
 
-		if t.ConnectionTimeout == 0 {
-			t.ConnectionTimeout = c.Globals.ConnectionTimeout
+		// if t.ConnectionTimeout == 0 {
+		// 	t.ConnectionTimeout = c.Globals.ConnectionTimeout
+		// }
+
+		if t.ScrapeTimeout == 0 {
+			t.ScrapeTimeout = c.Globals.ScrapeTimeout
 		}
 
 		if t.QueryRetry == -1 {
@@ -306,14 +311,14 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
-	MinInterval       model.Duration `yaml:"min_interval"`          // minimum interval between query executions, default is 0
-	ConnectionTimeout model.Duration `yaml:"connection_timeout"`    // connection timeout, target
-	ScrapeTimeout     model.Duration `yaml:"scrape_timeout"`        // per-scrape timeout, global
-	TimeoutOffset     model.Duration `yaml:"scrape_timeout_offset"` // offset to subtract from timeout in seconds
-	MetricPrefix      string         `yaml:"metric_prefix"`         // a prefix to ad dto all metric name; may be redefined in collector files
-	QueryRetry        int            `yaml:"query_retry,omitempty"` // target specific number of times to retry a query
-	InvalidHttpCode   any            `yaml:"invalid_auth_code,omitempty"`
-	ExporterName      string         `yaml:"exporter_name,omitempty"`
+	MinInterval model.Duration `yaml:"min_interval"` // minimum interval between query executions, default is 0
+	// ConnectionTimeout model.Duration `yaml:"connection_timeout"`    // connection timeout, target
+	ScrapeTimeout   model.Duration `yaml:"scrape_timeout"`        // per-scrape timeout, global
+	TimeoutOffset   model.Duration `yaml:"scrape_timeout_offset"` // offset to subtract from timeout in seconds
+	MetricPrefix    string         `yaml:"metric_prefix"`         // a prefix to ad dto all metric name; may be redefined in collector files
+	QueryRetry      int            `yaml:"query_retry,omitempty"` // target specific number of times to retry a query
+	InvalidHttpCode any            `yaml:"invalid_auth_code,omitempty"`
+	ExporterName    string         `yaml:"exporter_name,omitempty"`
 
 	invalid_auth_code []int
 	// query_retry int
@@ -326,7 +331,7 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Default to running the queries on every scrape.
 	g.MinInterval = model.Duration(0)
 	// Default to 2 seconds, to connect to a target.
-	g.ConnectionTimeout = model.Duration(2 * time.Second)
+	// g.ConnectionTimeout = model.Duration(2 * time.Second)
 	// Default to 10 seconds, since Prometheus has a 10 second scrape timeout default.
 	g.ScrapeTimeout = model.Duration(10 * time.Second)
 	// Default to .5 seconds.
@@ -347,8 +352,11 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if g.TimeoutOffset <= 0 {
 		return fmt.Errorf("global.scrape_timeout_offset must be strictly positive, have %s", g.TimeoutOffset)
 	}
-	if g.ConnectionTimeout <= 0 {
-		return fmt.Errorf("global.connection_timeout must be strictly positive, have %s", g.ConnectionTimeout)
+	// if g.ConnectionTimeout <= 0 {
+	// 	return fmt.Errorf("global.connection_timeout must be strictly positive, have %s", g.ConnectionTimeout)
+	// }
+	if g.ScrapeTimeout <= 0 {
+		return fmt.Errorf("global.connection_timeout must be strictly positive, have %s", g.ScrapeTimeout)
 	}
 
 	if g.InvalidHttpCode == nil {
@@ -375,18 +383,20 @@ type TargetConfig struct {
 	// Username          string             `yaml:"user,omitempty"`
 	// Password          Secret             `yaml:"password,omitempty"` // data source definition to connect to
 	// BasicAuth         ConvertibleBoolean `yaml:"basicAuth"`
-	ProxyUrl          string             `yaml:"proxy,omitempty"`
-	VerifySSL         ConvertibleBoolean `yaml:"verifySSL,omitempty"`
-	ConnectionTimeout model.Duration     `yaml:"connection_timeout,omitempty"` // connection timeout, per-target
-	Labels            map[string]string  `yaml:"labels,omitempty"`             // labels to apply to all metrics collected from the targets
-	CollectorRefs     []string           `yaml:"collectors"`                   // names of collectors to execute on the target
-	TargetsFiles      []string           `yaml:"targets_files,omitempty"`      // slice of path and pattern for files that contains targets
-	QueryRetry        int                `yaml:"query_retry,omitempty"`        // target specific number of times to retry a query
+	ProxyUrl        string `yaml:"proxy,omitempty"`
+	VerifySSLString string `yaml:"verifySSL,omitempty"`
+	// ConnectionTimeout model.Duration    `yaml:"connection_timeout,omitempty"` // connection timeout, per-target
+	ScrapeTimeout model.Duration    `yaml:"scrape_timeout"`          // per-scrape timeout, global
+	Labels        map[string]string `yaml:"labels,omitempty"`        // labels to apply to all metrics collected from the targets
+	CollectorRefs []string          `yaml:"collectors"`              // names of collectors to execute on the target
+	TargetsFiles  []string          `yaml:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
+	QueryRetry    int               `yaml:"query_retry,omitempty"`   // target specific number of times to retry a query
 
-	collectors []*CollectorConfig // resolved collector references
-	fromFile   string             // filepath if loaded from targets_files pattern
+	collectors       []*CollectorConfig // resolved collector references
+	fromFile         string             // filepath if loaded from targets_files pattern
+	verifySSLUserSet bool
+	verifySSL        ConvertibleBoolean
 	// basicAuth  bool
-	// verifySSL  bool
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -407,7 +417,11 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain TargetConfig
 	// set default value for target
 	t.QueryRetry = -1
-	t.VerifySSL = true
+	// t.VerifySSL = ""
+	// set default value for  VerifySSL
+	t.verifySSL = true
+	// by default value is not set by user; will be overwritten if user set a value
+	t.verifySSLUserSet = false
 
 	if err := unmarshal((*plain)(t)); err != nil {
 		return err
@@ -431,6 +445,13 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		if t.Host == "" {
 			return fmt.Errorf("missing data_source_name for target %+v", t)
+		}
+
+		if t.VerifySSLString != "" {
+			if err := t.verifySSL.UnmarshalJSON([]byte(t.VerifySSLString)); err != nil {
+				return err
+			}
+			t.verifySSLUserSet = true
 		}
 		checkCollectorRefs(t.CollectorRefs, t.Name)
 
@@ -520,7 +541,8 @@ type CollectorConfig struct {
 
 	customTemplate *exporterTemplate // to store the custom Templates used by this collector
 	// Metrics        []*MetricConfig    // metrics defined by this collector
-
+	// id to print in log and to follow request action
+	id string
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
 }

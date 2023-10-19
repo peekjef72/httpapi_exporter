@@ -37,7 +37,10 @@ func (a *MetricAction) Type() int {
 func (a *MetricAction) GetName(symtab map[string]any, logger log.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
@@ -133,19 +136,25 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 		}
 	}
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: MetricAction] Name: %s%s", a.GetName(symtab, logger), loop_var_idx))
 
-	if r_val, ok := symtab["__channel"]; ok {
+	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic("invalid context (channel)")
+			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel wrong type)\"",
+				CollectorId(symtab, logger),
+				ScriptName(symtab, logger)))
 		}
 	} else {
-		panic("invalid context (channel)")
+		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel not set)\"",
+			CollectorId(symtab, logger),
+			ScriptName(symtab, logger)))
 	}
 
 	// for _, mf := range mfs {
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("    metric_name: %s", a.metricFamily.Name()))
 	a.metricFamily.Collect(symtab, logger, metric_channel)

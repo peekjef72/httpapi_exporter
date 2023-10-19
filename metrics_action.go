@@ -40,7 +40,10 @@ func (a *MetricsAction) Type() int {
 func (a *MetricsAction) GetName(symtab map[string]any, logger log.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
@@ -163,12 +166,14 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	// var logContext []any
 
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)))
 
 	query_status, ok := GetMapValueBool(symtab, "query_status")
 	if !ok || (ok && !query_status) {
 		level.Debug(logger).Log(
+			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - previous query has invalid status skipping", a.GetName(symtab, logger)))
 		return nil
@@ -176,10 +181,14 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 
 	if r_val, ok := symtab["__channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic("invalid context (channel)")
+			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel wrong type)\"",
+				CollectorId(symtab, logger),
+				ScriptName(symtab, logger)))
 		}
 	} else {
-		panic("invalid context (channel)")
+		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel not set)\"",
+			CollectorId(symtab, logger),
+			ScriptName(symtab, logger)))
 	}
 
 	// check if user has specified a
@@ -189,9 +198,13 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		var err error
 		tmp_symtab, err = SetScope(a.Scope, tmp_symtab)
 		if err != nil {
-			level.Warn(logger).Log("errmsg", err)
+			level.Warn(logger).Log(
+				"collid", CollectorId(symtab, logger),
+				"script", ScriptName(symtab, logger),
+				"errmsg", err)
 		}
 
+		tmp_symtab["__collector_id"] = symtab["__collector_id"]
 		tmp_symtab["__name__"] = symtab["__name__"]
 	}
 	for _, cur_act := range a.Actions {
@@ -205,6 +218,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	}
 	if a.Scope != "" && a.Scope != "none" && tmp_symtab != nil {
 		delete(tmp_symtab, "__name__")
+		delete(tmp_symtab, "__collector_id")
 	}
 
 	return nil

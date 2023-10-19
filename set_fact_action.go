@@ -34,7 +34,10 @@ func (a *SetFactAction) Type() int {
 func (a *SetFactAction) GetName(symtab map[string]any, logger log.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		level.Warn(logger).Log(
+			"collid", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"msg", fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
@@ -120,6 +123,7 @@ func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	var err error
 	var value_name any
 	level.Debug(logger).Log(
+		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: SetFactAction] Name: %s", Name(a.Name, symtab, logger)))
 	for _, pair := range a.setFact {
@@ -146,17 +150,20 @@ func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 				// }
 				if value_name == nil {
 					level.Debug(logger).Log(
+						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
 						"msg", fmt.Sprintf("    remove from symbols table: %s", key_name))
 					delete(symtab, key_name)
 				} else {
 					if key_name != "_" {
 						level.Debug(logger).Log(
+							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
 							"msg", fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name))
 						symtab[key_name] = value_name
 					} else {
 						level.Debug(logger).Log(
+							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
 							"msg", "    result discard (key >'_')")
 

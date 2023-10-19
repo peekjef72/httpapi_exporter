@@ -3,7 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net"
+
+	// "net"
 	"strconv"
 	"strings"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/go-resty/resty/v2"
-
 	"github.com/imdario/mergo"
 	"github.com/mitchellh/copystructure"
 	"github.com/peekjef72/httpapi_exporter/encrypt"
@@ -57,35 +57,37 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger log.Logge
 	}
 
 	params := &ClientInitParams{
-		Scheme:            target.Scheme,
-		Host:              target.Host,
-		Port:              target.Port,
-		BaseUrl:           target.BaseUrl,
-		AuthConfig:        target.AuthConfig,
-		ProxyUrl:          target.ProxyUrl,
-		VerifySSL:         bool(target.VerifySSL),
-		ConnectionTimeout: time.Duration(target.ConnectionTimeout),
-		QueryRetry:        target.QueryRetry,
+		Scheme:           target.Scheme,
+		Host:             target.Host,
+		Port:             target.Port,
+		BaseUrl:          target.BaseUrl,
+		AuthConfig:       target.AuthConfig,
+		ProxyUrl:         target.ProxyUrl,
+		VerifySSL:        bool(target.verifySSL),
+		VerifySSLUserSet: target.verifySSLUserSet,
+		ScrapeTimeout:    time.Duration(target.ScrapeTimeout),
+		QueryRetry:       target.QueryRetry,
 	}
-
+	cl.symtab["__collector_id"] = target.Name
 	cl.Init(params)
+	delete(cl.symtab, "__collector_id")
 
 	return cl
 }
 
 // *********************
-func TimeoutDialer(cTimeout time.Duration) func(net, addr string) (c net.Conn, err error) {
-	return func(netw, addr string) (net.Conn, error) {
-		conn, err := net.DialTimeout(netw, addr, cTimeout)
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	}
-}
+// func TimeoutDialer(cTimeout time.Duration) func(net, addr string) (c net.Conn, err error) {
+// 	return func(netw, addr string) (net.Conn, error) {
+// 		conn, err := net.DialTimeout(netw, addr, cTimeout)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		return conn, nil
+// 	}
+// }
 
 // ***********************
-func (c *Client) Clone() *Client {
+func (c *Client) Clone(target *TargetConfig) *Client {
 	//sync.Mutex{}
 	cl := &Client{
 		logContext: []interface{}{},
@@ -101,7 +103,10 @@ func (c *Client) Clone() *Client {
 
 	tmp = c.symtab
 	if tmp, err = copystructure.Copy(c.symtab); err != nil {
-		level.Error(c.logger).Log("msg", "can't clone symbols table for new client")
+		level.Error(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"msg", "can't clone symbols table for new client")
 		return nil
 	}
 	if val, ok := tmp.(map[string]any); ok {
@@ -111,31 +116,38 @@ func (c *Client) Clone() *Client {
 	}
 
 	// c.wake_cond = *sync.NewCond(&c.wait_mutex)
-
-	verifySSL, _ := GetMapValueBool(cl.symtab, "verifySSL")
-	timeout := time.Duration(cl.symtab["connectionTimeout"].(time.Duration))
-	query_retry, _ := GetMapValueInt(cl.symtab, "queryRetry")
-
 	params := &ClientInitParams{
-		Scheme:  GetMapValueString(cl.symtab, "scheme"),
-		Host:    GetMapValueString(cl.symtab, "host"),
-		Port:    GetMapValueString(cl.symtab, "port"),
-		BaseUrl: GetMapValueString(cl.symtab, "base_url"),
-		AuthConfig: AuthConfig{
-			Mode:     GetMapValueString(cl.symtab, "auth_mode"),
-			Username: GetMapValueString(cl.symtab, "user"),
-			Password: Secret(GetMapValueString(cl.symtab, "password")),
-			Token:    Secret(GetMapValueString(cl.symtab, "auth_token")),
-			authKey:  GetMapValueString(cl.symtab, "auth_key"),
-		},
-		// BasicAuth:         auth_mode,
-		// Username:          GetMapValueString(cl.symtab, "user"),
-		// Password:          Secret(GetMapValueString(cl.symtab, "password")),
-		ProxyUrl:          GetMapValueString(cl.symtab, "proxyUrl"),
-		VerifySSL:         verifySSL,
-		ConnectionTimeout: timeout,
-		QueryRetry:        query_retry,
+		Scheme:           target.Scheme,
+		Host:             target.Host,
+		Port:             target.Port,
+		BaseUrl:          target.BaseUrl,
+		AuthConfig:       target.AuthConfig,
+		ProxyUrl:         target.ProxyUrl,
+		VerifySSL:        bool(target.verifySSL),
+		VerifySSLUserSet: target.verifySSLUserSet,
+		ScrapeTimeout:    time.Duration(target.ScrapeTimeout),
+		QueryRetry:       target.QueryRetry,
 	}
+	// params := &ClientInitParams{
+	// 	Scheme:  GetMapValueString(cl.symtab, "scheme"),
+	// 	Host:    GetMapValueString(cl.symtab, "host"),
+	// 	Port:    GetMapValueString(cl.symtab, "port"),
+	// 	BaseUrl: GetMapValueString(cl.symtab, "base_url"),
+	// 	AuthConfig: AuthConfig{
+	// 		Mode:     GetMapValueString(cl.symtab, "auth_mode"),
+	// 		Username: GetMapValueString(cl.symtab, "user"),
+	// 		Password: Secret(GetMapValueString(cl.symtab, "password")),
+	// 		Token:    Secret(GetMapValueString(cl.symtab, "auth_token")),
+	// 		authKey:  GetMapValueString(cl.symtab, "auth_key"),
+	// 	},
+	// 	// BasicAuth:         auth_mode,
+	// 	// Username:          GetMapValueString(cl.symtab, "user"),
+	// 	// Password:          Secret(GetMapValueString(cl.symtab, "password")),
+	// 	ProxyUrl:          GetMapValueString(cl.symtab, "proxyUrl"),
+	// 	VerifySSL:         verifySSL,
+	// 	ConnectionTimeout: timeout,
+	// 	QueryRetry:        query_retry,
+	// }
 	cl.Init(params)
 
 	for header, values := range c.client.Header {
@@ -158,7 +170,10 @@ func (c *Client) Clone() *Client {
 func (c *Client) SetUrl(url string) string {
 	if _, ok := c.symtab["APIEndPoint"]; !ok {
 		err := fmt.Errorf("http base uri not found")
-		level.Error(c.logger).Log("errmsg", err)
+		level.Error(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"errmsg", err)
 		return ""
 	}
 	base := c.symtab["APIEndPoint"].(string)
@@ -166,7 +181,10 @@ func (c *Client) SetUrl(url string) string {
 	uri := fmt.Sprintf("%s/%s", base, strings.TrimPrefix(url, "/"))
 	c.symtab["uri"] = uri
 
-	level.Debug(c.logger).Log("uri", uri)
+	level.Debug(c.logger).Log(
+		"collid", CollectorId(c.symtab, c.logger),
+		"script", ScriptName(c.symtab, c.logger),
+		"uri", uri)
 	return uri
 }
 
@@ -231,7 +249,10 @@ func (c *Client) getJSONResponse(resp *resty.Response) any {
 			// copy(tmp, body)
 			err = json.Unmarshal(body, &data)
 			if err != nil {
-				level.Error(c.logger).Log("errmsg", fmt.Sprintf("Fail to decode json results %v", err))
+				level.Error(c.logger).Log(
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger),
+					"errmsg", fmt.Sprintf("Fail to decode json results %v", err))
 			}
 		}
 	}
@@ -258,12 +279,29 @@ func (c *Client) Execute(
 	// defer c.mutex.Unlock()
 
 	url := c.SetUrl(uri)
-	level.Debug(c.logger).Log("msg", "querying httpapi", "method", method, "url", url)
+	level.Debug(c.logger).Log(
+		"collid", CollectorId(c.symtab, c.logger),
+		"script", ScriptName(c.symtab, c.logger),
+		"msg", "querying httpapi",
+		"method", method,
+		"url", url)
 	if body != nil {
-		level.Debug(c.logger).Log("msg", "querying httpapi", "method", method, "url", url, "body", fmt.Sprintf("%+v", body))
+		level.Debug(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"msg", "querying httpapi",
+			"method", method,
+			"url", url,
+			"body", fmt.Sprintf("%+v", body))
 	}
 	if len(params) > 0 {
-		level.Debug(c.logger).Log("msg", "querying httpapi", "method", method, "url", url, "params", params)
+		level.Debug(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"msg", "querying httpapi",
+			"method", method,
+			"url", url,
+			"params", params)
 	}
 
 	if query_retry, ok = GetMapValueInt(c.symtab, "queryRetry"); !ok {
@@ -286,7 +324,10 @@ func (c *Client) Execute(
 			code := resp.StatusCode()
 			// if (i+1 < query_retry) && check_invalid_auth && slices.Contains(c.invalid_auth_code, code) {
 			if (i+1 < query_retry) && slices.Contains(c.invalid_auth_code, code) {
-				level.Debug(c.logger).Log("msg", "received invalid auth. start Ping()/Login()")
+				level.Debug(c.logger).Log(
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger),
+					"msg", "received invalid auth. start Ping()/Login()")
 				if r_val, ok := c.symtab["__coll_channel"]; ok {
 					if coll_channel, ok := r_val.(chan<- int); ok {
 						coll_channel <- MsgLogin
@@ -337,7 +378,11 @@ func (c *Client) Execute(
 			}
 			c.symtab["response_headers"] = resp.Header()
 		} else {
-			level.Debug(c.logger).Log("msg", fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1))
+			level.Debug(c.logger).Log(
+				"collid", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger),
+				"msg", fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
+				"errmsg", err)
 			delete(c.symtab, "response_headers")
 		}
 	}
@@ -345,12 +390,16 @@ func (c *Client) Execute(
 	if resp == nil {
 		err = fmt.Errorf("empty response")
 	}
-	if r_val, ok := c.symtab["__coll_channel"]; ok {
-		if coll_channel, ok := r_val.(chan<- int); ok {
-			coll_channel <- MsgDone
-			level.Debug(c.logger).Log("msg", "MsgDone sent to channel.")
-		}
-	}
+	// REMOVED: must be call for when collector script is over not only when query is over !!
+	// if r_val, ok := c.symtab["__coll_channel"]; ok {
+	// 	if coll_channel, ok := r_val.(chan<- int); ok {
+	// 		coll_channel <- MsgDone
+	// 		level.Debug(c.logger).Log(
+	// 			"collid", CollectorId(c.symtab, c.logger),
+	// 			"script", ScriptName(c.symtab, c.logger),
+	// 			"msg", "MsgDone sent to channel.")
+	// 	}
+	// }
 	return resp, data, err
 }
 
@@ -655,7 +704,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	// }
 	if params.Method == "" {
 		err := fmt.Errorf("http method not found")
-		level.Error(c.logger).Log("errmsg", err)
+		level.Error(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"errmsg", err)
 		return err
 	}
 	method := strings.ToUpper(params.Method)
@@ -668,7 +720,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	// url := symtab["url"].(string)
 	if params.Url == "" {
 		err := fmt.Errorf("http url not found")
-		level.Error(c.logger).Log("errmsg", err)
+		level.Error(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"errmsg", err)
 		return err
 	}
 	url := params.Url
@@ -697,7 +752,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			}
 			if strings.Contains(passwd, "/encrypted/") {
 				ciphertext := passwd[len("/encrypted/"):]
-				level.Debug(c.logger).Log("ciphertext", ciphertext)
+				level.Debug(c.logger).Log(
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger),
+					"ciphertext", ciphertext)
 
 				user := GetMapValueString(symtab, "user")
 				if params.Username != "" {
@@ -706,7 +764,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 					symtab["user"] = user
 				}
 				auth_key := GetMapValueString(symtab, "auth_key")
-				level.Debug(c.logger).Log("auth_key", auth_key)
+				level.Debug(c.logger).Log(
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger),
+					"auth_key", auth_key)
 				cipher, err := encrypt.NewAESCipher(auth_key)
 				if err != nil {
 					err := fmt.Errorf("can't obtain cipher to decrypt")
@@ -745,7 +806,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	// }
 	if len(params.OkStatus) <= 0 {
 		err := fmt.Errorf("ok_status not found")
-		level.Error(c.logger).Log("errmsg", err)
+		level.Error(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"errmsg", err)
 		return err
 	}
 	valid_status := params.OkStatus
@@ -757,12 +821,19 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
 	resp, data, err := c.Execute(method, url, nil, payload)
 	if err != nil {
-		level.Error(c.logger).Log("errmsg", err)
+		level.Error(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"errmsg", err)
 		return err
 	}
 	if params.Debug {
-		level.Info(c.logger).Log("msg", "launch query debug",
-			"url", symtab["uri"].(string), "results", string(resp.Body()))
+		level.Debug(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"msg", "launch query debug",
+			"url", symtab["uri"].(string),
+			"results", string(resp.Body()))
 	}
 	// * get returned status
 	code := resp.StatusCode()
@@ -771,7 +842,11 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 
 	if !slices.Contains(valid_status, code) {
 		symtab["query_status"] = false
-		level.Info(c.logger).Log("msg", fmt.Sprintf("invalid response status: (%d not in %v)", code, valid_status))
+		level.Info(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"msg", fmt.Sprintf("invalid response status: (%d not in %v)",
+				code, valid_status))
 	} else {
 		if data == nil {
 			err = fmt.Errorf("fail to decode json results: %s", err)
@@ -783,7 +858,11 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			} else if var_name == "_root" {
 				opts := mergo.WithOverride
 				if err := mergo.Merge(&symtab, data, opts); err != nil {
-					level.Error(c.logger).Log("msg", "merging results into symbols table", "errmsg", err)
+					level.Error(c.logger).Log(
+						"collid", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger),
+						"msg", "merging results into symbols table",
+						"errmsg", err)
 					return err
 				}
 			}
@@ -903,19 +982,32 @@ type ClientInitParams struct {
 	// BasicAuth         bool
 	// Username          string
 	// Password          Secret
-	ProxyUrl          string
-	VerifySSL         bool
-	ConnectionTimeout time.Duration
-	QueryRetry        int
+	ProxyUrl         string
+	VerifySSL        bool
+	VerifySSLUserSet bool
+	ScrapeTimeout    time.Duration
+	QueryRetry       int
 }
 
 func (cl *Client) Init(params *ClientInitParams) error {
+	var reset_coll_id bool = false
+
+	defer func() {
+		if reset_coll_id {
+			delete(cl.symtab, "__collector_id")
+		}
+	}()
 
 	// ** get the init script definition from config if one is defined
 	// ** set default config for all targets
 	if script, ok := cl.sc["init"]; ok && script != nil {
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
+		cid := GetMapValueString(cl.symtab, "__collector_id")
+		if cid == "" {
+			cl.symtab["__collector_id"] = "--"
+			reset_coll_id = true
+		}
 		err := script.Play(cl.symtab, false, cl.logger)
 		delete(cl.symtab, "__method")
 
@@ -943,7 +1035,8 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	if params.Port != "" {
 		port = params.Port
 	}
-	if verifySSL != params.VerifySSL {
+	// WARNING !!! params has priority over init.
+	if verifySSL != params.VerifySSL && params.VerifySSLUserSet {
 		verifySSL = params.VerifySSL
 	}
 	if query_retry != params.QueryRetry {
@@ -968,18 +1061,25 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	cl.symtab["auth_set"] = false
 	cl.symtab["verifySSL"] = verifySSL
 	cl.symtab["proxyUrl"] = params.ProxyUrl
-	cl.symtab["connectionTimeout"] = params.ConnectionTimeout
+	cl.symtab["timeout"] = params.ScrapeTimeout
 	cl.symtab["queryRetry"] = query_retry
 
 	if scheme == "https" {
+		level.Debug(cl.logger).Log(
+			"collid", CollectorId(cl.symtab, cl.logger),
+			"script", ScriptName(cl.symtab, cl.logger),
+			"msg", fmt.Sprintf("verify certificate set to %v", verifySSL))
 		cl.client = resty.New().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: !verifySSL})
 	} else if scheme == "http" {
 		cl.client = resty.New()
 	} else {
-		level.Error(cl.logger).Log("msg", fmt.Sprintf("invalid scheme for url '%s'", scheme))
+		level.Error(cl.logger).Log(
+			"collid", CollectorId(cl.symtab, cl.logger),
+			"script", ScriptName(cl.symtab, cl.logger),
+			"msg", fmt.Sprintf("invalid scheme for url '%s'", scheme))
 		return nil
 	}
-	timeout := time.Duration(cl.symtab["connectionTimeout"].(time.Duration))
+	timeout := time.Duration(cl.symtab["timeout"].(time.Duration))
 	// cl.client.SetTransport(
 	// 	&http.Transport{
 	// 		DialContext: (&net.Dialer{
@@ -1059,7 +1159,9 @@ func (cl *Client) Logout() error {
 	if script, ok := cl.sc["logout"]; ok && script != nil {
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
+		cl.symtab["__collector_id"] = "tg"
 		err := script.Play(cl.symtab, false, cl.logger)
+		delete(cl.symtab, "__collector_id")
 		delete(cl.symtab, "__method")
 
 		if err != nil {
@@ -1085,7 +1187,9 @@ func (cl *Client) Clear() error {
 	if script, ok := cl.sc["clear"]; ok && script != nil {
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
+		// cl.symtab["__collector_id"] = "tg"
 		err := script.Play(cl.symtab, false, cl.logger)
+		// delete(cl.symtab, "__collector_id")
 		delete(cl.symtab, "__method")
 
 		if err != nil {
@@ -1116,7 +1220,10 @@ func (cl *Client) Ping() (bool, error) {
 
 	// ** get the ping script definition from config if one is defined
 	if script, ok := cl.sc["ping"]; ok && script != nil {
-		level.Debug(cl.logger).Log("msg", fmt.Sprintf("starting script '%s'", script.name))
+		level.Debug(cl.logger).Log(
+			"collid", CollectorId(cl.symtab, cl.logger),
+			"script", ScriptName(cl.symtab, cl.logger),
+			"msg", fmt.Sprintf("starting script '%s'", script.name))
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
 		// cl.symtab["check_invalid_auth"] = false
@@ -1129,7 +1236,10 @@ func (cl *Client) Ping() (bool, error) {
 		}
 	} else {
 		err := fmt.Errorf("no ping script found... can't connect")
-		level.Error(cl.logger).Log("msg", err)
+		level.Error(cl.logger).Log(
+			"collid", CollectorId(cl.symtab, cl.logger),
+			"script", ScriptName(cl.symtab, cl.logger),
+			"msg", err)
 		return false, err
 	}
 
