@@ -179,7 +179,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		return nil
 	}
 
-	if r_val, ok := symtab["__channel"]; ok {
+	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
 			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel wrong type)\"",
 				CollectorId(symtab, logger),
@@ -208,7 +208,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		tmp_symtab["__name__"] = symtab["__name__"]
 	}
 	for _, cur_act := range a.Actions {
-		tmp_symtab["__channel"] = metric_channel
+		tmp_symtab["__metric_channel"] = metric_channel
 		// tmp_symtab["__metricfamilies"] = mfs
 		// fmt.Printf("\tadd to symbols table: %s = %v\n", key, val)
 		if err := PlayBaseAction(script, tmp_symtab, logger, cur_act, cur_act.CustomAction); err != nil {

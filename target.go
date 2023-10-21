@@ -308,7 +308,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 			default:
 				level.Debug(t.logger).Log(
 					"collid", t.name,
-					"msg", fmt.Sprintf("target ping wait: received msg [%d]", submsg))
+					"msg", fmt.Sprintf("target ping wait: received msg =[%s] from collector", Msg2Text(submsg)))
 			}
 			if need_login {
 				collectChan <- MsgLogin
@@ -410,6 +410,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 					delete(t.client.symtab, "__coll_channel")
 				}
 				delete(t.client.symtab, "__collector_id")
+
 			case MsgCollect:
 				level.Debug(t.logger).Log(
 					"collid", t.name,
@@ -418,6 +419,9 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				level.Debug(t.logger).Log(
 					"collid", t.name,
 					"msg", fmt.Sprintf("target: send %d collector(s)", len(t.collectors)))
+
+				t.client.symtab["__coll_channel"] = collectChan
+
 				for _, c := range t.collectors {
 					t.client.symtab["__collector_id"] = fmt.Sprintf("%s#%s", t.name, c.GetId())
 					// have to build a new client copy to allow multi connection to target
@@ -514,6 +518,8 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 		defer func() {
 			for range collectChan {
 			}
+			delete(t.client.symtab, "__coll_channel")
+			delete(t.client.symtab, "__collector_id")
 		}()
 	}
 
@@ -584,6 +590,8 @@ func (t *target) ping(ctx context.Context, ch chan<- Metric, coll_ch chan<- int)
 	t.client.symtab["__coll_channel"] = coll_ch
 	// t.client.symtab["__collector_id"] = t.name
 	status, err := t.client.Ping()
+	// tell command is over.
+	coll_ch <- MsgDone
 	delete(t.client.symtab, "__coll_channel")
 	// delete(t.client.symtab, "__collector_id")
 	return status, err
