@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	// "sync"
+	"sync"
 	"time"
 
 	"crypto/tls"
@@ -23,15 +23,20 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var ErrInvalidLogin = fmt.Errorf("invalid_login")
+var (
+	ErrInvalidLogin       = fmt.Errorf("invalid_login")
+	ErrInvalidQueryResult = fmt.Errorf("invalid_result_code")
+	// context deadline exceeded
+	ErrContextDeadLineExceeded = fmt.Errorf("global_scraping_timeout")
+)
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
 type Client struct {
 	client *resty.Client
 
-	logContext []interface{}
-	logger     log.Logger
-	sc         map[string]*YAMLScript
+	// logContext []interface{}
+	logger log.Logger
+	sc     map[string]*YAMLScript
 
 	// maybe better to use target symtab with a mutex.lock
 	symtab            map[string]any
@@ -41,15 +46,14 @@ type Client struct {
 	// wait_mutex sync.Mutex
 	// wake_cond  sync.Cond
 
-	// // to protect the data during exchange
-	// content_mutex sync.Mutex
-	// msg           string
+	// to protect the data during exchange
+	content_mutex *sync.Mutex
 }
 
 func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger log.Logger, gc *GlobalConfig) *Client {
 
 	cl := &Client{
-		logContext:        []interface{}{},
+		// logContext:        []interface{}{},
 		logger:            logger,
 		sc:                sc,
 		symtab:            map[string]any{},
@@ -90,9 +94,9 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger log.Logge
 func (c *Client) Clone(target *TargetConfig) *Client {
 	//sync.Mutex{}
 	cl := &Client{
-		logContext: []interface{}{},
-		logger:     c.logger,
-		sc:         c.sc,
+		// logContext: []interface{}{},
+		logger: c.logger,
+		sc:     c.sc,
 		// wait_mutex:    sync.Mutex{},
 		// content_mutex: sync.Mutex{},
 		invalid_auth_code: c.invalid_auth_code,
@@ -150,9 +154,13 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	// }
 	cl.Init(params)
 
+	// duplicate headers from source into clone
 	for header, values := range c.client.Header {
 		cl.client.SetHeader(header, values[0])
 	}
+
+	// duplicate cookies from source into clone
+	cl.client.SetCookies(cl.client.Cookies)
 
 	auth_set, _ := GetMapValueBool(c.symtab, "auth_set")
 	if auth_set {
@@ -328,12 +336,15 @@ func (c *Client) Execute(
 					"collid", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger),
 					"msg", "received invalid auth. start Ping()/Login()")
-				if r_val, ok := c.symtab["__coll_channel"]; ok {
-					if coll_channel, ok := r_val.(chan<- int); ok {
-						coll_channel <- MsgLogin
-						c.symtab["logged"] = false
-					}
-				}
+
+				c.symtab["logged"] = false
+
+				// if r_val, ok := c.symtab["__coll_channel"]; ok {
+				// 	if coll_channel, ok := r_val.(chan<- int); ok {
+				// 		coll_channel <- MsgLogin
+				// 		c.symtab["logged"] = false
+				// 	}
+				// }
 				// if wake_cond, ok := c.symtab["__wake_cond"].(*sync.Cond); !ok {
 				// wake_cond.Signal()
 				// }
@@ -383,7 +394,13 @@ func (c *Client) Execute(
 				"script", ScriptName(c.symtab, c.logger),
 				"msg", fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
 				"errmsg", err)
-			delete(c.symtab, "response_headers")
+			code := resp.StatusCode()
+			if code == 599 || strings.Contains(err.Error(), "context deadline exceeded") {
+				err = ErrContextDeadLineExceeded
+			} else {
+				delete(c.symtab, "response_headers")
+			}
+			break
 		}
 	}
 	// something wrong with retry...
@@ -504,6 +521,21 @@ func (cl *Client) proceedHeaders() error {
 	return nil
 }
 
+func UpdateCookie(cookies []*http.Cookie, cookie *http.Cookie) []*http.Cookie {
+	found := false
+	for index, http_cookie := range cookies {
+		if http_cookie.Name == cookie.Name {
+			cookies[index] = cookie
+			found = true
+			break
+		}
+	}
+	if !found {
+		cookies = append(cookies, cookie)
+	}
+	return cookies
+}
+
 func DeleteCookie(cookies []*http.Cookie, cookie_name string) []*http.Cookie {
 	for index, http_cookie := range cookies {
 		if http_cookie.Name == cookie_name {
@@ -552,7 +584,7 @@ func (cl *Client) proceedCookies() error {
 						Name:  cookie_name,
 						Value: cookie_value,
 					}
-					cl.client.SetCookie(cookie)
+					cl.client.Cookies = UpdateCookie(cl.client.Cookies, cookie)
 				}
 			}
 		} else if cookies_list, ok := r_cookies.([]any); ok {
@@ -584,10 +616,8 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_name = value
 							}
-
-						}
-						// get value
-						if key_name == "value" {
+						} else if key_name == "value" {
+							// get value
 							switch value := r_value.(type) {
 							case *Field:
 								if cookie_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
@@ -596,10 +626,8 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_value = value
 							}
-
-						}
-						// get domain
-						if key_name == "domain" {
+						} else if key_name == "domain" {
+							// get domain
 							switch value := r_value.(type) {
 							case *Field:
 								if cookie_domain, err = value.GetValueString(cl.symtab, nil, false); err != nil {
@@ -608,9 +636,8 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_domain = value
 							}
-						}
-						// get path
-						if key_name == "path" {
+						} else if key_name == "path" {
+							// get path
 							switch value := r_value.(type) {
 							case *Field:
 								if cookie_path, err = value.GetValueString(cl.symtab, nil, false); err != nil {
@@ -619,9 +646,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_path = value
 							}
-						}
-
-						if key_name == "action" {
+						} else if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
 								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
@@ -632,8 +657,8 @@ func (cl *Client) proceedCookies() error {
 							}
 						}
 					}
-					if cookie_name != "" && cookie_value != "" {
-						if action == "add" {
+					if cookie_name != "" {
+						if action == "add" && cookie_value != "" {
 							cookie := &http.Cookie{
 								Name:  cookie_name,
 								Value: cookie_value,
@@ -647,7 +672,8 @@ func (cl *Client) proceedCookies() error {
 							if cookie_max_age != -1 {
 								cookie.MaxAge = cookie_max_age
 							}
-							cl.client.SetCookie(cookie)
+
+							cl.client.Cookies = UpdateCookie(cl.client.Cookies, cookie)
 						} else if action == "delete" || action == "remove" {
 							cl.client.Cookies = DeleteCookie(cl.client.Cookies, cookie_name)
 						}
@@ -655,6 +681,9 @@ func (cl *Client) proceedCookies() error {
 				}
 			}
 		}
+
+		// reset cookies var in symbols table
+		// delete(cl.symtab, "cookies")
 	}
 	return nil
 }
@@ -821,10 +850,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
 	resp, data, err := c.Execute(method, url, nil, payload)
 	if err != nil {
-		level.Error(c.logger).Log(
-			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"errmsg", err)
+		// level.Error(c.logger).Log(
+		// 	"collid", CollectorId(c.symtab, c.logger),
+		// 	"script", ScriptName(c.symtab, c.logger),
+		// 	"errmsg", err)
 		return err
 	}
 	if params.Debug {
@@ -847,6 +876,16 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			"script", ScriptName(c.symtab, c.logger),
 			"msg", fmt.Sprintf("invalid response status: (%d not in %v)",
 				code, valid_status))
+		// chead, err := json.Marshal(c.client.Header)
+		// cookies, err := json.Marshal(c.client.Cookies)
+		// rhead, err := json.Marshal( resp.Header())
+		level.Debug(c.logger).Log(
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger),
+			"msg", fmt.Sprintf("invalid req headers: (%v) req cookies %v- response headers: (%v)",
+				c.client.Header, c.client.Cookies, resp.Header()))
+
+		err = ErrInvalidQueryResult
 	} else {
 		if data == nil {
 			err = fmt.Errorf("fail to decode json results: %s", err)
@@ -1109,6 +1148,8 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	if params.ProxyUrl != "" {
 		cl.client.SetProxy(params.ProxyUrl)
 	}
+	// remove http.CookieJar
+	cl.client.SetCookieJar(nil)
 
 	return nil
 }
@@ -1218,16 +1259,20 @@ func (cl *Client) Ping() (bool, error) {
 	status := false
 	cl.symtab["query_status"] = false
 
+	cl.content_mutex.Lock()
+	logger := cl.logger
+	cl.content_mutex.Unlock()
+
 	// ** get the ping script definition from config if one is defined
 	if script, ok := cl.sc["ping"]; ok && script != nil {
-		level.Debug(cl.logger).Log(
-			"collid", CollectorId(cl.symtab, cl.logger),
-			"script", ScriptName(cl.symtab, cl.logger),
+		level.Debug(logger).Log(
+			"collid", CollectorId(cl.symtab, logger),
+			"script", ScriptName(cl.symtab, logger),
 			"msg", fmt.Sprintf("starting script '%s'", script.name))
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
 		// cl.symtab["check_invalid_auth"] = false
-		err := script.Play(cl.symtab, false, cl.logger)
+		err := script.Play(cl.symtab, false, logger)
 		delete(cl.symtab, "__method")
 		// delete(cl.symtab, "check_invalid_auth")
 
@@ -1236,9 +1281,9 @@ func (cl *Client) Ping() (bool, error) {
 		}
 	} else {
 		err := fmt.Errorf("no ping script found... can't connect")
-		level.Error(cl.logger).Log(
-			"collid", CollectorId(cl.symtab, cl.logger),
-			"script", ScriptName(cl.symtab, cl.logger),
+		level.Error(logger).Log(
+			"collid", CollectorId(cl.symtab, logger),
+			"script", ScriptName(cl.symtab, logger),
 			"msg", err)
 		return false, err
 	}

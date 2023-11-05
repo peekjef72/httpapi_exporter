@@ -2,6 +2,7 @@
 
 ##
 ## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/system/systemmemory/
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/system/systemmemory
 ###
 #
 
@@ -9,7 +10,7 @@ collector_name: netscaler_systemmemory_metrics
 metric_prefix: citrixadc_memory
 
 scripts:
-  get stat_system:
+  get stat_system memory:
     - name: collect stat systemmemory
       query:
         url: /stat/systemmemory
@@ -41,7 +42,7 @@ scripts:
           help: Total system memory available for PE to grab from the system.
           type: gauge
           values:
-            _: '{{ convertToBytes .memtotavailint "Mb" }}'
+            _: '{{ convertToBytes .memtotavail "Mb" }}'
 
 ...
 

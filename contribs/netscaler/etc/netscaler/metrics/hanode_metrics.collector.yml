@@ -2,6 +2,7 @@
 
 ##
 ## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/ha/hanode/
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/ha/hanode
 ###
 #
 
@@ -10,10 +11,12 @@ metric_prefix: citrixadc_ha
 
 templates:
   masterState: '
-    {{- $item := . | upper }}
     {{- $masterStateDef := dict
-          "PRIMARY"     "1"
-          "SECONDARY"   "2"
+          "PRIMARY"       "1"
+          "SECONDARY"     "2"
+          "STAYSECONDARY" "3"
+          "CLAIMING "     "4"
+          "FORCE CHANGE"  "5"
     }}
     {{ pluck . $masterStateDef | first | default "0" }}'
 
@@ -49,9 +52,9 @@ scripts:
           help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary"
           type: gauge
           key_labels:
-            node_state: "{{ .hacurmasterstate }}"
+            node_state: "{{ .hacurmasterstate | toString | lower }}"
           values:
-            _: '{{ template "masterState" .hacurmasterstate }}'
+            _: '{{ template "masterState" (.hacurmasterstate | upper) }}'
           when: eq .hacurstatus "YES"
 
         - metric_name: node_start_timestamp

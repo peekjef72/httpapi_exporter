@@ -12,6 +12,11 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/promlog"
+)
+
+var (
+	ErrTargetNotFound = fmt.Errorf("target not found")
 )
 
 // Exporter is a prometheus.Gatherer that gathers SQL metrics from targets and merges them with the default registry.
@@ -24,25 +29,37 @@ type Exporter interface {
 	Config() *Config
 	Targets() []Target
 	Logger() log.Logger
+	AddTarget(*TargetConfig) (Target, error)
 	FindTarget(string) (Target, error)
 	GetFirstTarget() (Target, error)
 	SetStartTime(time.Time)
 	GetStartTime() string
+	SetReloadTime(time.Time)
+	GetReloadTime() string
+
+	SetLogLevel(level string)
+	GetLogLevel() string
+	IncreaseLogLevel()
+
+	ReloadConfig() error
 }
 
 type exporter struct {
 	config  *Config
 	targets []Target
 
-	cur_target Target
-	ctx        context.Context
-	logger     log.Logger
-	start_time string
+	cur_target    Target
+	ctx           context.Context
+	logger        log.Logger
+	start_time    string
+	reload_time   string
+	logLevel      string
+	content_mutex *sync.Mutex
 }
 
 // NewExporter returns a new Exporter with the provided config.
 func NewExporter(configFile string, logger log.Logger, collectorName string) (Exporter, error) {
-	c, err := Load(configFile, logger, collectorName)
+	c, err := LoadConfig(configFile, logger, collectorName)
 	if err != nil {
 		return nil, err
 	}
@@ -68,20 +85,22 @@ func NewExporter(configFile string, logger log.Logger, collectorName string) (Ex
 	}
 
 	return &exporter{
-		config:  c,
-		targets: targets,
-		ctx:     context.Background(),
-		logger:  logger,
+		config:        c,
+		targets:       targets,
+		ctx:           context.Background(),
+		logger:        logger,
+		content_mutex: &sync.Mutex{},
 	}, nil
 }
 
 func (e *exporter) WithContext(ctx context.Context, t Target) Exporter {
 	return &exporter{
-		config:     e.config,
-		targets:    e.targets,
-		cur_target: t,
-		ctx:        ctx,
-		logger:     e.logger,
+		config:        e.config,
+		targets:       e.targets,
+		cur_target:    t,
+		ctx:           ctx,
+		logger:        e.logger,
+		content_mutex: e.content_mutex,
 	}
 }
 
@@ -110,6 +129,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 	// Wait for all collectors to complete, then close the channel.
 	go func() {
 		wg.Wait()
+		level.Debug(e.logger).Log("msg", "exporter.Gather(): closing metric channel")
 		close(metricChan)
 	}()
 
@@ -185,9 +205,23 @@ func (e *exporter) FindTarget(tname string) (Target, error) {
 		}
 	}
 	if !found {
-		return t_found, fmt.Errorf("target '%s' not found", tname)
+		return t_found, ErrTargetNotFound
 	}
 	return t_found, nil
+}
+
+// AddTarget implements Exporter AddTarget.
+// add a new dynamically created target to config
+func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
+	var logContext []interface{}
+
+	target, err := NewTarget(logContext, tg_config, tg_config.Collectors(), nil, e.config.Globals, e.config.HttpAPIConfig, e.logger)
+	if err != nil {
+		return nil, err
+	}
+	e.targets = append(e.targets, target)
+
+	return target, nil
 }
 
 // GetFirstTarget implements Exporter.
@@ -207,4 +241,96 @@ func (e *exporter) GetStartTime() string {
 
 func (e *exporter) SetStartTime(ti time.Time) {
 	e.start_time = ti.Format("2006-01-02T15:04:05.000Z07:00")
+}
+
+func (e *exporter) GetReloadTime() string {
+	return e.reload_time
+}
+
+func (e *exporter) SetReloadTime(ti time.Time) {
+	e.reload_time = ti.Format("2006-01-02T15:04:05.000Z07:00")
+}
+
+func (e *exporter) SetLogLevel(level string) {
+	e.logLevel = level
+}
+
+func (e *exporter) GetLogLevel() string {
+	return e.logLevel
+}
+
+func (e *exporter) IncreaseLogLevel() {
+	var Level func(log.Logger) log.Logger
+	e.content_mutex.Lock()
+	switch e.logLevel {
+	case "debug":
+		e.logLevel = "info"
+		Level = level.Info
+	case "info":
+		e.logLevel = "warn"
+		Level = level.Warn
+	case "warn":
+		e.logLevel = "error"
+		Level = level.Error
+	case "error":
+		e.logLevel = "debug"
+		Level = level.Debug
+	}
+	// e.logger =
+	// lvl := &promlog.AllowedLevel{}
+	// lvl.Set(e.logLevel)
+	// fmt := &promlog.AllowedFormat{}
+	// fmt.Set()
+	// logConfig := promlog.Config{
+	// 	Level:  lvl,
+	// 	Format: fmt,
+	// }
+	logConfig.Level.Set(e.logLevel)
+	e.logger = promlog.New(&logConfig)
+	for _, t := range e.targets {
+		t.SetLogger(e.logger)
+	}
+	e.content_mutex.Unlock()
+	// level.Info(e.logger).Log("msg", fmt.Sprintf("set log.level to %s", e.logLevel))
+	Level(e.logger).Log("msg", fmt.Sprintf("set log.level to %s", e.logLevel))
+}
+
+func (e *exporter) ReloadConfig() error {
+	e.content_mutex.Lock()
+	configFile := e.config.configFile
+	collectorName := e.config.collectorName
+	e.content_mutex.Unlock()
+
+	c, err := LoadConfig(configFile, e.logger, collectorName)
+	if err != nil {
+		return err
+	}
+
+	var targets []Target
+	var logContext []interface{}
+	if len(c.Targets) > 1 {
+		targets = make([]Target, 0, len(c.Targets)*3)
+	}
+	for _, t := range c.Targets {
+		if len(t.TargetsFiles) > 0 {
+			continue
+		}
+		target, err := NewTarget(logContext, t, t.Collectors(), nil, c.Globals, c.HttpAPIConfig, e.logger)
+		if err != nil {
+			return err
+		}
+		if len(c.Targets) > 1 {
+			targets = append(targets, target)
+		} else {
+			targets = []Target{target}
+		}
+	}
+
+	e.content_mutex.Lock()
+	e.config = c
+	e.targets = targets
+	e.SetReloadTime(time.Now())
+	e.content_mutex.Unlock()
+
+	return nil
 }

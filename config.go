@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	// "html/template"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,7 @@ import (
 )
 
 // Load attempts to parse the given config file and return a Config object.
-func Load(configFile string, logger log.Logger, collectorName string) (*Config, error) {
+func LoadConfig(configFile string, logger log.Logger, collectorName string) (*Config, error) {
 	level.Info(logger).Log("msg", fmt.Sprintf("Loading configuration from %s", configFile))
 	buf, err := os.ReadFile(configFile)
 	if err != nil {
@@ -53,9 +54,11 @@ type Config struct {
 	Targets        []*TargetConfig        `yaml:"targets,omitempty"`
 	Collectors     []*CollectorConfig     `yaml:"collectors,omitempty"`
 	HttpAPIConfig  map[string]*YAMLScript `yaml:"httpapi_config"`
+	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
 
-	configFile    string
-	logger        log.Logger
+	configFile string
+	logger     log.Logger
+	// collectorName is a restriction: collectors set for a target are replaced by this only one.
 	collectorName string
 
 	// Catches all undefined fields and must be empty after parsing.
@@ -125,6 +128,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			if err != nil {
 				return err
 			}
+		} else {
+			level.Info(c.logger).Log("msg", fmt.Sprintf("static target '%s' found", t.Name))
 		}
 	}
 	targets := c.Targets
@@ -136,8 +141,30 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 
-	if len(c.Targets) == 0 {
-		return fmt.Errorf("at least one target in `targets` must be defined")
+	// check if a target nammed "default" exists
+	// if not create one with default parameters from TargetConfig
+	found := false
+	for _, t := range c.Targets {
+		if strings.ToLower(t.Name) == "default" {
+			t.Name = "default"
+			found = true
+			break
+		}
+	}
+	if !found {
+		default_target := `
+name: default
+host: set_later
+verifySSL: true
+collectors:
+  - ~.*_metrics
+`
+		t := &TargetConfig{}
+		if err := yaml.Unmarshal([]byte(default_target), t); err != nil {
+			return err
+		}
+		c.Targets = append(c.Targets, t)
+		level.Info(c.logger).Log("msg", fmt.Sprintf("target '%s' added", t.Name))
 	}
 
 	for _, t := range c.Targets {
@@ -151,9 +178,19 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return err
 		}
 		t.collectors = cs
+
+		// substitute AuthConfig name with auth config parameters
+		if t.AuthName != "" {
+			auth := c.FindAuthConfig(t.AuthName)
+			if auth != nil {
+				t.AuthConfig = *auth
+			} else {
+				return fmt.Errorf("auth_name '%s' not found for target '%s", t.AuthName, t.Name)
+			}
+		}
 	}
 
-	// Check for empty/duplicate target names/data source names
+	// Check for empty/duplicate target names
 	tnames := make(map[string]interface{})
 	for _, t := range c.Targets {
 		if len(t.TargetsFiles) > 0 {
@@ -198,6 +235,15 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(c.XXX, "config")
 }
 
+func (c *Config) FindAuthConfig(auth_name string) *AuthConfig {
+	var auth *AuthConfig
+	auth, found := c.AuthConfigs[auth_name]
+	if !found {
+		return nil
+	}
+	return auth
+}
+
 func GetScriptsDef(map_src map[string]*YAMLScript) map[string]ActionsList {
 	var val ActionsList
 	scdef := make(map[string]ActionsList, len(map_src)+1)
@@ -215,6 +261,7 @@ type dumpConfig struct {
 	Globals        *GlobalConfig          `yaml:"global"`
 	CollectorFiles []string               `yaml:"collector_files,omitempty"`
 	Collectors     []*dumpCollectorConfig `yaml:"collectors,omitempty"`
+	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
 	// HttpAPIConfig  map[string]*ActionsList `yaml:"httpapi_config"`
 	HttpAPIConfig map[string]ActionsList `yaml:"httpapi_config"`
 }
@@ -223,6 +270,7 @@ type dumpConfig struct {
 func (c *Config) YAML() ([]byte, error) {
 	dc := &dumpConfig{
 		Globals:        c.Globals,
+		AuthConfigs:    c.AuthConfigs,
 		CollectorFiles: c.CollectorFiles,
 		Collectors:     GetCollectorsDef(c.Collectors),
 		HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
@@ -341,8 +389,8 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Default tp 3
 	g.QueryRetry = 3
 
-	// Default to hp3par
-	g.MetricPrefix = "hp3par"
+	// Default to httpapi
+	g.MetricPrefix = "httpapi"
 
 	type plain GlobalConfig
 	if err := unmarshal((*plain)(g)); err != nil {
@@ -379,6 +427,7 @@ type TargetConfig struct {
 	Host       string     `yaml:"host"`
 	Port       string     `yaml:"port,omitempty"`
 	BaseUrl    string     `yaml:"baseUrl,omitempty"`
+	AuthName   string     `yaml:"auth_name,omitempty"`
 	AuthConfig AuthConfig `yaml:"auth_mode,omitempty"`
 	// Username          string             `yaml:"user,omitempty"`
 	// Password          Secret             `yaml:"password,omitempty"` // data source definition to connect to
@@ -505,6 +554,54 @@ func (t *TargetConfig) checkLabelCollisions() error {
 		}
 	}
 	return nil
+}
+
+// method to build a temporary TargetConfig from "default" with host_name & and auth_name
+func (t *TargetConfig) Clone(host_path string, auth_name string) (*TargetConfig, error) {
+	new := &TargetConfig{
+		Name:             host_path,
+		Scheme:           t.Scheme,
+		Host:             t.Host,
+		Port:             t.Port,
+		BaseUrl:          t.BaseUrl,
+		AuthConfig:       t.AuthConfig,
+		ProxyUrl:         t.ProxyUrl,
+		ScrapeTimeout:    t.ScrapeTimeout,
+		Labels:           t.Labels,
+		QueryRetry:       t.QueryRetry,
+		collectors:       t.collectors,
+		verifySSLUserSet: t.verifySSLUserSet,
+		verifySSL:        t.verifySSL,
+	}
+
+	url_elmt, err := url.Parse(host_path)
+	if err != nil {
+		return nil, err
+	}
+	if url_elmt.Scheme != "" && new.Scheme != url_elmt.Scheme {
+		new.Scheme = url_elmt.Scheme
+	}
+	if url_elmt.Host == "" && url_elmt.Path != "" {
+		new.Host = url_elmt.Path
+	} else {
+		if url_elmt.Host != "" {
+			elmts := strings.Split(url_elmt.Host, ":")
+			if new.Host != elmts[0] {
+				new.Host = elmts[0]
+			}
+			if len(elmts) > 1 {
+				new.Port = elmts[1]
+			}
+		}
+	}
+	if url_elmt.User.Username() != "" {
+		new.AuthConfig.Username = url_elmt.User.Username()
+		if tmp, set := url_elmt.User.Password(); set {
+			new.AuthConfig.Password = Secret(tmp)
+		}
+		new.AuthConfig.Mode = "basic"
+	}
+	return new, nil
 }
 
 //
@@ -861,63 +958,6 @@ func (auth *AuthConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	return nil
 }
-
-// MarshalYAML implements the yaml.Marshaler interface for AuthConfig.
-// func (auth AuthConfig) MarshalYAML() (interface{}, error) {
-// 	var (
-// 		ymlname string
-// 		val     string
-// 		buffer  bytes.Buffer
-// 	)
-// 	nptype := reflect.TypeOf(auth)
-// 	values := reflect.ValueOf(auth)
-// 	for i := 0; i < nptype.NumField(); i++ {
-// 		// prints empty line if there is no json tag for the field
-// 		field := nptype.Field(i)
-// 		val = ""
-// 		t_name := field.Type.Name()
-// 		if t_name == "string" || t_name == "Secret" {
-// 			val = values.Field(i).String()
-// 			if val == "" {
-// 				continue
-// 			}
-// 		}
-// 		tags := field.Tag.Get("yaml")
-// 		elmts := strings.Split(tags, ",")
-// 		if len(elmts) > 0 {
-// 			ymlname = elmts[0]
-// 		} else {
-// 			ymlname = ""
-// 		}
-// 		if field.Type.Name() == "string" {
-// 			// val = values.Field(i)
-// 			buffer.WriteString(ymlname)
-// 			buffer.WriteString(": ")
-// 			buffer.WriteString(val)
-// 			buffer.WriteString("\n")
-// 		} else {
-// 			indent := "    "
-// 			buffer.WriteString(ymlname)
-// 			buffer.WriteString(":\n")
-// 			value := values.Field(i)
-// 			b, err := yaml.Marshal(value.Interface())
-// 			if err == nil {
-// 				b = bytes.TrimRight(b, "\n")
-// 				res := bytes.SplitAfter(b, []byte("\n"))
-// 				if len(res) > 1 {
-// 					for _, val := range res {
-// 						buffer.WriteString(indent)
-// 						buffer.Write(val)
-// 						// buffer.WriteString("\n")
-// 					}
-// 				}
-// 			} else {
-// 				return nil, err
-// 			}
-// 		}
-// 	}
-// 	return buffer.String(), nil
-// }
 
 // *************************************************************************************************
 func checkCollectorRefs(collectorRefs []string, ctx string) error {

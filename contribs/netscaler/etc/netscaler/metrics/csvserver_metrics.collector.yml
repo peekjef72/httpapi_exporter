@@ -10,7 +10,7 @@ collector_name: netscaler_csvserver_metrics
 metric_prefix: citrixadc_csvserver
 
 scripts:
-  get stat_lbvserver:
+  get stat_csvserver:
     - name: init csvserver var
       set_fact:
          csvserv: {}

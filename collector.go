@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	// "sync"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -22,6 +22,7 @@ type Collector interface {
 	GetName() (id string)
 	GetId() (id string)
 	GetStatus() int
+	SetLogger(log.Logger)
 }
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
@@ -33,7 +34,10 @@ type collector struct {
 	collect_script []*YAMLScript
 	// metricFamilies []*MetricFamily
 	status int
-	logger log.Logger
+
+	// to protect the data during exchange
+	content_mutex *sync.Mutex
+	logger        log.Logger
 }
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
@@ -100,6 +104,7 @@ func NewCollector(
 		logger:     logger,
 		// metricFamilies: mfs,
 		collect_script: collect_script,
+		content_mutex:  &sync.Mutex{},
 	}
 
 	if c.config.MinInterval > 0 {
@@ -141,6 +146,13 @@ func (c *collector) GetName() (id string) {
 // obtain the status of collector scripts execution
 func (c *collector) GetStatus() int {
 	return c.status
+}
+
+func (c *collector) SetLogger(logger log.Logger) {
+	c.content_mutex.Lock()
+	c.logger = logger
+	// c.client.logger = logger
+	c.content_mutex.Unlock()
 }
 
 // type CollectContext struct {
@@ -202,16 +214,20 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 			"collid", CollectorId(c.client.symtab, c.logger),
 			"msg", fmt.Sprintf("starting script '%s/%s'", c.config.Name, scr.name))
 		if err := scr.Play(c.client.symtab, false, c.logger); err != nil {
-			if err != ErrInvalidLogin {
+			switch err {
+			case ErrInvalidLogin:
+				coll_ch <- MsgLogin
+			case ErrContextDeadLineExceeded:
+				coll_ch <- MsgTimeout
+			default:
 				level.Warn(c.logger).Log(
 					"collid", CollectorId(c.client.symtab, c.logger),
 					"script", ScriptName(c.client.symtab, c.logger),
 					"errmsg", err)
-				status = 0
 				coll_ch <- MsgQuit
-				break
 			}
 			status = 0
+			break
 		}
 	}
 
@@ -219,14 +235,12 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 	c.status = status
 
 	// tell calling target that this collector is over.
-	if r_val, ok := c.client.symtab["__coll_channel"]; ok {
-		if coll_channel, ok := r_val.(chan<- int); ok {
-			coll_channel <- MsgDone
-			level.Debug(c.logger).Log(
-				"collid", CollectorId(c.client.symtab, c.logger),
-				"script", ScriptName(c.client.symtab, c.logger),
-				"msg", "MsgDone sent to channel.")
-		}
+	if status != 0 {
+		coll_ch <- MsgDone
+		level.Debug(c.logger).Log(
+			"collid", CollectorId(c.client.symtab, c.logger),
+			"script", ScriptName(c.client.symtab, c.logger),
+			"msg", "MsgDone sent to channel.")
 	}
 
 	// clean up
@@ -239,7 +253,6 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 	if reset_coll_id {
 		delete(c.client.symtab, "__collector_id")
 	}
-	// delete(c.client.symtab, "__metricfamilies")
 }
 
 // newCachingCollector returns a new Collector wrapping the provided raw Collector.
@@ -291,6 +304,10 @@ func (cc *cachingCollector) GetId() (id string) {
 // obtain the status of collector scripts execution
 func (cc *cachingCollector) GetStatus() int {
 	return cc.rawColl.status
+}
+
+func (cc *cachingCollector) SetLogger(logger log.Logger) {
+	cc.rawColl.SetLogger(logger)
 }
 
 // Collect implements Collector.

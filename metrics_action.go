@@ -170,23 +170,25 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		"script", ScriptName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)))
 
+	// this can't arrive because previous c.Collect() / c.client.Execute() has returned ErrInvalidQueryResult
+	// so collect() stops and don't play metrics_actions.
 	query_status, ok := GetMapValueBool(symtab, "query_status")
 	if !ok || (ok && !query_status) {
 		level.Debug(logger).Log(
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - previous query has invalid status skipping", a.GetName(symtab, logger)))
-		return nil
+		return ErrInvalidQueryResult
 	}
 
 	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel wrong type)\"",
+			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (metric channel wrong type)\"",
 				CollectorId(symtab, logger),
 				ScriptName(symtab, logger)))
 		}
 	} else {
-		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel not set)\"",
+		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (metric channel not set)\"",
 			CollectorId(symtab, logger),
 			ScriptName(symtab, logger)))
 	}

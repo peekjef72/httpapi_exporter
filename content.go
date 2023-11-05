@@ -101,6 +101,10 @@ const (
 				<th>Server start</th>
 				<td>{{ .Version.StartTime }}</td>
 			</tr>
+			<tr>
+				<th>Server last reload</th>
+				<td>{{ .Version.ReloadTime }}</td>
+			</tr>
 		</tbody>
 	</table>
   {{- end }}
@@ -113,13 +117,14 @@ const (
 )
 
 type versionInfo struct {
-	Version   string
-	Revision  string
-	Branch    string
-	BuildUser string
-	BuildDate string
-	GoVersion string
-	StartTime string
+	Version    string
+	Revision   string
+	Branch     string
+	BuildUser  string
+	BuildDate  string
+	GoVersion  string
+	StartTime  string
+	ReloadTime string
 }
 type tdata struct {
 	ExporterName string
@@ -185,13 +190,14 @@ func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		vinfos := versionInfo{
-			Version:   version.Version,
-			Revision:  version.Revision,
-			Branch:    version.Branch,
-			BuildUser: version.BuildUser,
-			BuildDate: version.BuildDate,
-			GoVersion: runtime.Version(),
-			StartTime: exporter.GetStartTime(),
+			Version:    version.Version,
+			Revision:   version.Revision,
+			Branch:     version.Branch,
+			BuildUser:  version.BuildUser,
+			BuildDate:  version.BuildDate,
+			GoVersion:  runtime.Version(),
+			StartTime:  exporter.GetStartTime(),
+			ReloadTime: exporter.GetReloadTime(),
 		}
 
 		statusTemplate.Execute(w, &tdata{

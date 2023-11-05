@@ -1,7 +1,8 @@
 ---
 
 ##
-## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/basic/servicegroup/
+## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/basic/servicegroup/
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/stat/lbvserver
 ### Statistics for servicegroup.
 #
 
@@ -31,11 +32,14 @@ scripts:
 
 
     - name: proceed elements
+      # loop on element with a defined name and state is "UP"
       # to debug first element
       # loop: '{{ list ( index .sg.servicegroup 0 ) | toRawJson }}'
       loop: '{{ .results.lbvserver | toRawJson }}'
       when:
+        
         - exporterHasKey .item "name"
+        - eq .item.state "UP"
       actions:
 
         - name: get lbvserver group info

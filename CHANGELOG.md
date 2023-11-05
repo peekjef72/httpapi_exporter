@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.3.3 / 2023-11-05
+ - add auth_key argument for cli in dry_mode
+ - add log.level cycling with signal USER2
+ - add Authconfig, dynamic targets
+ - fix logout with cookies set
+ - fix clear script calls
+ - fix global scrape timeout detection
+ - fix scrape timeout by target
+ - fix global cookies (always appended)
+ - config reload with signal HUP.
+ - minor bugfixes (log)
+
 ## 0.3.2 / 2023-10-19
  - bugfixes
 

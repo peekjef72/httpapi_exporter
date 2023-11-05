@@ -27,29 +27,73 @@ const (
 // ExporterHandlerFor returns an http.Handler for the provided Exporter.
 func ExporterHandlerFor(exporter Exporter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		var (
+			err    error
+			target Target
+			tmp_t  *TargetConfig
+		)
 		params := req.URL.Query()
+
 		tname := params.Get("target")
 		if tname == "" {
 			err := fmt.Errorf("Target parameter is missing")
 			HandleError(http.StatusBadRequest, err, *metricsPath, exporter, w, req)
 			return
 		}
-
-		t, err := exporter.FindTarget(tname)
-		if err != nil {
+		target, err = exporter.FindTarget(tname)
+		if err == ErrTargetNotFound {
+			model := params.Get("model")
+			if model == "" {
+				model = "default"
+			}
+			t_def, err := exporter.FindTarget(model)
+			if err != nil {
+				err := fmt.Errorf("Target model '%s' not found: %s", model, err)
+				HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
+				return
+			}
+			if tmp_t, err = t_def.Config().Clone(tname, ""); err != nil {
+				err := fmt.Errorf("invalid url set for remote_target '%s' %s", tname, err)
+				HandleError(http.StatusInternalServerError, err, *metricsPath, exporter, w, req)
+				return
+			}
+			target, err = exporter.AddTarget(tmp_t)
+			if err != nil {
+				err := fmt.Errorf("unable to create temporary target %s", err)
+				HandleError(http.StatusInternalServerError, err, *metricsPath, exporter, w, req)
+				return
+			}
+			exporter.Config().Targets = append(exporter.Config().Targets, tmp_t)
+		} else if err != nil {
 			HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
 			return
 		}
 
+		// set authentication for target if one is specified and it differs from target internal
+		auth_name := params.Get("auth_name")
+		if auth_name != "" && target.Config().AuthName != auth_name {
+			auth := exporter.Config().FindAuthConfig(auth_name)
+			if auth != nil {
+				target.Config().AuthConfig = *auth
+				target.SetSymbol("auth_mode", auth.Mode)
+				target.SetSymbol("user", auth.Username)
+				target.SetSymbol("password", string(auth.Password))
+				target.SetSymbol("auth_token", string(auth.Token))
+				target.Config().AuthName = auth_name
+			}
+		}
+
 		auth_key := params.Get("auth_key")
 		if auth_key != "" {
-			t.SetSymbol("auth_key", auth_key)
+			target.SetSymbol("auth_key", auth_key)
 		}
-		ctx, cancel := contextFor(req, exporter)
-		defer cancel()
+		ctx, cancel := contextFor(req, exporter, target)
+		defer func() {
+			cancel()
+		}()
 
 		// Go through prometheus.Gatherers to sanitize and sort metrics.
-		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t)}
+		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, target)}
 		mfs, err := gatherer.Gather()
 		if err != nil {
 			level.Error(exporter.Logger()).Log("msg", fmt.Sprintf("Error gathering metrics for '%s': %s", tname, err))
@@ -89,9 +133,9 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 	})
 }
 
-func contextFor(req *http.Request, exporter Exporter) (context.Context, context.CancelFunc) {
+func contextFor(req *http.Request, exporter Exporter, target Target) (context.Context, context.CancelFunc) {
 	timeout := time.Duration(0)
-	configTimeout := time.Duration(exporter.Config().Globals.ScrapeTimeout)
+	configTimeout := time.Duration(target.Config().ScrapeTimeout)
 	// If a timeout is provided in the Prometheus header, use it.
 	if v := req.Header.Get("X-Prometheus-Scrape-Timeout-Seconds"); v != "" {
 		timeoutSeconds, err := strconv.ParseFloat(v, 64)
@@ -117,9 +161,14 @@ func contextFor(req *http.Request, exporter Exporter) (context.Context, context.
 	}
 
 	if timeout <= 0 {
+		target.SetDeadline(time.Time{})
 		return context.Background(), func() {}
 	}
-	return context.WithTimeout(context.Background(), timeout)
+	level.Debug(exporter.Logger()).Log("msg", fmt.Sprintf("launching exporter.Gather() with timeout `%s`", timeout))
+	target.SetDeadline(time.Now().Add(timeout))
+
+	return context.WithDeadline(context.Background(), target.GetDeadline())
+	// return context.WithTimeout(context.Background(), timeout)
 }
 
 var bufPool sync.Pool

@@ -37,6 +37,10 @@ type Target interface {
 	Name() string
 	SetSymbol(string, any) error
 	Config() *TargetConfig
+	GetDeadline() time.Time
+	SetDeadline(time.Time)
+	SetLogger(log.Logger)
+	// Update(string, string) error
 	// YAML() ([]byte, error)
 }
 
@@ -54,7 +58,8 @@ type target struct {
 	collectorStatusDesc MetricDesc
 	logContext          []interface{}
 
-	logger log.Logger
+	logger   log.Logger
+	deadline time.Time
 
 	// symbols table
 	// tsymtab map[string]any
@@ -63,8 +68,9 @@ type target struct {
 	// wait_mutex sync.Mutex
 	// wake_cond  sync.Cond
 
+	has_ever_logged bool
 	// to protect the data during exchange
-	// content_mutex sync.Mutex
+	content_mutex *sync.Mutex
 	// msg           int
 }
 
@@ -81,6 +87,8 @@ const (
 	MsgQuit = iota
 	// one collect is over
 	MsgDone = iota
+	// one collect has received global timeout
+	MsgTimeout = iota
 )
 
 func Msg2Text(msg int) string {
@@ -98,6 +106,8 @@ func Msg2Text(msg int) string {
 		ret = "MsgQuit"
 	case MsgDone:
 		ret = "MsgDone"
+	case MsgTimeout:
+		ret = "MsgTimeout"
 	}
 	return ret
 }
@@ -165,11 +175,14 @@ func NewTarget(
 		logContext:          logContext,
 		logger:              logger,
 		// wait_mutex:         sync.Mutex{},
-		// content_mutex:      sync.Mutex{},
+		content_mutex: &sync.Mutex{},
 	}
 	if t.client == nil {
 		return nil, fmt.Errorf("internal http client undefined")
 	}
+	// shared content mutex between target and client
+	t.client.content_mutex = t.content_mutex
+
 	// t.wake_cond = *sync.NewCond(&t.wait_mutex)
 
 	// init the symbols tab
@@ -197,19 +210,49 @@ func (t *target) SetSymbol(key string, value any) error {
 	return nil
 }
 
-// func (t *target) startCollect(wg *sync.WaitGroup, ctx context.Context, ch chan<- Metric) {
-// 	wg.Add(len(t.collectors))
-// 	for _, c := range t.collectors {
-// 		// have to build a new client copy to allow multi connection to target
-// 		c_client := t.client.Clone()
-// 		c.SetClient(c_client)
+// Getter for deadline
+func (t *target) GetDeadline() time.Time {
+	return t.deadline
+}
 
-// 		// If using a single target connection, collectors will likely run sequentially anyway. But we might have more.
-// 		go func(collector Collector) {
-// 			defer wg.Done()
-// 			collector.Collect(ctx, ch)
-// 		}(c)
+// Setter for deadline
+func (t *target) SetDeadline(tt time.Time) {
+	t.deadline = tt
+}
+
+func (t *target) SetLogger(logger log.Logger) {
+	t.content_mutex.Lock()
+	t.logger = logger
+	t.client.logger = logger
+	for _, c := range t.collectors {
+		c.SetLogger(logger)
+	}
+	t.content_mutex.Unlock()
+}
+
+// func (t *target) Update(host_path string, auth_name string) error {
+// 	url_elmt, err := url.Parse(host_path)
+// 	if err != nil {
+// 		return err
 // 	}
+// 	if t.config.Scheme != url_elmt.Scheme {
+// 		t.config.Scheme = url_elmt.Scheme
+// 	}
+// 	elmts := strings.Split(url_elmt.Host, ":")
+// 	if t.config.Host != elmts[0] {
+// 		t.config.Host = elmts[0]
+// 	}
+// 	if len(elmts) > 1 {
+// 		t.config.Port = elmts[1]
+// 	}
+// 	if url_elmt.User.Username() != "" {
+// 		t.config.AuthConfig.Username = url_elmt.User.Username()
+// 		if tmp, set := url_elmt.User.Password(); set {
+// 			t.config.AuthConfig.Password = Secret(tmp)
+// 		}
+// 		t.config.AuthConfig.Mode = "basic"
+// 	}
+// 	return nil
 // }
 
 // Collect implements Target.
@@ -246,16 +289,24 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 		switch msg {
 
 		case MsgLogin:
-			level.Debug(t.logger).Log(
-				"collid", t.name,
+			t.content_mutex.Lock()
+			logger := t.logger
+			t.content_mutex.Unlock()
+			level.Debug(logger).Log(
+				"collid", fmt.Sprintf("ping/%s", t.name),
 				"msg", "target: received MsgLogin")
 			if msg == MsgLogin && !has_logged {
 				t.client.Clear()
 				if status, err := t.client.Login(); err != nil {
+					level.Error(t.logger).Log(
+						"collid", fmt.Sprintf("ping/%s", t.name),
+						"script", "ping/login",
+						"errmsg", err)
 					collectChan <- MsgQuit
 				} else {
 					if status {
 						has_logged = true
+						t.has_ever_logged = true
 						collectChan <- MsgPing
 					} else {
 						collectChan <- MsgQuit
@@ -263,8 +314,11 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				}
 			}
 		case MsgPing:
-			level.Debug(t.logger).Log(
-				"collid", t.name,
+			t.content_mutex.Lock()
+			logger := t.logger
+			t.content_mutex.Unlock()
+			level.Debug(logger).Log(
+				"collid", fmt.Sprintf("ping/%s", t.name),
 				"msg", "target: received MsgPing")
 			// If using a single target connection, collectors will likely run sequentially anyway. But we might have more.
 			wg_coll.Add(1)
@@ -273,41 +327,59 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				// collector.Collect(ctx, met_ch, &t.wake_cond)
 				targetUp, err = t.ping(ctx, met_ch, collectChan)
 			}(t, met_ch, collectChan)
-			level.Debug(t.logger).Log(
-				"collid", t.name,
+			level.Debug(logger).Log(
+				"collid", fmt.Sprintf("ping/%s", t.name),
 				"msg", "target: ping send MsgWait")
 			collectChan <- MsgWait
 
 		case MsgQuit:
-			level.Debug(t.logger).Log(
-				"collid", t.name,
+			t.content_mutex.Lock()
+			logger := t.logger
+			t.content_mutex.Unlock()
+			level.Debug(logger).Log(
+				"collid", fmt.Sprintf("ping/%s", t.name),
 				"msg", "target: ping received MsgQuit")
 			leave_loop = true
 
-		case MsgWait:
-			level.Debug(t.logger).Log(
+		case MsgTimeout:
+			t.content_mutex.Lock()
+			logger := t.logger
+			t.content_mutex.Unlock()
+			level.Debug(logger).Log(
 				"collid", t.name,
+				"msg", "target: ping received MsgTimeout")
+			leave_loop = true
+
+		case MsgWait:
+			t.content_mutex.Lock()
+			logger := t.logger
+			t.content_mutex.Unlock()
+			level.Debug(logger).Log(
+				"collid", fmt.Sprintf("ping/%s", t.name),
 				"msg", "start waiting for ping is over")
 			wg_coll.Wait()
-			level.Debug(t.logger).Log(
-				"collid", t.name,
+			t.content_mutex.Lock()
+			logger = t.logger
+			t.content_mutex.Unlock()
+			level.Debug(logger).Log(
+				"collid", fmt.Sprintf("ping/%s", t.name),
 				"msg", "after waiting for ping is over")
 			need_login := false
 			submsg := <-collectChan
 
 			switch submsg {
 			case MsgLogin:
-				level.Debug(t.logger).Log(
-					"collid", t.name,
+				level.Debug(logger).Log(
+					"collid", fmt.Sprintf("ping/%s", t.name),
 					"msg", "target ping wait: received MsgLogin")
 				need_login = true
 			case MsgDone:
-				level.Debug(t.logger).Log(
-					"collid", t.name,
+				level.Debug(logger).Log(
+					"collid", fmt.Sprintf("ping/%s", t.name),
 					"msg", "target ping wait: received MsgDone")
 			default:
-				level.Debug(t.logger).Log(
-					"collid", t.name,
+				level.Debug(logger).Log(
+					"collid", fmt.Sprintf("ping/%s", t.name),
 					"msg", fmt.Sprintf("target ping wait: received msg =[%s] from collector", Msg2Text(submsg)))
 			}
 			if need_login {
@@ -370,9 +442,12 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 			switch msg {
 
 			case MsgLogin:
-				level.Debug(t.logger).Log(
+				t.content_mutex.Lock()
+				logger := t.logger
+				t.content_mutex.Unlock()
+				level.Debug(logger).Log(
 					"collid", t.name,
-					"msg", "target: received MsgLogin")
+					"msg", fmt.Sprintf("target: received MsgLogin / check has_logged: %v", has_logged))
 				// check if we have already logged to target ?
 				// if not then set msg to directly try to login
 				// if logged, ok := GetMapValueBool(t.client.symtab, "logged"); ok && logged {
@@ -381,9 +456,6 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				// 	// t.content_mutex.Unlock()
 				// 	has_logged = logged
 				// }
-				level.Debug(t.logger).Log(
-					"collid", t.name,
-					"msg", fmt.Sprintf("target: MsgLogin check has_logged: %v", has_logged))
 				t.client.symtab["__collector_id"] = t.name
 				if msg == MsgLogin && !has_logged {
 					//
@@ -412,11 +484,14 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				delete(t.client.symtab, "__collector_id")
 
 			case MsgCollect:
-				level.Debug(t.logger).Log(
+				t.content_mutex.Lock()
+				logger := t.logger
+				t.content_mutex.Unlock()
+				level.Debug(logger).Log(
 					"collid", t.name,
 					"msg", "target: received MsgCollect")
 				wg_coll.Add(len(t.collectors))
-				level.Debug(t.logger).Log(
+				level.Debug(logger).Log(
 					"collid", t.name,
 					"msg", fmt.Sprintf("target: send %d collector(s)", len(t.collectors)))
 
@@ -430,21 +505,53 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 					// c.SetClient(t.client)
 
 					// If using a single target connection, collectors will likely run sequentially anyway. But we might have more.
-					go func(collector Collector) {
-						defer wg_coll.Done()
+					go func(collector Collector, deadline time.Time) {
+						var (
+							coll_ctx context.Context
+							cancel   context.CancelFunc
+						)
+						// init a cancelable calling  for each collector if a deadline has been set for scraping
+						if deadline.IsZero() {
+							coll_ctx = ctx
+							cancel = func() {
+							}
+						} else {
+							coll_ctx, cancel = context.WithDeadline(ctx, deadline)
+						}
+
+						defer func() {
+							cancel()
+							wg_coll.Done()
+						}()
 						// collector.Collect(ctx, met_ch, &t.wake_cond)
-						collector.Collect(ctx, met_ch, collectChan)
-					}(c)
+						collector.Collect(coll_ctx, met_ch, collectChan)
+					}(c, t.GetDeadline())
 				}
-				level.Debug(t.logger).Log(
+				level.Debug(logger).Log(
 					"collid", t.name,
 					"msg", "target: send MsgWait")
 				delete(t.client.symtab, "__collector_id")
 
 				collectChan <- MsgWait
 
+			case MsgTimeout:
+				t.content_mutex.Lock()
+				logger := t.logger
+				t.content_mutex.Unlock()
+				level.Debug(logger).Log(
+					"collid", t.name,
+					"msg", "target: received MsgTimeout")
+
+				if !has_quitted {
+					close(collectChan)
+					has_quitted = true
+				}
+
 			case MsgQuit:
-				level.Debug(t.logger).Log(
+				t.content_mutex.Lock()
+				logger := t.logger
+				t.content_mutex.Unlock()
+				level.Debug(logger).Log(
 					"collid", t.name,
 					"msg", "target: received MsgQuit")
 
@@ -454,18 +561,24 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				}
 
 			case MsgWait:
-				level.Debug(t.logger).Log(
+				t.content_mutex.Lock()
+				logger := t.logger
+				t.content_mutex.Unlock()
+				level.Debug(logger).Log(
 					"collid", t.name,
 					"msg", "start waiting for all collectors are over")
 
 				wg_coll.Wait()
-				level.Debug(t.logger).Log(
+				t.content_mutex.Lock()
+				logger = t.logger
+				t.content_mutex.Unlock()
+				level.Debug(logger).Log(
 					"collid", t.name,
 					"msg", "after waiting for all collectors is over")
 				need_login := false
 				// we have received len(t.collectors) msgs from collectors
 				for i := 0; i < len(t.collectors); i++ {
-					level.Debug(t.logger).Log(
+					level.Debug(logger).Log(
 						"collid", t.name,
 						"msg", fmt.Sprintf("target wait: read msg[%d] from collector", i))
 					submsg := <-collectChan
@@ -473,15 +586,14 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 
 					switch submsg {
 					case MsgLogin:
-						level.Debug(t.logger).Log(
+						level.Debug(logger).Log(
 							"collid", t.name,
 							"msg", "target wait: received MsgLogin")
 						need_login = true
 					default:
-						level.Debug(t.logger).Log(
+						level.Debug(logger).Log(
 							"collid", t.name,
 							"msg", fmt.Sprintf("target wait: received msg[%d]=[%s] from collector", i, Msg2Text(submsg)))
-						// Export the target's `up` metric as early as we know what it should be.
 					}
 				}
 				if need_login {
@@ -489,7 +601,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 					t.client.symtab["logged"] = false
 					has_logged = false
 					if logged, ok := GetMapValueBool(t.client.symtab, "logged"); ok && logged {
-						level.Debug(t.logger).Log(
+						level.Debug(logger).Log(
 							"collid", t.name,
 							"msg", fmt.Sprintf("target: MsgLogin check has_logged: %v", logged))
 					}
@@ -523,75 +635,56 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 		}()
 	}
 
-	// Wait for all collectors (if any) to complete.
-	// wg.Wait()
-	level.Debug(t.logger).Log("msg", "collectors have stopped")
-	// tell the "waiting login" func to stop
-	// t.content_mutex.Lock()
-	// t.msg = MsgQuit
-	// t.content_mutex.Unlock()
-	// t.wake_cond.Signal()
+	t.content_mutex.Lock()
+	logger := t.logger
+	t.content_mutex.Unlock()
+	level.Debug(logger).Log("msg", "collectors have stopped")
 
 	if t.name != "" {
 		// And exporter a `collector execution status` metric for each collector once we're done scraping.
-		labels_name := make([]string, 1)
-		labels_name[0] = "collectorname"
-		labels_value := make([]string, 1)
-		for _, c := range t.collectors {
-			labels_value[0] = c.GetName()
-			level.Debug(t.logger).Log(
-				"collid", t.name,
-				"msg", fmt.Sprintf("target collector['%s'] collid=[%s] has status [%d]", labels_value[0], c.GetId(), c.GetStatus()))
-			met_ch <- NewMetric(t.collectorStatusDesc, float64(c.GetStatus()), labels_name, labels_value)
+		if targetUp {
+			labels_name := make([]string, 1)
+			labels_name[0] = "collectorname"
+			labels_value := make([]string, 1)
+			for _, c := range t.collectors {
+				labels_value[0] = c.GetName()
+				level.Debug(logger).Log(
+					"collid", t.name,
+					"msg", fmt.Sprintf("target collector['%s'] collid=[%s] has status [%d]", labels_value[0], c.GetId(), c.GetStatus()))
+				met_ch <- NewMetric(t.collectorStatusDesc, float64(c.GetStatus()), labels_name, labels_value)
+			}
 		}
 		// And exporter a `scrape duration` metric once we're done scraping.
 		met_ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9, nil, nil)
 	}
 }
 
-// YAML marshals the config into YAML format.
-// type tconfig struct {
-// 	Name       string     `yaml:"name"` // target name to connect to from prometheus
-// 	Scheme     string     `yaml:"scheme"`
-// 	Host       string     `yaml:"host"`
-// 	Port       string     `yaml:"port"`
-// 	BaseUrl    string     `yaml:"baseUrl"`
-// 	AuthConfig AuthConfig `yaml:"auth_mode,omitempty"`
-// 	ProxyUrl          string             `yaml:"proxy"`
-// 	VerifySSL         ConvertibleBoolean `yaml:"verifySSL"`
-// 	ConnectionTimeout model.Duration     `yaml:"connection_timeout"`      // connection timeout, per-target
-// 	Labels            map[string]string  `yaml:"labels,omitempty"`        // labels to apply to all metrics collected from the targets
-// 	CollectorRefs     []string           `yaml:"collectors"`              // names of collectors to execute on the target
-// 	TargetsFiles      []string           `yaml:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
-// 	QueryRetry        string             `yaml:"query_retry,omitempty"`   // target specific number of times to retry a query
-// }
-
-// func (t *target) YAML() ([]byte, error) {
-// 	tcfg := &tconfig{
-// 		Name:              t.Name(),
-// 		Scheme:            t.Sc,
-// 		Host:              "",
-// 		Port:              "",
-// 		BaseUrl:           "",
-// 		AuthConfig:        AuthConfig{},
-// 		ProxyUrl:          "",
-// 		VerifySSL:         false,
-// 		ConnectionTimeout: t,
-// 		Labels:            map[string]string{},
-// 		CollectorRefs:     []string{},
-// 		TargetsFiles:      []string{},
-// 		QueryRetry:        "",
-// 	}
-// 	return yaml.Marshal(tcfg)
-// }
-
 // ping implement ping for target
 func (t *target) ping(ctx context.Context, ch chan<- Metric, coll_ch chan<- int) (bool, error) {
 	t.client.symtab["__coll_channel"] = coll_ch
 	// t.client.symtab["__collector_id"] = t.name
 	status, err := t.client.Ping()
-	// tell command is over.
-	coll_ch <- MsgDone
+	if err != nil {
+		switch err {
+		case ErrInvalidLogin:
+			if t.has_ever_logged {
+				level.Error(t.logger).Log(
+					"collid", fmt.Sprintf("ping/%s", t.name),
+					"errmsg", err)
+			}
+			coll_ch <- MsgLogin
+		case ErrContextDeadLineExceeded:
+			coll_ch <- MsgTimeout
+		default:
+			// level.Warn(t.logger).Log(
+			// 	"collid", CollectorId(t.client.symtab, t.logger),
+			// 	"script", ScriptName(t.client.symtab, t.logger),
+			// 	"errmsg", err)
+			coll_ch <- MsgQuit
+		}
+	} else {
+		coll_ch <- MsgDone
+	}
 	delete(t.client.symtab, "__coll_channel")
 	// delete(t.client.symtab, "__collector_id")
 	return status, err
@@ -604,39 +697,3 @@ func boolToFloat64(value bool) float64 {
 	}
 	return 0.0
 }
-
-// type targets []target
-
-// func (ts targets) YAML() ([]byte, error) {
-// 	var full, content []byte
-// 	var err error
-
-// 	for t := range ts {
-// 		content, err = yaml.Marshal(t)
-// 		if err != nil {
-// 			content = nil
-// 			return content, err
-// 		}
-// 		full = append(full, content...)
-// 	}
-// 	return full, err
-// }
-
-// type Targets interface {
-// 	YAML() ([]byte, error)
-// }
-
-// func (ts *Targets) YAML() ([]byte, error) {
-// 	var full, content []byte
-// 	var err error
-
-// 	for t := range *ts {
-// 		content, err = yaml.Marshal(t)
-// 		if err != nil {
-// 			content = nil
-// 			return content, err
-// 		}
-// 		full = append(full, content...)
-// 	}
-// 	return full, err
-// }

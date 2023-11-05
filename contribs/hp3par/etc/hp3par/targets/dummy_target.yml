@@ -20,7 +20,6 @@ collectors:
   #   from collector files
   - ~.*_statistics
   # or a list of collector names 
-  # - netscaler_overview_metrics
   # - capacities_statistics
   # - cpgs_statistics
   # - physical_disks_statistics
