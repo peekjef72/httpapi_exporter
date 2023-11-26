@@ -132,13 +132,13 @@ func (c *collector) SetClient(client *Client) {
 
 // GetId implement GetId for collector
 // obtain collector id for log purpose
-func (c *collector) GetId() (id string) {
+func (c *collector) GetId() string {
 	return c.config.id
 }
 
 // GetName implement GetName for collector
 // obtain collector name for collector_status metric
-func (c *collector) GetName() (id string) {
+func (c *collector) GetName() string {
 	return c.config.Name
 }
 

@@ -134,7 +134,7 @@ type tdata struct {
 	// `/config` only
 	Config string
 
-	// `:targets` only
+	// `/targets` only
 	Targets string
 
 	// status
