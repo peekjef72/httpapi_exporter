@@ -6,8 +6,8 @@ Nothing is hard coded in the exporter. That why it is a generic exporter.
 
 As examples 3 configurations for exporters are provided (see contribs):
 - hp3par_exporter
-- veeam_exporter
-- netscaler_exporter
+- [veeam_exporter](contribs/veeam/README.md)
+- [netscaler_exporter](contribs/netscaler/README.md)
 
 # Build
 

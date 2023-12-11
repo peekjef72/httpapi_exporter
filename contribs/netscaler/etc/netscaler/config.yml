@@ -89,11 +89,31 @@ httpapi_config:
         # to catch and store the result and use it later...
         var_name: nsversion
 
+auth_configs:
+  prometheus_encrypted:
+    mode: script
+    user: prometheus
+    password: "/encrypted/__________XXXXXXX_______________XXXXXXX_______"
+
 # The targets to monitor and the collectors to execute on it.
 targets:
+  # default target is used as a pattern for exporter queries with target name not defined locally.
+  - name: default
+    scheme: https
+    host: set_later
+    port: 443
+    auth_name: prometheus_encrypted
+    # auth_mode:
+    #   # mode: basic|token|[anything else:=> user defined login script]
+    #   mode: script
+    #   user: usrNetScalerSupervision
+    #   password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+    collectors:
+      - ~.*_metrics
+
   # - targets_files: [ "/etc/httpapi_exporter/netscaler/targets/*.yml" ]
-  - targets_files: [ "/targets/*.yml" ]
+  - targets_files: [ "/etc/httpapi_exporter/netscaler/targets/*.yml" ]
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
 collector_files:
-  - "metrics/*.collector.yml"
+  - "/etc/httpapi_exporter/netscaler/metrics/*.collector.yml"
