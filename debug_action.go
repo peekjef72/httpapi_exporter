@@ -51,6 +51,7 @@ type DebugAction struct {
 	Until   []*exporterTemplate `yaml:"until,omitempty"`
 
 	Debug *DebugActionConfig `yaml:"debug"`
+	vars  [][]any
 }
 
 func (a *DebugAction) Type() int {
@@ -98,11 +99,11 @@ func (a *DebugAction) SetLoopVar(loopvar string) {
 	a.LoopVar = loopvar
 }
 
-func (a *DebugAction) GetVars() map[string]any {
-	return a.Vars
+func (a *DebugAction) GetVars() [][]any {
+	return a.vars
 }
-func (a *DebugAction) SetVars(vars map[string]any) {
-	a.Vars = vars
+func (a *DebugAction) SetVars(vars [][]any) {
+	a.vars = vars
 }
 
 func (a *DebugAction) GetUntil() []*exporterTemplate {
@@ -118,7 +119,7 @@ func (a *DebugAction) SetUntil(until []*exporterTemplate) {
 
 func (a *DebugAction) setBasicElement(
 	nameField *Field,
-	vars map[string]any,
+	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*exporterTemplate,
@@ -152,7 +153,8 @@ func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: DebugAction] Name: %s", Name(a.Name, symtab, logger)))
+		"name", a.GetName(symtab, logger),
+		"msg", "[Type: DebugAction]")
 
 	str, err := a.Debug.msg.GetValueString(symtab, nil, false)
 	if err != nil {
@@ -160,12 +162,14 @@ func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		level.Warn(logger).Log(
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
+			"name", a.GetName(symtab, logger),
 			"msg", fmt.Sprintf("invalid template for debug message '%s': %v", str, err))
 	}
 
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
+		"name", a.GetName(symtab, logger),
 		"msg", fmt.Sprintf("    message: %s", str))
 
 	return nil

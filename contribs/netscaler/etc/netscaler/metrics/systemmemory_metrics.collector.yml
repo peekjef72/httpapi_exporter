@@ -7,7 +7,7 @@
 #
 
 collector_name: netscaler_systemmemory_metrics
-metric_prefix: citrixadc_memory
+metric_prefix: citrixadc_system_memory
 
 scripts:
   get stat_system memory:

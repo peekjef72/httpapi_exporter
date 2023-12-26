@@ -2,7 +2,9 @@
 
 ##
 ## url: https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/basic/servicegroup/
-## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/stat/lbvserver
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/lb/lbvserver
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/basic/service
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/configuration/configuration
 ### Statistics for servicegroup.
 #
 
@@ -26,39 +28,101 @@ scripts:
         var_name: results
         # debug: true
 
-    - name: init lbvservers name
+    - name: init services and servivegroups
+      when:
+        - EQ (LEN .config.svclb) 0
       set_fact:
+        svclb: {}
         svcgrplb: {}
-
+        populate_groups: true
 
     - name: proceed elements
       # loop on element with a defined name and state is "UP"
       # to debug first element
-      # loop: '{{ list ( index .sg.servicegroup 0 ) | toRawJson }}'
+      # loop: '{{ list ( index .results.lbvserver 0 ) ( index .results.lbvserver 1 ) ( index .results.lbvserver 2 )| toRawJson }}'
+      # loop: '{{ list ( index .results.lbvserver 3 ) ( index .results.lbvserver 4 )| toRawJson }}'
       loop: '{{ .results.lbvserver | toRawJson }}'
       when:
-        
         - exporterHasKey .item "name"
         - eq .item.state "UP"
       actions:
 
-        - name: get lbvserver group info
-          query:
-            url: "/config/lbvserver_servicegroup_binding/{{ .item.name }}"
-            var_name: sub_res
+        - name: populate group services and servivegroups
+          when: .populate_groups
+          actions:
+            - name: get lbvserver binding infos
+              query:
+                url: "/config/lbvserver_binding/{{ .item.name }}"
+                var_name: res_binding
+                # debug: true
 
-        - name: proceed lbvserver group relation
-          # to debug first element
-          # loop: '{{ list ( index .sg.servicegroup 0 ) | toRawJson }}'
-          loop: '{{ .sub_res.lbvserver_servicegroup_binding | toRawJson }}'
-          loop_var: lbcfg
-          when:
-            - exporterHasKey .lbcfg "name"
-          set_fact:
-            #* add a mapping for servicegroup name to lbvserver name
-            #* later in servicegroup we will be able to add a label of lbvserver name in metrics
-            _: '{{- $_ := exporterSet .svcgrplb .lbcfg.servicegroupname .item.name  -}}'
+            - name: proceed lbvserver binding service relation
+              when:
+                - exporterHasKey .res_binding "lbvserver_binding"
+              actions:
+                - name: get bindings
+                  set_fact:
+                    bindings: '{{ toRawJson (index .res_binding.lbvserver_binding 0) }}'
 
+                # - name: debug
+                #   debug:
+                #     msg: "bindings: typeof: {{ typeOf .bindings }} - kinfOf: {{ kindOf .bindings }} - {{ .bindings }}"
+                #     # msg: "bindings: {{ (index (.res_binding.lbvserver_binding) 0) }}"
+
+                - name: proceed lbvserver binding relation
+                  when:
+                    - exporterHasKey .bindings "lbvserver_service_binding"
+                  actions:
+                    - name: process service
+                      # to debug first element
+                      # loop: '{{ list ( index .binding.lbvserver_service_binding 0 ) | toRawJson }}'
+                      loop: '{{ .bindings.lbvserver_service_binding | toRawJson }}'
+                      loop_var: lbcfg
+                      set_fact:
+                        #* add a mapping for service name to a list of lbvserver names
+                        #* later in service stat we will be able to add a label of lbvserver name in metrics
+                        _: '
+                          {{- if exporterHasKey .svclb .lbcfg.servicename -}}
+                            {{- $tmp := exporterGet .svclb .lbcfg.servicename -}}
+                            {{- $new := mustAppend $tmp .lbcfg.name -}}
+                            {{- $_ := exporterSet .svclb .lbcfg.servicename $new  -}}
+                          {{- else -}}
+                            {{- $_ := exporterSet .svclb .lbcfg.servicename ( list .lbcfg.name ) -}}
+                          {{- end -}}'
+
+                # - name: debug
+                #   debug:
+                #     msg: "svclb: {{ .svclb }}"
+
+                - name: proceed lbvserver binding servicegroup members relation
+                  when:
+                    - exporterHasKey .bindings "lbvserver_servicegroup_binding"
+                  actions:
+                    - name: process servicegroup
+                      # to debug first element
+                      # loop: '{{ list ( index .bindinds.lbvserver_servicegroup_binding 0 ) | toRawJson }}'
+                      loop: '{{ .bindings.lbvserver_servicegroup_binding | toRawJson }}'
+                      loop_var: lbcfg
+                      when:
+                        - exporterHasKey .lbcfg "name"
+                      set_fact:
+                        #* add a mapping for servicegroup name to a list of lbvserver names
+                        #* later in servicegroup we will be able to add a label of lbvserver name in metrics
+                        _: '
+                          {{- if exporterHasKey .svcgrplb .lbcfg.servicename -}}
+                            {{- $tmp := exporterGet .svcgrplb .lbcfg.servicename -}}
+                            {{- $new := mustAppend $tmp .lbcfg.name -}}
+                            {{- $_ := exporterSet .svcgrplb .lbcfg.servicename $new  -}}
+                          {{- else -}}
+                            {{- $_ := exporterSet .svcgrplb .lbcfg.servicename ( list .lbcfg.name ) -}}
+                          {{- end -}}'
+
+                # - name: debug
+                #   debug:
+                #     msg: "svcgrplb: {{ .svcgrplb }}"
+
+        #**************************************************
+        # set lb metrics
         - name: set vars
           set_fact:
             members_up_total: '
@@ -69,634 +133,601 @@ scripts:
                 {{- $total := divf ( mulf 100 ( .item.actsvcs|int )) $divider -}}
                 {{- $total -}}
               {{- end -}}'
+            key_labels:
+              lb_type: "{{ .item.type }}"
+              lb_name: "{{ .item.name }}"
+              # citrixadc_lb_state: "{{ .item.state }}"
 
         - name: set metrics
           metric_prefix: citrixadc_lb
           scope: none
           metrics:
+            - metric_name: status
+              help: "Current state of service (0 OUT OF SERVICE / 1 UP)"
+              type: gauge
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values:
+                _: '{{ template "MemberStatus" .item.state }}'
+
             - metric_name: packets_sent_total
               help: Total number of packets sent.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalpktssent }}"
 
             - metric_name: packets_received_total
               help: Total number of packet received on this service or virtual server.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalpktsrecvd }}"
 
             - metric_name: hits_total
               help: Total vserver hits
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.tothits }}"
 
             - metric_name: request_bytes_received_total
               help: Total number of request bytes received on this service or virtual server.
               type: counter
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalrequestbytes }}"
 
             - metric_name: response_bytes_received_total
               help: Number of response bytes received by this service or virtual server.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalresponsebytes }}"
 
             - metric_name: requests_total
               help: Total number of requests received on this service or virtual server.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalrequests }}"
 
             - metric_name: responses_total
               help: Number of responses received on this service or virtual server.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalresponses }}"
 
             - metric_name: surge_count
               help: Number of requests in the surge queue.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.surgecount }}"
 
             - metric_name: tolerable_transactions_count
               help: Tolerable transactions based on APDEX threshold.
               type: counter
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.toleratingttlbtransactionsrate }}"
 
             - metric_name: ttlb_calculated_transactions_total
               help: Total transactions where client TTLB is calculated.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totcltttlbtransactions }}"
 
             - metric_name: deffered_requests_total
               help: Number of deferred request on this vserver.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.deferredreq }}"
 
             - metric_name: spillover_count_total
               help: Number of times vserver experienced spill over.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totspillovers }}"
 
             - metric_name: invalid_response_request_total
               help: Number invalid requests/responses on this vserver
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.invalidrequestresponse }}"
 
             - metric_name: invalid_response_request_dropped_total
               help: Number invalid requests/responses dropped on this vserver
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.invalidrequestresponsedropped }}"
 
             - metric_name: frustrating_transactions_total
               help: Frustrating transactions based on APDEX threshold
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.frustratingttlbtransactions }}"
 
             - metric_name: tolerable_transactions_total
               help: Number of times traffic was diverted to backup vserver since primary vserver was DOWN.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.toleratingttlbtransactions }}"
 
             - metric_name: backup_server_divert_count_total
               help: Number of times traffic was diverted to backup vserver since primary vserver was DOWN.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totvserverdownbackuphits }}"
 
             - metric_name: busy_error_total
               help: Number of response bytes received by this service or virtual server.
               type: counter
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.totalsvrbusyerr }}"
 
             - metric_name: request_rate_bytes
               help: Rate (/s) of request bytes received on this service or virtual server.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.requestbytesrate }}"
 
             - metric_name: request_rate
               help: Rate (/s) of requests received on this service or virtual server.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.requestsrate }}"
 
             - metric_name: packets_received_rate
               help: Rate (/s) of packet received on this service or virtual server.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.pktsrecvdrate }}"
 
             - metric_name: frustrating_transactions_rate
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.frustratingttlbtransactionsrate }}"
 
             - metric_name: client_response_time_adex
               help: Vserver APDEX index based on client response times.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.cltresponsetimeapdex }}"
 
             - metric_name: spill_over_threshold
               help: Spill Over Threshold set on the VServer.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.sothreshold }}"
 
             - metric_name: actual_server_current_connections
               help: Number of current connections to the actual servers behind the virtual server.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.cursrvrconnections }}"
 
             - metric_name: surge_queue_requests_count
               help: Total number of requests in the surge queues of all the services bound to this LB-vserver.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.svcsurgecount }}"
 
             - metric_name: labeled_connections_count
               help: Number of Labeled connection on this vserver
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.labelledconn }}"
 
             - metric_name: current_mtcp_sessions_count
               help: Current Multipath TCP sessions
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.curmptcpsessions }}"
 
             - metric_name: deferred_requets_rate
               help: Rate (/s) of deferred request on this vserver.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.deferredreqrate }}"
 
             - metric_name: average_ttlb
               help: Average TTLB between the client and the server.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.avgcltttlb }}"
 
             - metric_name: ttlb_transactions_rate
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.cltttlbtransactionsrate }}"
 
             - metric_name: total_responses_rate
               help: Rate (/s) of bytes encrypted on the NetScaler appliance.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.responsesrate }}"
 
             - metric_name: active_sessions_count
               help: number of ACTIVE services bound to a vserver
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.actsvcs }}"
 
             - metric_name: total_packets_sent_rate
               help: Rate (/s) of packets sent.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.pktssentrate }}"
 
             - metric_name: current_mtcp_subflows_count
               help: Current Multipath TCP subflows
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.cursubflowconn }}"
 
             - metric_name: current_client_connection_count
               help: Number of current client connections.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.curclntconnections }}"
 
             - metric_name: push_label_count
               help: Number of labels for this push vserver.
               type: gauge
-              key_labels:
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 _: "{{ .item.pushlabel }}"
 
             - metric_name: hits_rate
               help: Rate (/s) of vserver hits
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.hitsrate }}"
 
             - metric_name: established_connections_count
               help: Number of client connections in ESTABLISHED state.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.establishedconn }}"
 
             - metric_name: response_bytes_received_rate
               help: Rate (/s) of response bytes received by this service or virtual server.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.responsebytesrate }}"
 
             - metric_name: inactive_services_count
               help: number of INACTIVE services bound to a vserver
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.inactsvcs }}"
 
             - metric_name: busy_error_rate
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values: 
                 _: "{{ .item.svrbusyerrrate }}"
 
             - metric_name: members_up_total
               help: percent of vserver members up. 100= all up.
               type: gauge
-              key_labels: 
-                citrixadc_lb_type: "{{ .item.type }}"
-                citrixadc_lb_name: "{{ .item.name }}"
-                citrixadc_lb_state: "{{ .item.state }}"
+              key_labels: "{{ .key_labels | toRawJson }}"
               values:
                 -: "{{ .members_up_total }}"
 
+    #**************************************************
+    # keep config group
+    - name: keep service config
+      when: .populate_groups
+      set_stats:
+        # svclb: $svclb
+        .config.svclb: '{{ .svclb | toRawJson }}'
+        .config.svcgrplb: '{{ .svcgrplb | toRawJson }}'
+
 #***************************************************
-  get stat_servicegroup:
-    - name: collect stat servicegroup
-      query:
-        url: /stat/servicegroup
-        var_name: sg
-        # debug: true
-
-    - name: proceed elements
-      # to debug first element
-      # loop: '{{ list ( index .sg.servicegroup 0 ) | toRawJson }}'
-      loop: '{{ .sg.servicegroup | toRawJson }}'
-      when:
-        - exporterHasKey .item "servicegroupname"
-        - eq .item.state "ENABLED"
+# get stat_servicegroup:
+    - name: proceed lb services elements
+      when: not (empty .svclb)
       actions:
-        - name: exporterGet groupcomponent stats
-          query:
-            url: "/stat/servicegroup/{{ .item.servicegroupname }}?statbindings=yes"
-            var_name: sub_res
-
-        - name: proceed group
-          with_items: "{{ (index .sub_res.servicegroup 0).servicegroupmember | toRawJson }}"
-          loop_var: sub_item
+        - name: loop each services
+          # to debug first element
+          # loop: '{{ list ( index ( .svclb ) 0 ) | toRawJson }}'
+          loop: '{{ exporterKeys .svclb | toRawJson }}'
+          loop_var: svc
           actions:
+            - name: exporterGet service component stats
+              query:
+                url: "/stat/service/{{ .svc }}"
+                var_name: sub_res
 
-          # - name: debug metrics
-          #   debug:
-          #     msg: "member: {{ .sub_item | toRawJson }}"
+            - name: build member var
+              # don't reduce scope to sub_item var, because we require .item
+              set_fact:
+                member: "{{ index .sub_res.service 0 | toRawJson }}"
 
-          - name: dump metrics
-            # don't reduce scope to sub_item var, because we require .item
-            scope: none
-            metric_prefix: citrixadc_servicegroup
-            metrics:
-              - metric_name: status
-                help: "Current state of server i.e. the member in group (0 OUT OF SERVICE / 1 UP)"
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: '{{ template "MemberStatus" .sub_item.state }}'
+            - name: loop on svc_names
+              loop: '{{ exporterGet .svclb .svc | toRawJson }}'
+              loop_var: svc_name
+              actions:
 
-              - metric_name: tot_responses
-                help: "Number of responses received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
-                type: counter
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.totalresponses }}"
+                - name: build metric labels
+                  # don't reduce scope to sub_item var, because we require .item
+                  set_fact:
+                    key_labels:
+                        lb_name: "{{ .svc_name }}"
+                        # there is no group name for service binding
+                        servicegroup_name: "{{ .svc }}"
+                        servicegroup_membername: "{{ .member.name }}"
+                        service_type: "{{ .member.servicetype }}"
+                        service_ip: "{{ .member.primaryipaddress }}"
+                        service_port: "{{ .member.primaryport }}"
 
-              - metric_name: tot_srv_ttlb_transactions
-                type: counter
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.totsvrttlbtransactions }}"
+                - name: dump metrics
+                  # don't reduce scope to sub_item var, because we require .item
+                  scope: none
+                  metric_prefix: citrixadc_servicegroup
+                  metrics:
+                    - metric_name: status
+                      help: "Current state of server i.e. the member in group (0 OUT OF SERVICE / 1 UP)"
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: '{{ template "MemberStatus" .member.state }}'
 
-              - metric_name: tot_requests
-                help: "Total number of requests received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
-                type: counter
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.totalrequests }}"
+                    - metric_name: tot_responses
+                      help: "Number of responses received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
+                      type: counter
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.totalresponses }}"
 
-              - metric_name: tot_response_bytes
-                help: "Number of response bytes received by this service or virtual server."
-                type: counter
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.totalresponsebytes }}"
+                    - metric_name: tot_srv_ttlb_transactions
+                      type: counter
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.totsvrttlbtransactions }}"
 
-              - metric_name: tot_request_bytes
-                help: "Total number of request bytes received on this service or virtual server."
-                type: counter
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.totalrequestbytes }}"
+                    - metric_name: tot_requests
+                      help: "Total number of requests received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
+                      type: counter
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.totalrequests }}"
 
-              - metric_name: avg_server_ttfb
-                help: "Average TTFB between the NetScaler appliance and the server.TTFB is the time interval between sending the request packet to a service and receiving the first response from the service"
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.avgsvrttfb }}"
+                    - metric_name: tot_response_bytes
+                      help: "Number of response bytes received by this service or virtual server."
+                      type: counter
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.totalresponsebytes }}"
 
-              - metric_name: requests_rate
-                help: "Rate (/s) counter for totalrequests"
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.requestsrate }}"
+                    - metric_name: tot_request_bytes
+                      help: "Total number of request bytes received on this service or virtual server."
+                      type: counter
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.totalrequestbytes }}"
 
-              - metric_name: current_client_connections
-                help: "Number of current client connections."
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.curclntconnections }}"
+                    - metric_name: avg_server_ttfb
+                      help: "Average TTFB between the NetScaler appliance and the server.TTFB is the time interval between sending the request packet to a service and receiving the first response from the service"
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.avgsvrttfb }}"
 
-              - metric_name: current_server_connections
-                help: "Number of current connections to the actual servers behind the virtual server."
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.cursrvrconnections }}"
+                    - metric_name: requests_rate
+                      help: "Rate (/s) counter for totalrequests"
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.requestsrate }}"
 
-              - metric_name: responses_rate
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.responsesrate }}"
+                    - metric_name: current_client_connections
+                      help: "Number of current client connections."
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.curclntconnections }}"
 
-              - metric_name: tolerating_ttlb_transactions
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.toleratingttlbtransactions }}"
+                    - metric_name: current_server_connections
+                      help: "Number of current connections to the actual servers behind the virtual server."
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.cursrvrconnections }}"
 
-              - metric_name: response_bytes_rate
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.responsebytesrate }}"
+                    - metric_name: responses_rate
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.responsesrate }}"
 
-              - metric_name: request_bytes_rate
-                type: gauge
-                key_labels:
-                  citrixadc_lb_name: "{{ exporterGet .svcgrplb .item.servicegroupname }}"
-                  citrixadc_servicegroup_name: "{{ .item.servicegroupname }}"
-                  citrixadc_servicegroup_membername: "{{ .sub_item.servicegroupname }}"
-                  citrixadc_service_type: "{{ .sub_item.servicetype }}"
-                  citrixadc_service_ip: "{{ .sub_item.primaryipaddress }}"
-                values:
-                  _: "{{ .sub_item.requestbytesrate }}"
+                    - metric_name: tolerating_ttlb_transactions
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.toleratingttlbtransactions }}"
+
+                    - metric_name: response_bytes_rate
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.responsebytesrate }}"
+
+                    - metric_name: request_bytes_rate
+                      type: gauge
+                      key_labels: "{{ .key_labels | toRawJson }}"
+                      values:
+                        _: "{{ .member.requestbytesrate }}"
+
+#***************************************************
+# get stat_servicegroup:
+    - name: proceed servicegroup elements
+      when: not (empty .svcgrplb)
+      actions:
+        - name: loop servicegroup elements
+          # to debug first element
+          # loop: '{{ list ( index ( .svclb ) 0 ) | toRawJson }}'
+          loop: '{{ exporterKeys .svcgrplb | toRawJson }}'
+          loop_var: svc
+          actions:
+            - name: exporterGet servicegroup component stats
+              query:
+                url: "/stat/servicegroup/{{ .svc }}?statbindings=yes"
+                var_name: sub_res
+
+            - name: proceed groupmember stats
+              vars:
+                grp: "{{ index .sub_res.servicegroup 0 | toRawJson }}"
+              with_items: "{{ .grp.servicegroupmember | toRawJson }}"
+              loop_var: member
+              actions:
+                # - name: debug
+                #   debug:
+                #     msg: "member stats: {{ .member }}"
+
+                - name: loop on svc_names
+                  loop: '{{ exporterGet .svcgrplb .svc | toRawJson }}'
+                  loop_var: svc_name
+                  actions:
+                    - name: build metric labels
+                      set_fact:
+                        key_labels:
+                          lb_name: "{{ .svc_name }}"
+                          servicegroup_name: "{{ .svc }}"
+                          servicegroup_membername: "{{ .member.servicegroupname }}"
+                          service_type: "{{ .member.servicetype }}"
+                          service_ip: "{{ .member.primaryipaddress }}"
+                          service_port: "{{ .member.primaryport }}"
+
+                    - name: dump metrics
+                      # don't reduce scope to sub_item var, because we require .item
+                      scope: none
+                      metric_prefix: citrixadc_servicegroup
+                      metrics:
+                        - metric_name: status
+                          help: "Current state of server i.e. the member in group (0 OUT OF SERVICE / 1 UP)"
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: '{{ template "MemberStatus" .member.state }}'
+
+                        - metric_name: tot_responses
+                          help: "Number of responses received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
+                          type: counter
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.totalresponses }}"
+
+                        - metric_name: tot_srv_ttlb_transactions
+                          type: counter
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.totsvrttlbtransactions }}"
+
+                        - metric_name: tot_requests
+                          help: "Total number of requests received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
+                          type: counter
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.totalrequests }}"
+
+                        - metric_name: tot_response_bytes
+                          help: "Number of response bytes received by this service or virtual server."
+                          type: counter
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.totalresponsebytes }}"
+
+                        - metric_name: tot_request_bytes
+                          help: "Total number of request bytes received on this service or virtual server."
+                          type: counter
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.totalrequestbytes }}"
+
+                        - metric_name: avg_server_ttfb
+                          help: "Average TTFB between the NetScaler appliance and the server.TTFB is the time interval between sending the request packet to a service and receiving the first response from the service"
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.avgsvrttfb }}"
+
+                        - metric_name: requests_rate
+                          help: "Rate (/s) counter for totalrequests"
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.requestsrate }}"
+
+                        - metric_name: current_client_connections
+                          help: "Number of current client connections."
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.curclntconnections }}"
+
+                        - metric_name: current_server_connections
+                          help: "Number of current connections to the actual servers behind the virtual server."
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.cursrvrconnections }}"
+
+                        - metric_name: responses_rate
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.responsesrate }}"
+
+                        - metric_name: tolerating_ttlb_transactions
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.toleratingttlbtransactions }}"
+
+                        - metric_name: response_bytes_rate
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.responsebytesrate }}"
+
+                        - metric_name: request_bytes_rate
+                          type: gauge
+                          key_labels: "{{ .key_labels | toRawJson }}"
+                          values:
+                            _: "{{ .member.requestbytesrate }}"
 
 ...

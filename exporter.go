@@ -122,6 +122,17 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 	// add only cur target
 	wg.Add(1)
 	go func(target Target) {
+		defer func() {
+			if r := recover(); r != nil {
+				err, ok := r.(error)
+				if !ok {
+					err = fmt.Errorf("undefined error")
+				}
+				level.Debug(e.logger).Log(
+					"collid", target.Name(),
+					"msg", "target has panic-ed: %s", err.Error())
+			}
+		}()
 		defer wg.Done()
 		target.Collect(e.ctx, metricChan)
 	}(e.cur_target)

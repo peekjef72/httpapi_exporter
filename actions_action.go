@@ -23,6 +23,7 @@ type ActionsAction struct {
 	Until   []*exporterTemplate `yaml:"until,omitempty"`
 
 	Actions []Action `yaml:"actions"`
+	vars    [][]any
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -73,11 +74,11 @@ func (a *ActionsAction) SetLoopVar(loopvar string) {
 	a.LoopVar = loopvar
 }
 
-func (a *ActionsAction) GetVars() map[string]any {
-	return a.Vars
+func (a *ActionsAction) GetVars() [][]any {
+	return a.vars
 }
-func (a *ActionsAction) SetVars(vars map[string]any) {
-	a.Vars = vars
+func (a *ActionsAction) SetVars(vars [][]any) {
+	a.vars = vars
 }
 
 func (a *ActionsAction) GetUntil() []*exporterTemplate {
@@ -93,7 +94,7 @@ func (a *ActionsAction) SetUntil(until []*exporterTemplate) {
 
 func (a *ActionsAction) setBasicElement(
 	nameField *Field,
-	vars map[string]any,
+	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*exporterTemplate,
@@ -143,7 +144,8 @@ func (a *ActionsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: ActionsAction] Name: %s - %d Actions to play", a.GetName(symtab, logger), len(a.Actions)))
+		"name", a.GetName(symtab, logger),
+		"msg", fmt.Sprintf("[Type: ActionsAction] - %d Actions to play", len(a.Actions)))
 	for _, cur_act := range a.Actions {
 		// fmt.Printf("\tadd to symbols table: %s = %v\n", key, val)
 		if err := PlayBaseAction(script, symtab, logger, cur_act, cur_act.CustomAction); err != nil {

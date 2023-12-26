@@ -23,6 +23,7 @@ type Collector interface {
 	GetId() (id string)
 	GetStatus() int
 	SetLogger(log.Logger)
+	SetSetStats(Target)
 }
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
@@ -155,6 +156,27 @@ func (c *collector) SetLogger(logger log.Logger) {
 	c.content_mutex.Unlock()
 }
 
+// SetSetStats implements SetSetStats for collector.
+// Set vars from collector symbols table into target symtab.
+// Lock target during action
+func (c *collector) SetSetStats(target Target) {
+	if len(c.collect_script) > 0 {
+		for _, sc := range c.collect_script {
+			if len(sc.setStatsActions) > 0 {
+				if r_setstats, ok := c.client.symtab["set_stats"]; ok {
+					if set_stats, ok := r_setstats.(map[string]any); ok {
+						target.Lock()
+						for key, value := range set_stats {
+							target.SetSymbol(key, value)
+						}
+						target.Unlock()
+					}
+				}
+			}
+		}
+	}
+}
+
 // type CollectContext struct {
 // 	method func(*CallClientExecuteParams, map[string]any) error
 // 	// ctx context.Context
@@ -216,8 +238,10 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		if err := scr.Play(c.client.symtab, false, c.logger); err != nil {
 			switch err {
 			case ErrInvalidLogin:
+				status = 2
 				coll_ch <- MsgLogin
 			case ErrContextDeadLineExceeded:
+				status = 3
 				coll_ch <- MsgTimeout
 			default:
 				level.Warn(c.logger).Log(
@@ -225,8 +249,8 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 					"script", ScriptName(c.client.symtab, c.logger),
 					"errmsg", err)
 				coll_ch <- MsgQuit
+				status = 0
 			}
-			status = 0
 			break
 		}
 	}
@@ -308,6 +332,10 @@ func (cc *cachingCollector) GetStatus() int {
 
 func (cc *cachingCollector) SetLogger(logger log.Logger) {
 	cc.rawColl.SetLogger(logger)
+}
+
+func (cc *cachingCollector) SetSetStats(target Target) {
+	cc.rawColl.SetSetStats(target)
 }
 
 // Collect implements Collector.

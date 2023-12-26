@@ -19,11 +19,12 @@ type PlayScriptAction struct {
 	With                 []any               `yaml:"with,omitempty"`
 	When                 []*exporterTemplate `yaml:"when,omitempty"`
 	LoopVar              string              `yaml:"loop_var,omitempty"`
-	Vars                 map[string]any      `yaml:"vars,omitempty"`
+	Vars                 [][]any             `yaml:"vars,omitempty"`
 	Until                []*exporterTemplate `yaml:"until,omitempty"`
 	PlayScriptActionName string              `yaml:"play_script"`
 
 	playScriptAction *YAMLScript
+	vars             [][]any
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -74,11 +75,11 @@ func (a *PlayScriptAction) SetLoopVar(loopvar string) {
 	a.LoopVar = loopvar
 }
 
-func (a *PlayScriptAction) GetVars() map[string]any {
+func (a *PlayScriptAction) GetVars() [][]any {
 	return a.Vars
 }
-func (a *PlayScriptAction) SetVars(vars map[string]any) {
-	a.Vars = vars
+func (a *PlayScriptAction) SetVars(vars [][]any) {
+	a.vars = vars
 }
 
 func (a *PlayScriptAction) GetUntil() []*exporterTemplate {
@@ -90,7 +91,7 @@ func (a *PlayScriptAction) SetUntil(until []*exporterTemplate) {
 
 func (a *PlayScriptAction) setBasicElement(
 	nameField *Field,
-	vars map[string]any,
+	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*exporterTemplate,
@@ -129,6 +130,7 @@ func (a *PlayScriptAction) CustomAction(script *YAMLScript, symtab map[string]an
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
+		"name", a.GetName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: PlayScriptAction] Name: %s", a.GetName(symtab, logger)))
 
 	return a.playScriptAction.Play(symtab, false, logger)

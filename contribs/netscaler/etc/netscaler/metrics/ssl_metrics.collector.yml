@@ -20,7 +20,7 @@ scripts:
     - name: proceed elements
       scope: results.ssl
       metrics:
-        - metric_name: _tot_tlsv11_sessions
+        - metric_name: tot_tlsv11_sessions
           help: Number of TLSv1.1 sessions on the NetScaler appliance.
           type: counter
           values:

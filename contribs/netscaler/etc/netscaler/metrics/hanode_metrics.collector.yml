@@ -22,6 +22,63 @@ templates:
 
 scripts:
   get stat_hanode:
+    - name: collect cluster info
+      when:
+        - EQ (LEN .config.cluster) 0
+      actions:
+        - name: collect config hanode
+          query:
+            url: /config/hanode
+            var_name: results
+            debug: true
+        - name: build cluster conf
+          loop: "{{ .results.hanode | toRawJson }}"
+          loop_var: node
+          actions:
+            - name: build node
+              set_fact:
+                hastate : '{{- template "masterState" ( .node.state | upper) -}}'
+                state: '{{ if eq .node.hastatus "UP" }}1{{ else }}0{{ end }}'
+            - name: build node2
+              set_fact:
+                _:  '{{- $node := dict
+                    "id"      .node.id
+                    "ip"      .node.ipaddress
+                    "state"   .state
+                    "hastate" .hastate
+                    -}}
+                    {{- exporterSet .config.cluster .node.id $node -}}'
+        - name: keep config[cluster]
+          set_stats:
+            config.cluster : '{{ .config.cluster | toRawJson }}'
+
+    - name: proceed cluster config elements
+      loop: '{{ (exporterValues .config.cluster) | toRawJson }}'
+      loop_var: node
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              hanode_id:  "{{ .node.id }}"
+              hanode_ip:    "{{ .node.ip }}"
+        - name: build metrics
+          metric_prefix: citrixadc_ha_cluster_node
+          scope: none
+          metrics:
+            - metric_name: status
+              help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary - 3 StaySecondary - 4 Claiming - 5 Force Change"
+              type: gauge
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values:
+                _: '{{ .node.state }}'
+            - metric_name: hastatus
+              help: "Indicate the state of the node in the cluster 1 UP / 0 else."
+              type: gauge
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values:
+                _: '{{ .node.hastate }}'
+
+
     - name: collect stat hanode
       query:
         url: /stat/hanode
@@ -39,7 +96,7 @@ scripts:
           values:
             _: '{{ if eq .hacurstatus "YES" }}1{{ else }}0{{ end }}'
 
-        - metric_name: state
+        - metric_name: node_state
           help: "State of the HA node, based on its health, in a high availability setup 1 UP / 0 else"
           type: gauge
           key_labels:
@@ -48,7 +105,7 @@ scripts:
             _: '{{ if eq .hacurstate "UP" }}1{{ else }}0{{ end }}'
           when: eq .hacurstatus "YES"
 
-        - metric_name: node_state
+        - metric_name: node_hastate
           help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary"
           type: gauge
           key_labels:

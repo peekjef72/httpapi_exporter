@@ -22,9 +22,9 @@ type MetricAction struct {
 	Vars    map[string]any      `yaml:"vars,omitempty"`
 	Until   []*exporterTemplate `yaml:"until,omitempty"`
 
-	mc *MetricConfig
-
+	mc           *MetricConfig
 	metricFamily *MetricFamily
+	vars         [][]any
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -75,11 +75,11 @@ func (a *MetricAction) SetLoopVar(loopvar string) {
 	a.LoopVar = loopvar
 }
 
-func (a *MetricAction) GetVars() map[string]any {
-	return a.Vars
+func (a *MetricAction) GetVars() [][]any {
+	return a.vars
 }
-func (a *MetricAction) SetVars(vars map[string]any) {
-	a.Vars = vars
+func (a *MetricAction) SetVars(vars [][]any) {
+	a.vars = vars
 }
 
 func (a *MetricAction) GetUntil() []*exporterTemplate {
@@ -91,7 +91,7 @@ func (a *MetricAction) SetUntil(until []*exporterTemplate) {
 
 func (a *MetricAction) setBasicElement(
 	nameField *Field,
-	vars map[string]any,
+	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*exporterTemplate,
@@ -138,24 +138,28 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: MetricAction] Name: %s%s", a.GetName(symtab, logger), loop_var_idx))
+		"name", a.GetName(symtab, logger),
+		"msg", fmt.Sprintf("[Type: MetricAction] %s", loop_var_idx))
 
 	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel wrong type)\"",
+			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (channel wrong type)\"",
 				CollectorId(symtab, logger),
-				ScriptName(symtab, logger)))
+				ScriptName(symtab, logger),
+				a.GetName(symtab, logger)))
 		}
 	} else {
-		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (channel not set)\"",
+		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (channel not set)\"",
 			CollectorId(symtab, logger),
-			ScriptName(symtab, logger)))
+			ScriptName(symtab, logger),
+			a.GetName(symtab, logger)))
 	}
 
 	// for _, mf := range mfs {
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
+		"name", a.GetName(symtab, logger),
 		"msg", fmt.Sprintf("    metric_name: %s", a.metricFamily.Name()))
 	a.metricFamily.Collect(symtab, logger, metric_channel)
 	// }

@@ -89,6 +89,35 @@ httpapi_config:
         # to catch and store the result and use it later...
         var_name: nsversion
 
+    - name: set config cache vars
+      set_fact:
+        config:
+          ts_next_check: 0
+      when: not ( exists .config )
+      # when: gt (len .config ) 0
+    - name: set config cache vars
+      when: 
+        - exists .config
+        - GT ( unixEpoch now ) .config.ts_next_check
+      set_fact:
+        _ : '
+            {{- $_ := exporterSet .config "svclb" (dict)  -}}
+            {{- $_ := exporterSet .config "svcgrplb" (dict)  -}}
+            {{- $_ := exporterSet .config "cluster" (dict)  -}}
+            {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch)  -}}'
+
+  # script called to reset all login infos after the ping script has received an invalid_auth_code.
+  # remove cookie sessionid and set var logged to false
+  clear:
+    - name: reset session_id
+      set_fact:
+        cookies: 
+          - name: "sessionid"
+            action: delete
+        # or
+        #  sessionid: __delete__
+        logged: false
+
 auth_configs:
   prometheus_encrypted:
     mode: script

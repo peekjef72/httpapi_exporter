@@ -4,14 +4,17 @@
 
 ![dashboard overview](./screenshots/netscaler_general.png)
 
+see [more screenshots](./screenshots/details.md)
 ## Description
 Prometheus exporter for Netscaler (CITRIX ADC)
 
 This exporter collect metrics from netscaler HTTP REST API.
 
-It uses httpapi_exporter that exposes metrics to http (default port 9259) that can be then scrapped by Prometheus.
+It uses httpapi_exporter that exposes metrics to http (default port 9258) that can be then scrapped by Prometheus.
 
-This exporter is strongly inspired from [citrix-adc-metrics-exporter](citrix/citrix-adc-metrics-exporter/)
+This exporter was originaly inspired from [citrix-adc-metrics-exporter](citrix/citrix-adc-metrics-exporter/), and has generated a python version [netscaler_exporter](peekjef72/netscaler_exporter).
+
+It is an usage in "my company" and doens't collect every feature exposed by netscaler HTTP API, but it ca be expanded as desired: updates and contributions are welcome.
 
 It allows you collect several netscalers by adding them to the YAML config files and then specifying a target parameter in Prometheus configuration. It benefits all features from httpapi_exporter : targets, models, auth and proxies.
 
@@ -109,11 +112,10 @@ The exporter can act as a remote collector so that several netscalers can be col
       - target_label: __address__
         replacement: "netscaler-exporter-hostname.domain:9258"  # The netscaler exporter's real hostname.
 ```
-
 ## Metrics
 
 The collected metrics are defined in separeted files positionned in the folder conf/metrics.
-All values, computations, labels are defined in the metrics files, meaning that the exporter does nothing internally on values. The configuration fully drives how values are rendered.
+All values, computations, labels are defined in the metrics files, meaning that the exporter does nothing internally on values. The configuration files fully drive how values are collected and rendered.
 
 ### Currently collected metrics are:
 
@@ -122,7 +124,6 @@ All metrics are defined in the configuration files (conf/metrics/*.yml). You can
  STATS | NS nitro name
 ------ | -------------
 LB vserver stats | "lbvserver"
-CS vserver stats | "csvserver"
 HTTP stats | "protocolhttp"
 TCP stats | "protocoltcp"
 UDP stats | "protocoludp"
@@ -137,9 +138,9 @@ SSL vserver stats | "sslvserver"
 System info stats | "system"
 System memory stats | "systemmemory"
 System cpu stats | "systemcpu"
-High Availability stats | "hanode.yml"
+High Availability stats | "hanode"
 AAA stats | "aaa"
-ADC Probe success | "1" if login is successful, else "0"
+citrixadc_up | "1" if login is successful, else "0"
 
 ## Extending metrics
 
@@ -190,16 +191,22 @@ example:
 - name: my_custom_metric
   actions:
     # first action
-    - name: collect elements 
-      url: /stat/system
+    - name: collect elements
+      query:
+        url: /stat/system
+        var_name: results
+        # debug: true
+
     # second action
     - name: proceed elements
       metric_prefix: citrixadc_custmetric
+      scope: results.system
       metrics:
-        - name: cpu_number
-          help: constant number of cpu for appliance
-          type: counter
-          value: "{{ system.numcpus }}"
+        - metric_name: cpu_count
+          help: number of cpu for appliance (constant)
+          type: gauge
+          values:
+            _: numcpus
 
 ... 
 ```

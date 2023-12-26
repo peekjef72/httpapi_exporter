@@ -5,7 +5,7 @@ This exporter wants to be a generic JSON REST API exporter. That's mean it can l
 Nothing is hard coded in the exporter. That why it is a generic exporter.
 
 As examples 3 configurations for exporters are provided (see contribs):
-- hp3par_exporter
+- [hp3par_exporter](contribs/hp3par/README.md)
 - [veeam_exporter](contribs/veeam/README.md)
 - [netscaler_exporter](contribs/netscaler/README.md)
 

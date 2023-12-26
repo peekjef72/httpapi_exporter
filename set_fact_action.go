@@ -19,12 +19,13 @@ type SetFactAction struct {
 	With    []any               `yaml:"with,omitempty"`
 	When    []*exporterTemplate `yaml:"when,omitempty"`
 	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty"`
+	Vars    [][]any             `yaml:"vars,omitempty"`
 	Until   []*exporterTemplate `yaml:"until,omitempty"`
 
 	SetFact map[string]any `yaml:"set_fact"`
 
 	setFact [][]any
+	vars    [][]any
 }
 
 func (a *SetFactAction) Type() int {
@@ -72,11 +73,11 @@ func (a *SetFactAction) SetLoopVar(loopvar string) {
 	a.LoopVar = loopvar
 }
 
-func (a *SetFactAction) GetVars() map[string]any {
-	return a.Vars
+func (a *SetFactAction) GetVars() [][]any {
+	return a.vars
 }
-func (a *SetFactAction) SetVars(vars map[string]any) {
-	a.Vars = vars
+func (a *SetFactAction) SetVars(vars [][]any) {
+	a.vars = vars
 }
 func (a *SetFactAction) GetUntil() []*exporterTemplate {
 	return a.Until
@@ -87,7 +88,7 @@ func (a *SetFactAction) SetUntil(until []*exporterTemplate) {
 
 func (a *SetFactAction) setBasicElement(
 	nameField *Field,
-	vars map[string]any,
+	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*exporterTemplate,
@@ -117,54 +118,61 @@ func (a *SetFactAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 	return nil
 }
 
-// specific behavior for the DebugAction
+// specific behavior for the SetStatsAction
+// it does nothing at all... it is only en entry point for calling target to collect
+// vars from the collector and so to make them persistent accross calls
 func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
-	var key_name string
-	var err error
-	var value_name any
+
+	var (
+		key_name   string
+		err        error
+		value_name any
+	)
+
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: SetFactAction] Name: %s", Name(a.Name, symtab, logger)))
+		"name", a.GetName(symtab, logger),
+		"msg", "[Type: SetFactAction]")
+
 	for _, pair := range a.setFact {
-		// tmp_map := map[string]any{}
 		if pair == nil {
 			return fmt.Errorf("set_fact: invalid key value")
 		}
 		if key, ok := pair[0].(*Field); ok {
 			key_name, err = key.GetValueString(symtab, nil, false)
 			if err == nil {
-				if value_name, err = getValue(symtab, pair[1]); err != nil {
+				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), 0); err != nil {
 					return err
 				}
-				// switch value := pair[1].(type) {
-				// case *Field:
-				// 	if value_name, err = value.GetValueString(symtab, nil, false); err != nil {
-				// 		return err
-				// 	}
-				// default:
-				// 	// need to call a func to obtain a value from any type but with all content valorized
-				// 	// => list: try to valorize each element
-				// 	// => map: try to valorize key and value
-				// 	value_name = value
-				// }
+
 				if value_name == nil {
 					level.Debug(logger).Log(
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
+						"name", a.GetName(symtab, logger),
 						"msg", fmt.Sprintf("    remove from symbols table: %s", key_name))
-					delete(symtab, key_name)
+					DeleteSymtab(symtab, key_name)
 				} else {
 					if key_name != "_" {
 						level.Debug(logger).Log(
 							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
+							"name", a.GetName(symtab, logger),
 							"msg", fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name))
-						symtab[key_name] = value_name
+						if err := SetSymTab(symtab, key_name, value_name); err != nil {
+							level.Warn(logger).Log(
+								"collid", CollectorId(symtab, logger),
+								"script", ScriptName(symtab, logger),
+								"name", a.GetName(symtab, logger),
+								"msg", fmt.Sprintf("error setting map value for key '%s'", key_name), "errmsg", err)
+							continue
+						}
 					} else {
 						level.Debug(logger).Log(
 							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
+							"name", a.GetName(symtab, logger),
 							"msg", "    result discard (key >'_')")
 
 					}
@@ -207,58 +215,58 @@ func (a *SetFactAction) AddCustomTemplate(customTemplate *exporterTemplate) erro
 // ***************************************************************************************
 // ***************************************************************************************
 
-func getMapValue(symtab map[string]any, raw_maps map[any]any) (map[any]any, error) {
-	var err error
-	final_res := make(map[any]any)
-	for raw_key, raw_value := range raw_maps {
-		key, err := getValue(symtab, raw_key)
-		if err != nil {
-			return nil, fmt.Errorf("invalid template for var key %s: %s", raw_key, err)
-		}
-		value, err := getValue(symtab, raw_value)
-		if err != nil {
-			return nil, fmt.Errorf("invalid template for var value %s: %s", raw_value, err)
-		}
-		final_res[key] = value
-	}
-	return final_res, err
-}
+// func getMapValue(symtab map[string]any, raw_maps map[any]any) (map[any]any, error) {
+// 	var err error
+// 	final_res := make(map[any]any)
+// 	for raw_key, raw_value := range raw_maps {
+// 		key, err := getValue(symtab, raw_key)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("invalid template for var key %s: %s", raw_key, err)
+// 		}
+// 		value, err := getValue(symtab, raw_value)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("invalid template for var value %s: %s", raw_value, err)
+// 		}
+// 		final_res[key] = value
+// 	}
+// 	return final_res, err
+// }
 
-func getSliceValue(symtab map[string]any, raw_slice []any) (any, error) {
-	var err error
-	final_res := make([]any, len(raw_slice))
-	for idx, r_value := range raw_slice {
-		res, err := getValue(symtab, r_value)
-		if err != nil {
-			return nil, fmt.Errorf("invalid template for var key %q: %s", res, err)
-		}
-		final_res[idx] = res
+// func getSliceValue(symtab map[string]any, raw_slice []any) (any, error) {
+// 	var err error
+// 	final_res := make([]any, len(raw_slice))
+// 	for idx, r_value := range raw_slice {
+// 		res, err := getValue(symtab, r_value)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("invalid template for var key %q: %s", res, err)
+// 		}
+// 		final_res[idx] = res
 
-	}
-	return final_res, err
-}
+// 	}
+// 	return final_res, err
+// }
 
-func getValue(symtab map[string]any, raw_value any) (value_name any, err error) {
-	switch value := raw_value.(type) {
-	case *Field:
-		if value_name, err = value.GetValueString(symtab, nil, false); err != nil {
-			return nil, err
-		}
-	case []any:
-		if value_name, err = getSliceValue(symtab, value); err != nil {
-			return nil, err
-		}
-	case map[any]any:
-		if value_name, err = getMapValue(symtab, value); err != nil {
-			return nil, err
-		}
-	default:
-		// need to call a func to obtain a value from any type but with all content valorized
-		// => list: try to valorize each element
-		// => map: try to valorize key and value
-		value_name = value
-	}
-	return value_name, err
-}
+// func getValue(symtab map[string]any, raw_value any) (value_name any, err error) {
+// 	switch value := raw_value.(type) {
+// 	case *Field:
+// 		if value_name, err = value.GetValueString(symtab, nil, false); err != nil {
+// 			return nil, err
+// 		}
+// 	case []any:
+// 		if value_name, err = getSliceValue(symtab, value); err != nil {
+// 			return nil, err
+// 		}
+// 	case map[any]any:
+// 		if value_name, err = getMapValue(symtab, value); err != nil {
+// 			return nil, err
+// 		}
+// 	default:
+// 		// need to call a func to obtain a value from any type but with all content valorized
+// 		// => list: try to valorize each element
+// 		// => map: try to valorize key and value
+// 		value_name = value
+// 	}
+// 	return value_name, err
+// }
 
 // ***************************************************************************************

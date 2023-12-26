@@ -110,14 +110,25 @@ func RawGetValueString(curval any) string {
 func (f *Field) GetValueString(
 	item map[string]interface{},
 	sub map[string]string,
-	check_item bool) (string, error) {
+	check_item bool) (res string, err error) {
 	if f == nil {
 		return "", nil
 	}
 
 	if f.tmpl != nil {
+		defer func() {
+			// res and err are named out parameters, so if we set value for them in defer
+			// set the returned values
+			ok := false
+			if r := recover(); r != nil {
+				if err, ok = r.(error); !ok {
+					err = fmt.Errorf("panic in GetValueString template with undefined error")
+				}
+				res = ""
+			}
+		}()
 		tmp_res := new(strings.Builder)
-		err := ((*ttemplate.Template)(f.tmpl)).Execute(tmp_res, &item)
+		err = ((*ttemplate.Template)(f.tmpl)).Execute(tmp_res, &item)
 		if err != nil {
 			return "", err
 		}
@@ -149,7 +160,7 @@ func (f *Field) GetValueString(
 // else if the resulting value exists in item symbols table return it
 // else return raw value (simple float64 constant)
 func (f *Field) GetValueFloat(
-	item map[string]interface{}) (float64, error) {
+	item map[string]interface{}) (res float64, err error) {
 	var str_value any
 
 	if f == nil {
@@ -157,26 +168,19 @@ func (f *Field) GetValueFloat(
 	}
 
 	if f.tmpl != nil {
+		defer func() {
+			// res and err are named out parameters, so if we set value for them in defer
+			// set the returned values
+			ok := false
+			if r := recover(); r != nil {
+				if err, ok = r.(error); !ok {
+					err = fmt.Errorf("panic in GetValueFloat template with undefined error")
+				}
+				res = 0
+			}
+		}()
+
 		tmp_res := new(strings.Builder)
-		// tmpl, err := template.New("field").Funcs(sprig.FuncMap()).Parse("{{ mulf .result.totalMiB 1024 1024 }}")
-		// if err == nil {
-		// 	tmpl.Execute(tmp_res, &item)
-		// 	if err != nil {
-		// 		return 0, err
-		// 	}
-		// 	str_value = tmp_res.String()
-		// 	str_value = html.UnescapeString(str_value.(string))
-		// 	fmt.Printf("tmp: %s\n", str_value)
-		// 	var data any
-		// 	err = json.Unmarshal([]byte(str_value.(string)), &data)
-		// 	if err == nil {
-		// 		res, err := json.MarshalIndent(data, "", "  ")
-		// 		if err == nil {
-		// 			fmt.Printf("res: %s\n", string(res))
-		// 		}
-		// 	}
-		// }
-		// tmp_res = new(strings.Builder)
 		err := ((*ttemplate.Template)(f.tmpl)).Execute(tmp_res, &item)
 		if err != nil {
 			return 0, err
@@ -196,7 +200,7 @@ func (f *Field) GetValueFloat(
 
 func (f *Field) GetValueObject(
 	// item map[string]interface{}) ([]any, error) {
-	item any) (any, error) {
+	item any) (res any, err error) {
 	res_slice := make([]any, 0)
 
 	if f == nil {
@@ -204,6 +208,17 @@ func (f *Field) GetValueObject(
 	}
 
 	if f.tmpl != nil {
+		defer func() {
+			// res and err are named out parameters, so if we set value for them in defer
+			// set the returned values
+			ok := false
+			if r := recover(); r != nil {
+				if err, ok = r.(error); !ok {
+					err = fmt.Errorf("panic in GetValueObject template with undefined error")
+				}
+				res = res_slice
+			}
+		}()
 		tmp_res := new(strings.Builder)
 		err := ((*ttemplate.Template)(f.tmpl)).Execute(tmp_res, &item)
 		if err != nil {
@@ -211,16 +226,19 @@ func (f *Field) GetValueObject(
 		}
 		var data any
 		json_obj := tmp_res.String()
-		if json_obj != "<no value>" {
+		if json_obj == "<no value>" || json_obj == "" || json_obj == "null" {
+			data = ""
+		} else {
 			// json_obj = strings.ReplaceAll(json_obj, "&#34;", "\"")
 			json_obj = html.UnescapeString(json_obj)
 			// json_obj = strings.TrimSuffix(json_obj, "\n")
 			// fmt.Println(json_obj)
 			err = json.Unmarshal([]byte(json_obj), &data)
 			if err != nil {
-				// if _, ok := err.(*json.UnmarshalTypeError); ok {
-
-				// }
+				if _, ok := err.(*json.SyntaxError); ok {
+					// invalid character 'X' in literal true
+					return json_obj, nil
+				}
 				return res_slice, err
 			}
 		}

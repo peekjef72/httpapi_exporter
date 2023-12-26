@@ -31,6 +31,8 @@ type MetricsAction struct {
 	// Catches all undefined fields and must be empty after parsing.
 	XXX     map[string]interface{} `yaml:",inline" json:"-"`
 	Actions []Action               `yaml:"-"`
+
+	vars [][]any
 }
 
 func (a *MetricsAction) Type() int {
@@ -78,11 +80,11 @@ func (a *MetricsAction) SetLoopVar(loopvar string) {
 	a.LoopVar = loopvar
 }
 
-func (a *MetricsAction) GetVars() map[string]any {
-	return a.Vars
+func (a *MetricsAction) GetVars() [][]any {
+	return a.vars
 }
-func (a *MetricsAction) SetVars(vars map[string]any) {
-	a.Vars = vars
+func (a *MetricsAction) SetVars(vars [][]any) {
+	a.vars = vars
 }
 
 func (a *MetricsAction) GetUntil() []*exporterTemplate {
@@ -94,7 +96,7 @@ func (a *MetricsAction) SetUntil(until []*exporterTemplate) {
 
 func (a *MetricsAction) setBasicElement(
 	nameField *Field,
-	vars map[string]any,
+	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*exporterTemplate,
@@ -168,6 +170,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
+		"name", a.GetName(symtab, logger),
 		"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)))
 
 	// this can't arrive because previous c.Collect() / c.client.Execute() has returned ErrInvalidQueryResult
@@ -177,20 +180,23 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		level.Debug(logger).Log(
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
+			"name", a.GetName(symtab, logger),
 			"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - previous query has invalid status skipping", a.GetName(symtab, logger)))
 		return ErrInvalidQueryResult
 	}
 
 	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (metric channel wrong type)\"",
+			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (metric channel wrong type)\"",
 				CollectorId(symtab, logger),
-				ScriptName(symtab, logger)))
+				ScriptName(symtab, logger),
+				a.GetName(symtab, logger)))
 		}
 	} else {
-		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" msg=\"invalid context (metric channel not set)\"",
+		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (metric channel not set)\"",
 			CollectorId(symtab, logger),
-			ScriptName(symtab, logger)))
+			ScriptName(symtab, logger),
+			a.GetName(symtab, logger)))
 	}
 
 	// check if user has specified a
@@ -203,6 +209,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 			level.Warn(logger).Log(
 				"collid", CollectorId(symtab, logger),
 				"script", ScriptName(symtab, logger),
+				"name", a.GetName(symtab, logger),
 				"errmsg", err)
 		}
 

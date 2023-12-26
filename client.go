@@ -119,7 +119,6 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 		cl.symtab = make(map[string]any)
 	}
 
-	// c.wake_cond = *sync.NewCond(&c.wait_mutex)
 	params := &ClientInitParams{
 		Scheme:           target.Scheme,
 		Host:             target.Host,
@@ -132,26 +131,6 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 		ScrapeTimeout:    time.Duration(target.ScrapeTimeout),
 		QueryRetry:       target.QueryRetry,
 	}
-	// params := &ClientInitParams{
-	// 	Scheme:  GetMapValueString(cl.symtab, "scheme"),
-	// 	Host:    GetMapValueString(cl.symtab, "host"),
-	// 	Port:    GetMapValueString(cl.symtab, "port"),
-	// 	BaseUrl: GetMapValueString(cl.symtab, "base_url"),
-	// 	AuthConfig: AuthConfig{
-	// 		Mode:     GetMapValueString(cl.symtab, "auth_mode"),
-	// 		Username: GetMapValueString(cl.symtab, "user"),
-	// 		Password: Secret(GetMapValueString(cl.symtab, "password")),
-	// 		Token:    Secret(GetMapValueString(cl.symtab, "auth_token")),
-	// 		authKey:  GetMapValueString(cl.symtab, "auth_key"),
-	// 	},
-	// 	// BasicAuth:         auth_mode,
-	// 	// Username:          GetMapValueString(cl.symtab, "user"),
-	// 	// Password:          Secret(GetMapValueString(cl.symtab, "password")),
-	// 	ProxyUrl:          GetMapValueString(cl.symtab, "proxyUrl"),
-	// 	VerifySSL:         verifySSL,
-	// 	ConnectionTimeout: timeout,
-	// 	QueryRetry:        query_retry,
-	// }
 	cl.Init(params)
 
 	// duplicate headers from source into clone
@@ -163,7 +142,7 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	cl.client.SetCookies(cl.client.Cookies)
 
 	auth_set, _ := GetMapValueBool(c.symtab, "auth_set")
-	if auth_set {
+	if auth_set && c.client.UserInfo != nil {
 		cl.client.UserInfo = &resty.User{
 			Username: c.client.UserInfo.Username,
 			Password: c.client.UserInfo.Password,
@@ -514,6 +493,53 @@ func (cl *Client) proceedHeaders() error {
 							cl.client.Header.Del(head_name)
 						}
 					}
+				} else if headers, ok := map_header.(map[string]any); ok {
+					action = "add"
+					head_name = ""
+					head_value = ""
+					for key_name, r_value := range headers {
+
+						if key_name == "name" {
+							switch value := r_value.(type) {
+							case *Field:
+								if head_name, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								head_name = value
+							}
+
+						}
+						// get value
+						if key_name == "value" {
+							switch value := r_value.(type) {
+							case *Field:
+								if head_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								head_value = value
+							}
+						}
+
+						if key_name == "action" {
+							switch value := r_value.(type) {
+							case *Field:
+								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								action = value
+							}
+						}
+					}
+					if head_name != "" && head_value != "" {
+						if action == "add" {
+							cl.client.SetHeader(head_name, head_value)
+						} else if action == "delete" || action == "remove" {
+							cl.client.Header.Del(head_name)
+						}
+					}
 				}
 			}
 		}
@@ -607,6 +633,85 @@ func (cl *Client) proceedCookies() error {
 						case string:
 							key_name = key_val
 						}
+						if key_name == "name" {
+							switch value := r_value.(type) {
+							case *Field:
+								if cookie_name, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								cookie_name = value
+							}
+						} else if key_name == "value" {
+							// get value
+							switch value := r_value.(type) {
+							case *Field:
+								if cookie_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								cookie_value = value
+							}
+						} else if key_name == "domain" {
+							// get domain
+							switch value := r_value.(type) {
+							case *Field:
+								if cookie_domain, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								cookie_domain = value
+							}
+						} else if key_name == "path" {
+							// get path
+							switch value := r_value.(type) {
+							case *Field:
+								if cookie_path, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								cookie_path = value
+							}
+						} else if key_name == "action" {
+							switch value := r_value.(type) {
+							case *Field:
+								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+									return err
+								}
+							case string:
+								action = value
+							}
+						}
+					}
+					if cookie_name != "" {
+						if action == "add" && cookie_value != "" {
+							cookie := &http.Cookie{
+								Name:  cookie_name,
+								Value: cookie_value,
+							}
+							if cookie_path != "" {
+								cookie.Path = cookie_path
+							}
+							if cookie_domain != "" {
+								cookie.Domain = cookie_domain
+							}
+							if cookie_max_age != -1 {
+								cookie.MaxAge = cookie_max_age
+							}
+
+							cl.client.Cookies = UpdateCookie(cl.client.Cookies, cookie)
+						} else if action == "delete" || action == "remove" {
+							cl.client.Cookies = DeleteCookie(cl.client.Cookies, cookie_name)
+						}
+					}
+				} else if headers, ok := map_cookie.(map[string]any); ok {
+					action = "add"
+					cookie_name = ""
+					cookie_value = ""
+					cookie_path = ""
+					cookie_domain = ""
+					cookie_max_age = -1
+					for key_name, r_value := range headers {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:

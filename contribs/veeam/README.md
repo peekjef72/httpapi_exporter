@@ -18,7 +18,6 @@ Several Veeam server can be polled by adding them to the YAML config file, by ad
 
 ## Usage
 
-The expor
 I recommand to create a unix symbolic link from httpapi_exporter to netscaler_exporter so it is easy to distinguish in processes tree (top, ps)
 
 ```shell
@@ -28,7 +27,7 @@ ln -s httpapi_exporter veeam_exporter
 To start the exporter you just have to start with a path to config file:
 
 ```shell
-veam_exporter -c /etc/httpapi_exporter/veeam/config.yml
+veeam_exporter -c /etc/httpapi_exporter/veeam/config.yml
 ```
 
 ## exporter command line options

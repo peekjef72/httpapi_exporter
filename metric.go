@@ -167,7 +167,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 
 	// build the labels family with the content of the var(*Field)
 	if len(mf.labels) == 0 && mf.config.key_labels != nil {
-		if labelsmap_raw, err := ValorizeValue(item, mf.config.key_labels, logger, 0); err == nil {
+		if labelsmap_raw, err := ValorizeValue(item, mf.config.key_labels, logger, mf.config.Name, 0); err == nil {
 			if key_labels_map, ok := labelsmap_raw.(map[string]any); ok {
 				label_len := len(key_labels_map)
 				if len(mf.config.Values) > 1 {

@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/imdario/mergo"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"google.golang.org/protobuf/proto"
@@ -26,7 +28,7 @@ const (
 	scrapeDurationName  = "scrape_duration_seconds"
 	scrapeDurationHelp  = "How long it took to scrape the target in seconds"
 	collectorStatusName = "collector_status"
-	collectorStatusHelp = "collector scripts status 0: error - 1: ok"
+	collectorStatusHelp = "collector scripts status 0: error - 1: ok - 2: Invalid login 3: Timeout"
 )
 
 // Target collects SQL metrics from a single sql.DB instance. It aggregates one or more Collectors and it looks much
@@ -36,10 +38,13 @@ type Target interface {
 	Collect(ctx context.Context, ch chan<- Metric)
 	Name() string
 	SetSymbol(string, any) error
+	GetSymbolTable() map[string]any
 	Config() *TargetConfig
 	GetDeadline() time.Time
 	SetDeadline(time.Time)
 	SetLogger(log.Logger)
+	Lock()
+	Unlock()
 	// Update(string, string) error
 	// YAML() ([]byte, error)
 }
@@ -204,10 +209,39 @@ func (t *target) Config() *TargetConfig {
 }
 
 // SetSymbol implement Target.SetSymbol
+//
+// add or update element in symbol table
+//
+// May be unitary key (.attribute) or sequence (.attr1.attr2.[...])
 func (t *target) SetSymbol(key string, value any) error {
-
-	t.client.symtab[key] = value
+	symtab := t.client.symtab
+	if r_val, ok := symtab[key]; ok {
+		vDst := reflect.ValueOf(r_val)
+		if vDst.Kind() == reflect.Map {
+			if m_val, ok := r_val.(map[string]any); ok {
+				opts := mergo.WithOverride
+				if err := mergo.Merge(&m_val, value, opts); err != nil {
+					return err
+				}
+			}
+		} else if vDst.Kind() == reflect.Slice {
+			if s_val, ok := r_val.([]any); ok {
+				opts := mergo.WithOverride
+				if err := mergo.Merge(&s_val, value, opts); err != nil {
+					return err
+				}
+			}
+		} else {
+			symtab[key] = value
+		}
+	} else {
+		symtab[key] = value
+	}
 	return nil
+}
+
+func (t *target) GetSymbolTable() map[string]any {
+	return t.client.symtab
 }
 
 // Getter for deadline
@@ -227,6 +261,14 @@ func (t *target) SetLogger(logger log.Logger) {
 	for _, c := range t.collectors {
 		c.SetLogger(logger)
 	}
+	t.content_mutex.Unlock()
+}
+
+func (t *target) Lock() {
+	t.content_mutex.Lock()
+}
+
+func (t *target) Unlock() {
 	t.content_mutex.Unlock()
 }
 
@@ -518,7 +560,17 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 						} else {
 							coll_ctx, cancel = context.WithDeadline(ctx, deadline)
 						}
-
+						defer func() {
+							if r := recover(); r != nil {
+								err, ok := r.(error)
+								if !ok {
+									err = fmt.Errorf("undefined error")
+								}
+								level.Debug(logger).Log(
+									"collid", t.name,
+									"msg", "collector has panic-ed: %s", err.Error())
+							}
+						}()
 						defer func() {
 							cancel()
 							wg_coll.Done()
@@ -650,8 +702,12 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 				labels_value[0] = c.GetName()
 				level.Debug(logger).Log(
 					"collid", t.name,
-					"msg", fmt.Sprintf("target collector['%s'] collid=[%s] has status [%d]", labels_value[0], c.GetId(), c.GetStatus()))
+					"msg", fmt.Sprintf("target collector['%s'] collid=[%s] has status=%d", labels_value[0], c.GetId(), c.GetStatus()))
+
 				met_ch <- NewMetric(t.collectorStatusDesc, float64(c.GetStatus()), labels_name, labels_value)
+
+				// obtain set_stats from collector
+				c.SetSetStats(t)
 			}
 		}
 		// And exporter a `scrape duration` metric once we're done scraping.

@@ -1,0 +1,171 @@
+---
+
+##
+## url https://developer-docs.citrix.com/projects/netscaler-nitro-api/en/12.0/statistics/ssl/sslvserver/
+## url https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/configuration/ssl/sslvserver_binding
+### Statistics for sslvserver.
+#
+
+
+collector_name: netscaler_sslvserver_metrics
+metric_prefix: citrixadc_sslvserver
+
+
+templates:
+  SSLVServerStatus: '
+    {{- $groupMemberStatusDef := dict
+          "DOWN"    "1"
+          "Unknown" "2"
+          "Busy"    "3"
+          "OFS"     "4"
+          "TROFS"   "5"
+          "Up"      "7"
+          "TROFS_DOWN"  "8"
+    -}}
+    {{- pluck . $groupMemberStatusDef | first | default "2" -}}'
+
+scripts:
+  get stat_sslvserver:
+    - name: sslvserver
+      query:
+        url: /stat/sslvserver
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      loop: "{{ .results.sslvserver | toRawJson }}"
+      actions:
+        - name: debug
+          debug:
+            msg: "item: {{ .item }}"
+
+        - name: build labels
+          set_fact:
+            key_labels:
+              sslvserver_name: "{{ .item.vservername }}"
+              sslvserver_type: "{{ .item.type }}"
+              sslvserver_ip:   "{{ .item.primaryipaddress }}"
+              sslvserver_port:   "{{ .item.primaryport }}"
+
+        - name: build metrics
+          scope: none
+          metrics:
+            - metric_name: status
+              help: "Current state of sslvserver UP(7), DOWN(1), UNKNOWN(2), BUSY(3), OFS(Out of Service)(4), TROFS(Transition Out of Service)(5), TROFS_DOWN(Down When going Out of Service)(8)"
+              type: gauge
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values:
+                _: '{{ template "SSLVServerStatus" .item.state }}'
+
+            - metric_name: total_decrypt_bytes
+              help: Number of decrypted bytes per SSL vserver
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.sslctxtotdecbytes }}"
+
+            - metric_name: total_encrypt_bytes
+              help: Number of encrypted bytes per SSL vserver
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.sslctxtotencbytes }}"
+
+            - metric_name: total_decrypt_hardware_bytes
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+               _: "{{ .item.sslctxtothwdec_bytes }}"
+
+            - metric_name: total_encrypt_hardware_bytes
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+               _: "{{ .item.sslctxtothwencbytes }}"
+
+            - metric_name: total_session_new
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.sslctxtotsessionnew }}"
+
+            - metric_name: total_session_hits
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.sslctxtotsessionhits }}"
+
+            - metric_name: total_auth_success
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.ssltotclientauthsuccess }}"
+
+            - metric_name: total_auth_failure
+              type: counter
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.ssltotclientauthfailure }}"
+
+            - metric_name: health
+              help: Health of the vserver. This gives percentage of UP services bound to this vserver.
+              type: gauge
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.vslbhealth }}"
+
+            - metric_name: active_services
+              type: gauge
+              key_labels: "{{ .key_labels | toRawJson }}"
+              values: 
+                _: "{{ .item.actsvcs }}"
+
+            # - metric_name: rate_auth_success
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values:
+            #     _: "{{ .item.sslclientauthsuccessrate }}"
+
+            # - metric_name: rate_auth_failure
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values: 
+            #     _: "{{ .item.sslclientauthfailurerate }}"
+
+            # - metric_name: rate_encrypt_bytes
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values: 
+            #     _: "{{ .item.sslctxencbytesrate }}"
+
+            # - metric_name: rate_decrypt_bytes
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values: 
+            #     _: "{{ .item.sslctxdecbytesrate }}"
+
+            # - metric_name: rate_hw_encrypt_bytes
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values: 
+            #     _: "{{ .item.sslctxhwencbytesrate }}"
+
+            # - metric_name: rate_hw_decrypt_bytes
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values:
+            #     _: "{{ .item.sslctxhwdec_bytesrate }}"
+
+            # - metric_name: rate_session_new
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values: 
+            #     _: "{{ .item.sslctxsessionnewrate }}"
+
+            # - metric_name: rate_session_hits
+            #   type: gauge
+            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   values: 
+            #     _: "{{ .item.sslctxsessionhitsrate }}"
+
+...

@@ -120,11 +120,13 @@ scripts:
         var_name: results
         timeout: 10
 
-    - name: debug task
-      debug:
-        msg: "tasks count: {{ len .results.Entities.BackupTaskSessions.BackupTaskSessions }}"
+    # - name: debug task
+    #   debug:
+    #     msg: "tasks count: {{ len .results.Entities.BackupTaskSessions.BackupTaskSessions }}"
 
     - name: procceed elements
+      # to debug first task
+      # loop: "{{ list ( index .results.Entities.BackupTaskSessions.BackupTaskSessions 0 )| toRawJson }}"
       loop: "{{ .results.Entities.BackupTaskSessions.BackupTaskSessions | toRawJson }}"
       actions:
         - name: determine last task status from all tasks starts
@@ -209,7 +211,7 @@ scripts:
                 taskname:     _
                 vmname:       _
               values: 
-                _: retries
+                _: total_size_bytes
 
             - metric_name: error
               help: "use to set error's message label"
@@ -223,6 +225,6 @@ scripts:
               values: 
                 _: state
               when:
-                - or ( eq .task.state "2" ) ( eq .task.state "3" )
+                - or ( eq (toString .task.state) "2" ) ( eq (toString .task.state) "3" )
 
 ...

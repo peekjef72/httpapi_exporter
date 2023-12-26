@@ -6,7 +6,7 @@
 #
 
 collector_name: netscaler_systemcpu_metrics
-metric_prefix: citrixadc_cpu_core
+metric_prefix: citrixadc_system_cpu_core
 
 scripts:
   get stat_system:

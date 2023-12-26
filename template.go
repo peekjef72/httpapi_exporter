@@ -57,6 +57,146 @@ func getHeader(headers http.Header, header string) (string, error) {
 	return headers.Get(header), nil
 }
 
+func exists(data any) (bool, error) {
+	res := false
+	if data != nil {
+		return true, nil
+	}
+	return res, nil
+}
+
+func getfloat(val any) (float64, bool) {
+	if val == nil {
+		return 0, true
+	}
+	var (
+		f_value float64
+		err     error
+	)
+
+	// it is a raw value not a template look in "item"
+	switch curval := val.(type) {
+	case int64:
+		f_value = float64(curval)
+	case float64:
+		f_value = curval
+	case string:
+		if f_value, err = strconv.ParseFloat(strings.Trim(curval, "\r\n "), 64); err != nil {
+			f_value = 0
+		}
+	default:
+		f_value = 0
+		// value := row[v].(float64)
+	}
+	return f_value, false
+}
+
+const (
+	opEqual uint = iota
+	// opNE
+	// opLT
+	// opLE
+	opGT
+	opGE
+)
+
+func checkOp(op uint, val1 any, val2 any) bool {
+	res := false
+	f1, isnil1 := getfloat(val1)
+	f2, isnil2 := getfloat(val2)
+
+	if isnil1 || isnil2 {
+		// if op == opLE || op == opLT {
+		// 	t:= isnil1
+		// 	isnil1 = isnil2
+		// 	isnil2 = t
+		// 	if op == opLE {
+		// 		op = opGE
+		// 	} else {
+		// 		op = opGT
+		// 	}
+		// }
+		switch op {
+		case opEqual:
+			res = (isnil1 == isnil2)
+		// case opNE:
+		// 	res = (isnil1 != isnil2)
+		case opGT:
+			if isnil1 || !isnil2 {
+				res = true
+			}
+		case opGE:
+			if isnil1 && isnil2 {
+				res = true
+			}
+		}
+	} else {
+		// if op == opLE || op == opLT {
+		// 	t:= f1
+		// 	f1 = f2
+		// 	f2 = t
+		// 	if op == opLE {
+		// 		op = opGE
+		// 	} else {
+		// 		op = opGT
+		// 	}
+		// }
+		switch op {
+		case opEqual:
+			res = (f1 == f2)
+		// case opNE:
+		// 	res = (f1 != f2)
+		case opGT:
+			if f1 > f2 {
+				res = true
+			}
+		case opGE:
+			if f1 >= f2 {
+				res = true
+			}
+		}
+	}
+	return res
+}
+
+func exporterEQ(val1 any, val2 any) bool {
+	return checkOp(opEqual, val1, val2)
+}
+func exporterNE(val1 any, val2 any) bool {
+	return !checkOp(opEqual, val1, val2)
+}
+func exporterGE(val1 any, val2 any) bool {
+	return checkOp(opGE, val1, val2)
+}
+func exporterGT(val1 any, val2 any) bool {
+	return checkOp(opGT, val1, val2)
+}
+func exporterLE(val1 any, val2 any) bool {
+	return checkOp(opGE, val2, val1)
+}
+func exporterLT(val1 any, val2 any) bool {
+	return checkOp(opGT, val2, val1)
+}
+
+func exporterLEN(dict any) int {
+	var res int = 0
+
+	switch maptype := dict.(type) {
+	case map[string]any:
+		res = len(maptype)
+	case map[any]any:
+		res = len(maptype)
+	case []any:
+		res = len(maptype)
+	case []string:
+		res = len(maptype)
+	case string:
+		res = len(maptype)
+	}
+
+	return res
+}
+
 // function for template: custom dict hasKey() key that allow to query key from dict of map[any]any type instead of map[string]any
 func exporterHasKey(dict any, lookup_key string) (bool, error) {
 	res := false
@@ -238,6 +378,14 @@ func mymap() ttemplate.FuncMap {
 	// my_map["convertToBytes"] = convertToBytes
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["getHeader"] = getHeader
+	sprig_map["exists"] = exists
+	sprig_map["EQ"] = exporterEQ
+	sprig_map["NE"] = exporterNE
+	sprig_map["GE"] = exporterGE
+	sprig_map["GT"] = exporterGT
+	sprig_map["LE"] = exporterLE
+	sprig_map["LT"] = exporterLT
+	sprig_map["LEN"] = exporterLEN
 	sprig_map["exporterDecryptPass"] = exporterDecryptPass
 	sprig_map["exporterHasKey"] = exporterHasKey
 	sprig_map["exporterGet"] = exporterGet
