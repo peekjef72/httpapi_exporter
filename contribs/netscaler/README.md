@@ -14,9 +14,9 @@ It uses httpapi_exporter that exposes metrics to http (default port 9258) that c
 
 This exporter was originaly inspired from [citrix-adc-metrics-exporter](citrix/citrix-adc-metrics-exporter/), and has generated a python version [netscaler_exporter](peekjef72/netscaler_exporter).
 
-It is an usage in "my company" and doens't collect every feature exposed by netscaler HTTP API, but it ca be expanded as desired: updates and contributions are welcome.
+It is an usage in "my company" and doens't collect every feature exposed by netscaler HTTP API, but it can be expanded as desired: updates and contributions are welcome.
 
-It allows you collect several netscalers by adding them to the YAML config files and then specifying a target parameter in Prometheus configuration. It benefits all features from httpapi_exporter : targets, models, auth and proxies.
+It allows you to collect several netscalers by adding them to the YAML config files and then specifying a target parameter in Prometheus configuration. It benefits all features from httpapi_exporter : targets, models, auth and proxies.
 
 **Config**: [see etc/config.yml](etc/netscaler/config.yml)
 

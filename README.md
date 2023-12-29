@@ -1,3 +1,5 @@
+<meta name="google-site-verification" content="W1W5S9kNhNL2ZcTEZJ6lMZpAGeNnka6I3iIVFhiUO-I" />
+
 # Prometheus HTTPAPI Exporter
 
 This exporter wants to be a generic JSON REST API exporter. That's mean it can login, then makes requests to collect metrics and performs transformations on values and finally returns metrics in prometheus format.
@@ -57,7 +59,7 @@ Usefull if something is wrong and you want to have detailled log only for a smal
 
 Exporter requires configuration to works:
 - globals parameters
-- collectors: 
+- collectors
 - targets
 - authentication definitions
 
@@ -86,9 +88,9 @@ parameters to scrape a target:
 **examples**:
 
 1. `/metrics?target=mytarget` scrapes the target `mytarget` without any parameter; It must be fully defined in the exporter configuration files; it has either no authentication or password is not encrypted.
-2. `/metrics?auth_key=<ciphertext>&target=mytarget2` scrapes the target `mytarget2` that is fully defined in the exporter configuration files, and has a password that is encrypted.
-3. `/metrics?auth_key=<ciphertext>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>` define a dynamic target that is reachable at url `https://myhost.domain.name:port`, using the authentication parameters defined by `<auth_name>` and "default" model, then scrapes it. This target was not initially defined in the exporter configuration files, and only exists until the exporter is running.
-4. `/metrics?auth_key=<ciphertext>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>&model=mytarget` same than previous example but the dynamic target creation use "mytarget" model instead of default.
+2. `/metrics?auth_key=<cipherkey>&target=mytarget2` scrapes the target `mytarget2` that is fully defined in the exporter configuration files, and has a password that is encrypted and can be decrypted with the cipherkey.
+3. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>` define a dynamic target that is reachable at url `https://myhost.domain.name:port`, using the authentication parameters defined by `<auth_name>` and "default" model, then scrapes it. This target was not initially defined in the exporter configuration files, and only exists until the exporter is running.
+4. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>&model=mytarget` same than previous example but the dynamic target creation use "mytarget" model instead of default.
 
 ## password encryption
 
@@ -149,8 +151,6 @@ How it works:
         relabel_configs:
         - source_labels: [__address__]
             target_label: __param_target
-        - source_labels: [__tmp_auth_key]
-            target_label: __param_auth_key
         - source_labels: [__tmp_source_host]
             target_label: __address__
 
