@@ -23,16 +23,20 @@ func (tmpl *exporterTemplate) MarshalText() (text []byte, err error) {
 }
 
 type Field struct {
-	raw  string
-	tmpl *exporterTemplate
+	raw     string
+	vartype bool
+	tmpl    *exporterTemplate
 }
 
 // create a new key or value Field that can be a GO template
 func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
-	var tmpl *ttemplate.Template
-	var err error
+	var (
+		tmpl    *ttemplate.Template
+		err     error
+		vartype bool = false
+	)
 
-	if strings.Contains(name, "{") {
+	if strings.Contains(name, "{{") {
 		if customTemplate != nil {
 			ptr := (*ttemplate.Template)(customTemplate)
 			tmpl, err = ptr.Clone()
@@ -47,10 +51,15 @@ func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
 		if err != nil {
 			return nil, fmt.Errorf("field template %s is invalid: %s", name, err)
 		}
+	} else if strings.Contains(name, "$") {
+		name = name[1:]
+		vartype = true
+
 	}
 	return &Field{
-		raw:  name,
-		tmpl: (*exporterTemplate)(tmpl),
+		raw:     name,
+		vartype: vartype,
+		tmpl:    (*exporterTemplate)(tmpl),
 	}, nil
 }
 
@@ -139,19 +148,27 @@ func (f *Field) GetValueString(
 		// unescape string
 		return html.UnescapeString(tmp), nil
 	} else {
-		val := f.raw
-		// check if there is a transformation value in sub[stitution] map
-		if sub != nil {
-			if _, ok := sub[val]; ok {
-				val = sub[val]
+		if f.vartype {
+			data, err := getVar(item, f.raw)
+			if err != nil {
+				return "", err
 			}
-		}
-		if check_item {
-			if curval, ok := item[val]; ok {
-				return RawGetValueString(curval), nil
+			return RawGetValueString(data), nil
+		} else {
+			val := f.raw
+			// check if there is a transformation value in sub[stitution] map
+			if sub != nil {
+				if _, ok := sub[val]; ok {
+					val = sub[val]
+				}
 			}
+			if check_item {
+				if curval, ok := item[val]; ok {
+					return RawGetValueString(curval), nil
+				}
+			}
+			return RawGetValueString(val), nil
 		}
-		return RawGetValueString(val), nil
 	}
 }
 
@@ -187,15 +204,56 @@ func (f *Field) GetValueFloat(
 		}
 		str_value = html.UnescapeString(tmp_res.String())
 	} else {
-		val := f.raw
-		// check if value exists in symbol table
-		if curval, ok := item[val]; ok {
-			str_value = curval
+		if f.vartype {
+			data, err := getVar(item, f.raw)
+			if err != nil {
+				return 0, err
+			}
+			str_value = data
 		} else {
-			str_value = val
+			val := f.raw
+			// check if value exists in symbol table
+			if curval, ok := item[val]; ok {
+				str_value = curval
+			} else {
+				str_value = val
+			}
 		}
 	}
 	return RawGetValueFloat(str_value), nil
+}
+
+// ***************************************************************************************
+func getVar(symtab map[string]any, attr string) (any, error) {
+	var err error
+
+	tmp_symtab := symtab
+	// split the attr string into parts: attr1.attr[0].attr
+	if attr[0] == '.' {
+		attr = attr[1:]
+	}
+	vars := strings.Split(attr, ".")
+	lenattr := len(vars) - 1
+	for idx, var_name := range vars {
+		if raw_value, ok := tmp_symtab[var_name]; ok {
+			if idx < lenattr {
+				switch cur_value := raw_value.(type) {
+				case map[string]any:
+					tmp_symtab = cur_value
+				default:
+					err = fmt.Errorf("can't set attr: '%s' has invalid type", var_name)
+				}
+			} else {
+				return raw_value, nil
+			}
+			// }
+		} else {
+			err = fmt.Errorf("can't set attr: '%s' not found", var_name)
+			tmp_symtab = nil
+			break
+		}
+	}
+	return tmp_symtab, err
 }
 
 func (f *Field) GetValueObject(
@@ -244,6 +302,20 @@ func (f *Field) GetValueObject(
 		}
 		return data, nil
 	} else {
+		if f.vartype {
+			if symtab, ok := item.(map[string]any); ok {
+				data, err := getVar(symtab, f.raw)
+				if err != nil {
+					return res_slice, err
+				}
+
+				// if data, ok := symtab[f.raw]; ok {
+				return data, nil
+				// }
+			} else {
+				return nil, nil
+			}
+		}
 		datas := &ResultElement{
 			raw: item,
 		}
@@ -264,6 +336,9 @@ func (f *Field) String() string {
 		// f.tmpl.
 		return f.tmpl.Tree.Root.String()
 	} else {
+		if f.vartype {
+			return "$" + f.raw
+		}
 		return f.raw
 	}
 }

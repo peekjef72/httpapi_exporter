@@ -41,7 +41,8 @@ scripts:
       # to debug first element
       # loop: '{{ list ( index .results.lbvserver 0 ) ( index .results.lbvserver 1 ) ( index .results.lbvserver 2 )| toRawJson }}'
       # loop: '{{ list ( index .results.lbvserver 3 ) ( index .results.lbvserver 4 )| toRawJson }}'
-      loop: '{{ .results.lbvserver | toRawJson }}'
+      # loop: '{{ .results.lbvserver | toRawJson }}'
+      loop: $results.lbvserver
       when:
         - exporterHasKey .item "name"
         - eq .item.state "UP"
@@ -76,7 +77,8 @@ scripts:
                     - name: process service
                       # to debug first element
                       # loop: '{{ list ( index .binding.lbvserver_service_binding 0 ) | toRawJson }}'
-                      loop: '{{ .bindings.lbvserver_service_binding | toRawJson }}'
+                      # loop: '{{ .bindings.lbvserver_service_binding | toRawJson }}'
+                      loop: $bindings.lbvserver_service_binding
                       loop_var: lbcfg
                       set_fact:
                         #* add a mapping for service name to a list of lbvserver names
@@ -101,7 +103,8 @@ scripts:
                     - name: process servicegroup
                       # to debug first element
                       # loop: '{{ list ( index .bindinds.lbvserver_servicegroup_binding 0 ) | toRawJson }}'
-                      loop: '{{ .bindings.lbvserver_servicegroup_binding | toRawJson }}'
+                      # loop: '{{ .bindings.lbvserver_servicegroup_binding | toRawJson }}'
+                      loop: $bindings.lbvserver_servicegroup_binding
                       loop_var: lbcfg
                       when:
                         - exporterHasKey .lbcfg "name"
@@ -134,9 +137,9 @@ scripts:
                 {{- $total -}}
               {{- end -}}'
             key_labels:
-              lb_type: "{{ .item.type }}"
-              lb_name: "{{ .item.name }}"
-              # citrixadc_lb_state: "{{ .item.state }}"
+              lb_type: $item.type
+              lb_name: $item.name
+              # citrixadc_lb_state: $item.state
 
         - name: set metrics
           metric_prefix: citrixadc_lb
@@ -145,307 +148,307 @@ scripts:
             - metric_name: status
               help: "Current state of service (0 OUT OF SERVICE / 1 UP)"
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
                 _: '{{ template "MemberStatus" .item.state }}'
 
             - metric_name: packets_sent_total
               help: Total number of packets sent.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalpktssent }}"
+                _: $item.totalpktssent
 
             - metric_name: packets_received_total
               help: Total number of packet received on this service or virtual server.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalpktsrecvd }}"
+                _: $item.totalpktsrecvd
 
             - metric_name: hits_total
               help: Total vserver hits
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.tothits }}"
+                _: $item.tothits
 
             - metric_name: request_bytes_received_total
               help: Total number of request bytes received on this service or virtual server.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalrequestbytes }}"
+                _: $item.totalrequestbytes
 
             - metric_name: response_bytes_received_total
               help: Number of response bytes received by this service or virtual server.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalresponsebytes }}"
+                _: $item.totalresponsebytes
 
             - metric_name: requests_total
               help: Total number of requests received on this service or virtual server.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalrequests }}"
+                _: $item.totalrequests
 
             - metric_name: responses_total
               help: Number of responses received on this service or virtual server.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalresponses }}"
+                _: $item.totalresponses
 
             - metric_name: surge_count
               help: Number of requests in the surge queue.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.surgecount }}"
+                _: $item.surgecount
 
             - metric_name: tolerable_transactions_count
               help: Tolerable transactions based on APDEX threshold.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.toleratingttlbtransactionsrate }}"
+                _: $item.toleratingttlbtransactionsrate
 
             - metric_name: ttlb_calculated_transactions_total
               help: Total transactions where client TTLB is calculated.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totcltttlbtransactions }}"
+                _: $item.totcltttlbtransactions
 
             - metric_name: deffered_requests_total
               help: Number of deferred request on this vserver.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.deferredreq }}"
+                _: $item.deferredreq
 
             - metric_name: spillover_count_total
               help: Number of times vserver experienced spill over.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totspillovers }}"
+                _: $item.totspillovers
 
             - metric_name: invalid_response_request_total
               help: Number invalid requests/responses on this vserver
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.invalidrequestresponse }}"
+                _: $item.invalidrequestresponse
 
             - metric_name: invalid_response_request_dropped_total
               help: Number invalid requests/responses dropped on this vserver
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.invalidrequestresponsedropped }}"
+                _: $item.invalidrequestresponsedropped
 
             - metric_name: frustrating_transactions_total
               help: Frustrating transactions based on APDEX threshold
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.frustratingttlbtransactions }}"
+                _: $item.frustratingttlbtransactions
 
             - metric_name: tolerable_transactions_total
               help: Number of times traffic was diverted to backup vserver since primary vserver was DOWN.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.toleratingttlbtransactions }}"
+                _: $item.toleratingttlbtransactions
 
             - metric_name: backup_server_divert_count_total
               help: Number of times traffic was diverted to backup vserver since primary vserver was DOWN.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totvserverdownbackuphits }}"
+                _: $item.totvserverdownbackuphits
 
             - metric_name: busy_error_total
               help: Number of response bytes received by this service or virtual server.
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.totalsvrbusyerr }}"
+                _: $item.totalsvrbusyerr
 
             - metric_name: request_rate_bytes
               help: Rate (/s) of request bytes received on this service or virtual server.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.requestbytesrate }}"
+                _: $item.requestbytesrate
 
             - metric_name: request_rate
               help: Rate (/s) of requests received on this service or virtual server.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.requestsrate }}"
+                _: $item.requestsrate
 
             - metric_name: packets_received_rate
               help: Rate (/s) of packet received on this service or virtual server.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.pktsrecvdrate }}"
+                _: $item.pktsrecvdrate
 
             - metric_name: frustrating_transactions_rate
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.frustratingttlbtransactionsrate }}"
+                _: $item.frustratingttlbtransactionsrate
 
             - metric_name: client_response_time_adex
               help: Vserver APDEX index based on client response times.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.cltresponsetimeapdex }}"
+                _: $item.cltresponsetimeapdex
 
             - metric_name: spill_over_threshold
               help: Spill Over Threshold set on the VServer.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.sothreshold }}"
+                _: $item.sothreshold
 
             - metric_name: actual_server_current_connections
               help: Number of current connections to the actual servers behind the virtual server.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.cursrvrconnections }}"
+                _: $item.cursrvrconnections
 
             - metric_name: surge_queue_requests_count
               help: Total number of requests in the surge queues of all the services bound to this LB-vserver.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.svcsurgecount }}"
+                _: $item.svcsurgecount
 
             - metric_name: labeled_connections_count
               help: Number of Labeled connection on this vserver
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.labelledconn }}"
+                _: $item.labelledconn
 
             - metric_name: current_mtcp_sessions_count
               help: Current Multipath TCP sessions
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.curmptcpsessions }}"
+                _: $item.curmptcpsessions
 
             - metric_name: deferred_requets_rate
               help: Rate (/s) of deferred request on this vserver.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.deferredreqrate }}"
+                _: $item.deferredreqrate
 
             - metric_name: average_ttlb
               help: Average TTLB between the client and the server.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.avgcltttlb }}"
+                _: $item.avgcltttlb
 
             - metric_name: ttlb_transactions_rate
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.cltttlbtransactionsrate }}"
+                _: $item.cltttlbtransactionsrate
 
             - metric_name: total_responses_rate
               help: Rate (/s) of bytes encrypted on the NetScaler appliance.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.responsesrate }}"
+                _: $item.responsesrate
 
             - metric_name: active_sessions_count
               help: number of ACTIVE services bound to a vserver
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.actsvcs }}"
+                _: $item.actsvcs
 
             - metric_name: total_packets_sent_rate
               help: Rate (/s) of packets sent.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.pktssentrate }}"
+                _: $item.pktssentrate
 
             - metric_name: current_mtcp_subflows_count
               help: Current Multipath TCP subflows
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.cursubflowconn }}"
+                _: $item.cursubflowconn
 
             - metric_name: current_client_connection_count
               help: Number of current client connections.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.curclntconnections }}"
+                _: $item.curclntconnections
 
             - metric_name: push_label_count
               help: Number of labels for this push vserver.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: "{{ .item.pushlabel }}"
+                _: $item.pushlabel
 
             - metric_name: hits_rate
               help: Rate (/s) of vserver hits
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.hitsrate }}"
+                _: $item.hitsrate
 
             - metric_name: established_connections_count
               help: Number of client connections in ESTABLISHED state.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.establishedconn }}"
+                _: $item.establishedconn
 
             - metric_name: response_bytes_received_rate
               help: Rate (/s) of response bytes received by this service or virtual server.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.responsebytesrate }}"
+                _: $item.responsebytesrate
 
             - metric_name: inactive_services_count
               help: number of INACTIVE services bound to a vserver
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.inactsvcs }}"
+                _: $item.inactsvcs
 
             - metric_name: busy_error_rate
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.svrbusyerrrate }}"
+                _: $item.svrbusyerrrate
 
             - metric_name: members_up_total
               help: percent of vserver members up. 100= all up.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                -: "{{ .members_up_total }}"
+                _: $members_up_total
 
     #**************************************************
     # keep config group
@@ -453,8 +456,8 @@ scripts:
       when: .populate_groups
       set_stats:
         # svclb: $svclb
-        .config.svclb: '{{ .svclb | toRawJson }}'
-        .config.svcgrplb: '{{ .svcgrplb | toRawJson }}'
+        .config.svclb: $svclb
+        .config.svcgrplb: $svcgrplb
 
 #***************************************************
 # get stat_servicegroup:
@@ -486,13 +489,13 @@ scripts:
                   # don't reduce scope to sub_item var, because we require .item
                   set_fact:
                     key_labels:
-                        lb_name: "{{ .svc_name }}"
+                        lb_name: $svc_name
                         # there is no group name for service binding
-                        servicegroup_name: "{{ .svc }}"
-                        servicegroup_membername: "{{ .member.name }}"
-                        service_type: "{{ .member.servicetype }}"
-                        service_ip: "{{ .member.primaryipaddress }}"
-                        service_port: "{{ .member.primaryport }}"
+                        servicegroup_name: $svc
+                        servicegroup_membername: $member.name
+                        service_type: $member.servicetype
+                        service_ip:   $member.primaryipaddress
+                        service_port: $member.primaryport
 
                 - name: dump metrics
                   # don't reduce scope to sub_item var, because we require .item
@@ -502,95 +505,95 @@ scripts:
                     - metric_name: status
                       help: "Current state of server i.e. the member in group (0 OUT OF SERVICE / 1 UP)"
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
                         _: '{{ template "MemberStatus" .member.state }}'
 
                     - metric_name: tot_responses
                       help: "Number of responses received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
                       type: counter
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.totalresponses }}"
+                        _: $member.totalresponses
 
                     - metric_name: tot_srv_ttlb_transactions
                       type: counter
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.totsvrttlbtransactions }}"
+                        _: $member.totsvrttlbtransactions
 
                     - metric_name: tot_requests
                       help: "Total number of requests received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
                       type: counter
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.totalrequests }}"
+                        _: $member.totalrequests
 
                     - metric_name: tot_response_bytes
                       help: "Number of response bytes received by this service or virtual server."
                       type: counter
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.totalresponsebytes }}"
+                        _: $member.totalresponsebytes
 
                     - metric_name: tot_request_bytes
                       help: "Total number of request bytes received on this service or virtual server."
                       type: counter
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.totalrequestbytes }}"
+                        _: $member.totalrequestbytes
 
                     - metric_name: avg_server_ttfb
                       help: "Average TTFB between the NetScaler appliance and the server.TTFB is the time interval between sending the request packet to a service and receiving the first response from the service"
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.avgsvrttfb }}"
+                        _: $member.avgsvrttfb
 
                     - metric_name: requests_rate
                       help: "Rate (/s) counter for totalrequests"
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.requestsrate }}"
+                        _: $member.requestsrate
 
                     - metric_name: current_client_connections
                       help: "Number of current client connections."
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.curclntconnections }}"
+                        _: $member.curclntconnections
 
                     - metric_name: current_server_connections
                       help: "Number of current connections to the actual servers behind the virtual server."
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.cursrvrconnections }}"
+                        _: $member.cursrvrconnections
 
                     - metric_name: responses_rate
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.responsesrate }}"
+                        _: $member.responsesrate
 
                     - metric_name: tolerating_ttlb_transactions
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.toleratingttlbtransactions }}"
+                        _: $member.toleratingttlbtransactions
 
                     - metric_name: response_bytes_rate
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.responsebytesrate }}"
+                        _: $member.responsebytesrate
 
                     - metric_name: request_bytes_rate
                       type: gauge
-                      key_labels: "{{ .key_labels | toRawJson }}"
+                      key_labels: $key_labels
                       values:
-                        _: "{{ .member.requestbytesrate }}"
+                        _: $member.requestbytesrate
 
 #***************************************************
 # get stat_servicegroup:
@@ -611,7 +614,8 @@ scripts:
             - name: proceed groupmember stats
               vars:
                 grp: "{{ index .sub_res.servicegroup 0 | toRawJson }}"
-              with_items: "{{ .grp.servicegroupmember | toRawJson }}"
+              # with_items: "{{ .grp.servicegroupmember | toRawJson }}"
+              with_items: $grp.servicegroupmember
               loop_var: member
               actions:
                 # - name: debug
@@ -625,12 +629,12 @@ scripts:
                     - name: build metric labels
                       set_fact:
                         key_labels:
-                          lb_name: "{{ .svc_name }}"
-                          servicegroup_name: "{{ .svc }}"
-                          servicegroup_membername: "{{ .member.servicegroupname }}"
-                          service_type: "{{ .member.servicetype }}"
-                          service_ip: "{{ .member.primaryipaddress }}"
-                          service_port: "{{ .member.primaryport }}"
+                          lb_name:                  $svc_name
+                          servicegroup_name:        $svc
+                          servicegroup_membername:  $member.servicegroupname
+                          service_type:             $member.servicetype
+                          service_ip:               $member.primaryipaddress
+                          service_port:             $member.primaryport
 
                     - name: dump metrics
                       # don't reduce scope to sub_item var, because we require .item
@@ -640,94 +644,94 @@ scripts:
                         - metric_name: status
                           help: "Current state of server i.e. the member in group (0 OUT OF SERVICE / 1 UP)"
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
                             _: '{{ template "MemberStatus" .member.state }}'
 
                         - metric_name: tot_responses
                           help: "Number of responses received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
                           type: counter
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.totalresponses }}"
+                            _: $member.totalresponses
 
                         - metric_name: tot_srv_ttlb_transactions
                           type: counter
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.totsvrttlbtransactions }}"
+                            _: $member.totsvrttlbtransactions
 
                         - metric_name: tot_requests
                           help: "Total number of requests received on this service or virtual server. (This applies to HTTP/SSL services and servers.)"
                           type: counter
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.totalrequests }}"
+                            _: $member.totalrequests
 
                         - metric_name: tot_response_bytes
                           help: "Number of response bytes received by this service or virtual server."
                           type: counter
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.totalresponsebytes }}"
+                            _: $member.totalresponsebytes
 
                         - metric_name: tot_request_bytes
                           help: "Total number of request bytes received on this service or virtual server."
                           type: counter
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.totalrequestbytes }}"
+                            _: $member.totalrequestbytes
 
                         - metric_name: avg_server_ttfb
                           help: "Average TTFB between the NetScaler appliance and the server.TTFB is the time interval between sending the request packet to a service and receiving the first response from the service"
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.avgsvrttfb }}"
+                            _: $member.avgsvrttfb
 
                         - metric_name: requests_rate
                           help: "Rate (/s) counter for totalrequests"
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.requestsrate }}"
+                            _: $member.requestsrate
 
                         - metric_name: current_client_connections
                           help: "Number of current client connections."
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.curclntconnections }}"
+                            _: $member.curclntconnections
 
                         - metric_name: current_server_connections
                           help: "Number of current connections to the actual servers behind the virtual server."
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.cursrvrconnections }}"
+                            _: $member.cursrvrconnections
 
                         - metric_name: responses_rate
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.responsesrate }}"
+                            _: $member.responsesrate
 
                         - metric_name: tolerating_ttlb_transactions
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.toleratingttlbtransactions }}"
+                            _: $member.toleratingttlbtransactions
 
                         - metric_name: response_bytes_rate
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.responsebytesrate }}"
+                            _: $member.responsebytesrate
 
                         - metric_name: request_bytes_rate
                           type: gauge
-                          key_labels: "{{ .key_labels | toRawJson }}"
+                          key_labels: $key_labels
                           values:
-                            _: "{{ .member.requestbytesrate }}"
+                            _: $member.requestbytesrate
 
 ...

@@ -215,6 +215,12 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 
 		tmp_symtab["__collector_id"] = symtab["__collector_id"]
 		tmp_symtab["__name__"] = symtab["__name__"]
+		tmp_symtab["root"] = symtab
+		defer func() {
+			delete(tmp_symtab, "__name__")
+			delete(tmp_symtab, "__collector_id")
+			delete(tmp_symtab, "root")
+		}()
 	}
 	for _, cur_act := range a.Actions {
 		tmp_symtab["__metric_channel"] = metric_channel
@@ -225,10 +231,10 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		}
 
 	}
-	if a.Scope != "" && a.Scope != "none" && tmp_symtab != nil {
-		delete(tmp_symtab, "__name__")
-		delete(tmp_symtab, "__collector_id")
-	}
+	// if a.Scope != "" && a.Scope != "none" && tmp_symtab != nil {
+	// 	delete(tmp_symtab, "__name__")
+	// 	delete(tmp_symtab, "__collector_id")
+	// }
 
 	return nil
 }

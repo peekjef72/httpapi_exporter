@@ -10,9 +10,13 @@ auth_mode:
   password: "password"
 # proxy: ""
 # verifySSL: false
+
 # custom constant labels add to all metrics
-#labels:
-  # - name: value
+# labels:
+#   - name: value
+
+# specific scrape timeout for target
+# scrape_timeout: 30s
 
 collectors:
   # you can use operator~ and regexp pattern to select metrics name

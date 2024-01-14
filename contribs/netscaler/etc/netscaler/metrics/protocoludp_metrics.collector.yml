@@ -23,60 +23,60 @@ scripts:
           help: Total number of UDP packets received.
           type: counter
           values:
-            _: udptotrxpkts
+            _: $udptotrxpkts
 
         - metric_name: tot_rx_bytes
           help: Total number of bytes of UDP packets received.
           type: counter
           values:
-            _: udptotrxbytes
+            _: $udptotrxbytes
 
         - metric_name: tot_tx_packets
           help: Total number of UDP packets transmitted.
           type: counter
           values:
-            _: udptottxpkts
+            _: $udptottxpkts
 
         - metric_name: tot_tx_bytes
           help: Total number of bytes of UDP packets transmitted.
           type: counter
           values:
-            _: udptottxbytes
+            _: $udptottxbytes
 
         - metric_name: tot_unknown_service_packets
           help: Stray UDP packets dropped due to no configured listening service.
           type: counter
           values:
-            _: udptotunknownsvcpkts
+            _: $udptotunknownsvcpkts
 
         - metric_name: tot_bad_checksum_packets
           help: Packets received with a UDP checksum error.
           type: counter
           values:
-            _: udpbadchecksum
+            _: $udpbadchecksum
 
         - metric_name: rx_packets_rate
           help: Rate (/s) of UDP packets received.
           type: gauge
           values:
-            _: udprxpktsrate
+            _: $udprxpktsrate
 
         - metric_name: rx_bytes_rate
           help: Rate (/s) of bytes of UDP packets received.
           type: gauge
           values:
-            _: udprxbytesrate
+            _: $udprxbytesrate
 
         - metric_name: tx_packets_rate
           help: Rate (/s) of UDP packets transmitted.
           type: gauge
           values:
-            _: udptxpktsrate
+            _: $udptxpktsrate
 
         - metric_name: tx_bytes_rate
           help: Rate (/s) of bytes of UDP packets transmitted.
           type: gauge
           values:
-            _: udptxbytesrate
+            _: $udptxbytesrate
 
 ...

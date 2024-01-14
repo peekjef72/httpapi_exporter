@@ -142,6 +142,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 	item, ok := rawdatas.(map[string]any)
 	if !ok {
 		ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("metrtic %s invalid type", mf.config.Name))
+		return
 	}
 	// set default scope to "loop_var" entry: item[item["loop_var"]]
 	if mf.config.Scope == "" {
@@ -160,6 +161,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 		item, err = SetScope(mf.config.Scope, item)
 		if err != nil {
 			ch <- NewInvalidMetric(mf.logContext, err)
+			return
 		}
 		item["root"] = rawdatas
 		set_root = true
@@ -213,7 +215,8 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 			if label.Key != nil {
 				labelNames[i], err = label.Key.GetValueString(item, nil, false)
 				if err != nil {
-					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.config.Name, label.Key.tmpl.Tree.Root.String(), err))
+					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.config.Name, label.Key.String(), err))
+					continue
 				}
 			}
 
@@ -222,7 +225,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 				sub["_"] = labelNames[i]
 				labelValues[i], err = label.Value.GetValueString(item, sub, true)
 				if err != nil {
-					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.config.Name, label.Value.tmpl.Tree.Root.String(), err))
+					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.config.Name, label.Value.String(), err))
 					continue
 				}
 			}
@@ -241,13 +244,14 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 		if len(mf.config.Values) > 1 {
 			labelValues[len(labelValues)-1], err = label.Key.GetValueString(item, nil, false)
 			if err != nil {
-				ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.config.Name, label.Key.tmpl.Tree.Root.String(), err))
+				ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.config.Name, label.Key.String(), err))
 				continue
 			}
 		}
 		f_value, err = label.Value.GetValueFloat(item)
 		if err != nil {
-			ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.config.Name, label.Value.tmpl.Tree.Root.String(), err))
+			ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.config.Name, label.Value.String(), err))
+			continue
 		}
 
 		ch <- NewMetric(&mf, f_value, labelNames, labelValues)

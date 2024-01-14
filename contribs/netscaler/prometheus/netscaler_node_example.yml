@@ -1,8 +1,8 @@
 - targets: [ "netscaler_node_1" ]
   labels:
-    __tmp_source_host: "netscaler_exporter_host.domain.name:9321"
+    __tmp_exporter_host: "netscaler_exporter_host.domain.name:9258"
    # if you have activated password encrypted passphrass
-    __auth_key: __shared__auth_passphrase__
+    __param_auth_key: __shared__auth_passphrase__
     host: "netscaler_node_1_fullqualified.domain.name"
     #custom labels…
     environment: "DEV"

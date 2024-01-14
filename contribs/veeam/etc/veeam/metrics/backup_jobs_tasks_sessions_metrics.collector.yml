@@ -7,10 +7,10 @@
 ## docs: https://helpcenter.veeam.com/docs/backup/em_rest/backupsessions_id_tasksessions.html?ver=120
 ###
 #
-collector_name: vm_backup_jobs_sessions_metrics
+collector_name: backup_jobs_tasks_sessions_metrics
 # no cache
 # min_interval: 0s
-metric_prefix: veeam_em_vmjobs_sessions
+metric_prefix: veeam_em_jobs_tasks_sessions
 
 templates:
   currentTaskStatus: '
@@ -225,6 +225,6 @@ scripts:
               values: 
                 _: state
               when:
-                - or ( eq (toString .task.state) "2" ) ( eq (toString .task.state) "3" )
+                - or ( EQ (toString .task.state) "2" ) ( EQ (toString .task.state) "3" )
 
 ...

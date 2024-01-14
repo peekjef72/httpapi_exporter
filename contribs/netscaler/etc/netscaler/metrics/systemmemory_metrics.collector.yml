@@ -24,19 +24,19 @@ scripts:
           help: Currently allocated memory in percent.
           type: gauge
           values:
-            _: memtotallocpcnt
+            _: $memtotallocpcnt
 
         - metric_name: usage_percent
           help: Percentage of memory utilization on NetScaler.
           type: gauge
           values:
-            _: memusagepcnt
+            _: $memusagepcnt
 
         - metric_name: shared_usage_percent
           help: Shared memory in use percent.
           type: gauge
           values:
-            _: shmemallocpcnt
+            _: $shmemallocpcnt
 
         - metric_name: total_available_bytes
           help: Total system memory available for PE to grab from the system.

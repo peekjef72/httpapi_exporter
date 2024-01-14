@@ -9,8 +9,9 @@ global:
   query_retry: 3
   # all metrics will be named "[metric_prefix]_[metric_name]"
   metric_prefix: "veeam_em"
-  # all http codes that will be consider auth is invalid and must do a Login()
+  # all http codes that will be considered that auth is invalid and must do a Login()
   invalid_auth_code: [401,403]
+  exporter_name: veeam_exporter
 
 httpapi_config:
   init:
@@ -21,8 +22,11 @@ httpapi_config:
             value: application/json
           - name: Accept
             value: "application/json"
-        base_url: /api
+        scheme: https
+        port: 9398
         verifySSL: false
+        base_url: /api
+
         # set default time in hours (time.Duration) to look back for jobs and tasks
         jobHistory: -12h
         taskHistory: -12h
@@ -96,10 +100,30 @@ httpapi_config:
         # to catch and store the result and use it later...
         # var_name: wsapi
 
+# list of authentication configuration to use to access to a target.
+auth_configs:
+  prometheus_encrypted:
+    mode: script
+    user: prometheus
+    password: "/encrypted/__________XXXXXXX_______________XXXXXXX_______"
+
 # The targets to monitor and the collectors to execute on it.
 targets:
-  # - targets_files: [ "/etc/httpapi_exporter/veeam/targets/*.yml" ]
-  - targets_files: [ "targets/*.yml" ]
+  # default target is used as a pattern for exporter queries with target name not defined locally.
+  - name: default
+    scheme: https
+    host: set_later
+    port: 9398
+    auth_name: prometheus_encrypted
+    # auth_mode:
+    #   # mode: basic|token|[anything else:=> user defined login script]
+    #   mode: script
+    #   user: usrVeeam
+    #   password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+    collectors:
+      - ~.*_metrics
+
+  - targets_files: [ "/etc/httpapi_exporter/veeam/targets/*.yml" ]
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
 collector_files:

@@ -24,276 +24,276 @@ scripts:
           help: Total number of HTTP requests received.
           type: counter
           values:
-            _: httptotrequests
+            _: $httptotrequests
 
         - metric_name: tot_responses
           help: Total number of HTTP responses sent.
           type: counter
           values:
-            _: httptotresponses
+            _: $httptotresponses
 
         - metric_name: tot_posts
           help: Total number of HTTP requests received with the POST method.
           type: counter
           values:
-            _: httptotposts
+            _: $httptotposts
 
         - metric_name: tot_gets
           help: Total number of HTTP requests received with the GET method.
           type: counter
           values:
-            _: httptotgets
+            _: $httptotgets
 
         - metric_name: tot_others
           help: Total number of HTTP requests received with methods other than GET and POST.
           type: counter
           values:
-            _: httptotothers
+            _: $httptotothers
 
         - metric_name: tot_spdy_streams
           help: Total number of requests received over SPDYv2 and SPDYv3
           type: counter
           values:
-            _: spdytotstreams
+            _: $spdytotstreams
 
         - metric_name: spdy_v2_streams
           help: Total number of requests received over SPDYv2
           type: counter
           values:
-            _: spdyv2totstreams
+            _: $spdyv2totstreams
 
         - metric_name: spdy_v3_streams
           help: Total number of requests received over SPDYv3
           type: counter
           values:
-            _: spdyv3totstreams
+            _: $spdyv3totstreams
 
         - metric_name: tot_rx_request_bytes
           help: Total number of bytes of HTTP request data received.
           type: counter
           values:
-            _: httptotrxrequestbytes
+            _: $httptotrxrequestbytes
 
         - metric_name: tot_rx_response_bytes
           help: Total number of bytes of HTTP response data received.
           type: counter
           values:
-            _: httptotrxresponsebytes
+            _: $httptotrxresponsebytes
 
         - metric_name: tot_tx_request_bytes
           help: Total number of bytes of HTTP request data transmitted.
           type: counter
           values:
-            _: httptottxrequestbytes
+            _: $httptottxrequestbytes
 
         - metric_name: tot_10_requests
           help: Total number of HTTP/1.0 requests received.
           type: counter
           values:
-            _: httptot10requests
+            _: $httptot10requests
 
         - metric_name: tot_11_requests
           help: Total number of HTTP/1.1 requests received.
           type: counter
           values:
-            _: httptot11requests
+            _: $httptot11requests
 
         - metric_name: tot_10_responses
           help: Total number of HTTP/1.0 responses sent.
           type: counter
           values:
-            _: httptot10responses
+            _: $httptot10responses
 
         - metric_name: tot_11_responses
           help: Total number of HTTP/1.1 responses sent.
           type: counter
           values:
-            _: httptot11responses
+            _: $httptot11responses
 
         - metric_name: tot_chunked_requests
           help: Total number of HTTP requests in which the Transfer-Encoding field of the HTTP header has been set to chunked
           type: counter
           values:
-            _: httptotchunkedrequests
+            _: $httptotchunkedrequests
 
         - metric_name: tot_chunked_responses
           help: Total number of HTTP responses sent in which the Transfer-Encoding field of the HTTP header has been set to chunked.
           type: counter
           values:
-            _: httptotchunkedresponses
+            _: $httptotchunkedresponses
 
         - metric_name: err_tot_noreuse_multipart_responses
           help: Total number of HTTP multi-part responses sent.
           type: counter
           values:
-            _: httperrnoreusemultipart
+            _: $httperrnoreusemultipart
 
         - metric_name: err_tot_incomplete_header_packets
           help: Total number of HTTP requests and responses received in which the HTTP header spans more than one packet.
           type: counter
           values:
-            _: httperrincompleteheaders
+            _: $httperrincompleteheaders
 
         - metric_name: err_tot_incomplete_requests
           help: Total number of HTTP requests received in which the header spans more than one packet.
           type: counter
           values:
-            _: httperrincompleterequests
+            _: $httperrincompleterequests
 
         - metric_name: err_tot_incomplete_responses
           help: Total number of HTTP responses received in which the header spans more than one packet.
           type: counter
           values:
-            _: httperrincompleteresponses
+            _: $httperrincompleteresponses
 
         - metric_name: err_tot_server_responses
           help: Total number of HTTP error responses received.
           type: counter
           values:
-            _: httperrserverbusy
+            _: $httperrserverbusy
 
         - metric_name: err_tot_large_body_packets
           help: Total number of requests and responses received with large body.
           type: counter
           values:
-            _: httperrlargecontent
+            _: $httperrlargecontent
 
         - metric_name: err_tot_large_chunk_requests
           help: Total number of requests received with large chunk size...
           type: counter
           values:
-            _: httperrlargechunk
+            _: $httperrlargechunk
 
         - metric_name: err_tot_large_content_requests
           help: Total number of requests received with large content
           type: counter
           values:
-            _: httperrlargectlen
+            _: $httperrlargectlen
 
         - metric_name: requests_rate
           help: Rate (/s) counter for httptotrequests
           type: gauge
           values:
-            _: httprequestsrate
+            _: $httprequestsrate
 
         - metric_name: spdy_streams_rate
           help: Rate (/s) counter for spdytotstreams
           type: gauge
           values:
-            _: spdystreamsrate
+            _: $spdystreamsrate
 
         - metric_name: spdy_v2_streams_rate
           help: Rate (/s) counter for spdyv2totstreams
           type: gauge
           values:
-            _: spdyv2streamsrate
+            _: $spdyv2streamsrate
 
         - metric_name: spdy_v3_streams_rate
           help: Rate (/s) counter for spdyv3totstreams
           type: gauge
           values:
-            _: spdyv3streamsrate
+            _: $spdyv3streamsrate
 
         - metric_name: rx_request_bytes_rate
           help: Rate (/s) counter for httptotrxrequestbytes
           type: gauge
           values:
-            _: httprxrequestbytesrate
+            _: $httprxrequestbytesrate
 
         - metric_name: rx_response_bytes_rate
           help: Rate (/s) counter for httptotrxresponsebytes
           type: gauge
           values:
-            _: httprxresponsebytesrate
+            _: $httprxresponsebytesrate
 
         - metric_name: tot_tx_request_bytes_rate
           help: Rate (/s) counter for httptottxrequestbytes
           type: gauge
           values:
-            _: httptxrequestbytesrate
+            _: $httptxrequestbytesrate
 
         - metric_name: responses_rate
           help: Rate (/s) counter for httptotresponses
           type: gauge
           values:
-            _: httpresponsesrate
+            _: $httpresponsesrate
 
         - metric_name: posts_rate
           help: Rate (/s) counter for httptotposts
           type: gauge
           values:
-            _: httppostsrate
+            _: $httppostsrate
 
         - metric_name: gets_rate
           help: Rate (/s) counter for httptotgets
           type: gauge
           values:
-            _: httpgetsrate
+            _: $httpgetsrate
 
         - metric_name: others_rate
           help: Rate (/s) counter for httptotothers
           type: gauge
           values:
-            _: httpothersrate
+            _: $httpothersrate
 
         - metric_name: chunked_responses_rate
           help: Rate (/s) counter for httptotchunkedresponses
           type: gauge
           values:
-            _: httpchunkedresponsesrate
+            _: $httpchunkedresponsesrate
 
         - metric_name: chunked_requests_rate
           help: Rate (/s) counter for httptotchunkedrequests
           type: gauge
           values:
-            _: httpchunkedrequestsrate
+            _: $httpchunkedrequestsrate
 
         - metric_name: 10_requests_rate
           help: Rate (/s) counter for httptot10requests
           type: gauge
           values:
-            _: http10requestsrate
+            _: $http10requestsrate
 
         - metric_name: 11_requests_rate
           help: Rate (/s) counter for httptot11requests
           type: gauge
           values:
-            _: http11requestsrate
+            _: $http11requestsrate
 
         - metric_name: 10_responses_rate
           help: Rate (/s) counter for httptot10responses
           type: gauge
           values:
-            _: http10responsesrate
+            _: $http10responsesrate
 
         - metric_name: 11_responses_rate
           help: Rate (/s) counter for httptot11responses
           type: gauge
           values:
-            _: http11responsesrate
+            _: $http11responsesrate
 
         - metric_name: err_noreuse_multipart_responses_rate
           help: Rate (/s) counter for httperrnoreusemultipart
           type: gauge
           values:
-            _: httperrnoreusemultipartrate
+            _: $httperrnoreusemultipartrate
 
         - metric_name: err_incomplete_requests_rate
           help: Rate (/s) counter for httperrincompleterequests
           type: gauge
           values:
-            _: httperrincompleterequestsrate
+            _: $httperrincompleterequestsrate
 
         - metric_name: err_incomplete_responses_rate
           help: Rate (/s) counter for httperrincompleteresponses
           type: gauge
           values:
-            _: httperrincompleteresponsesrate
+            _: $httperrincompleteresponsesrate
 
         - metric_name: err_server_responses_rate
           help: Rate (/s) counter for httperrserverbusy
           type: gauge
           values:
-            _: httperrserverbusyrate
+            _: $httperrserverbusyrate
 
 ...

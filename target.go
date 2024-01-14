@@ -508,6 +508,12 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 
 					if status, err := t.client.Login(); err != nil {
 						collectChan <- MsgQuit
+						if err == ErrInvalidLogin {
+							for _, c := range t.collectors {
+								c.SetStatus(CollectorStatusInvalidLogin)
+							}
+
+						}
 					} else {
 						if status {
 							has_logged = true

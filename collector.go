@@ -22,6 +22,7 @@ type Collector interface {
 	GetName() (id string)
 	GetId() (id string)
 	GetStatus() int
+	SetStatus(status int)
 	SetLogger(log.Logger)
 	SetSetStats(Target)
 }
@@ -40,6 +41,13 @@ type collector struct {
 	content_mutex *sync.Mutex
 	logger        log.Logger
 }
+
+const (
+	CollectorStatusError int = iota
+	CollectorStatusOk
+	CollectorStatusInvalidLogin
+	CollectorStatusTimeout
+)
 
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
 // the provided const labels applied.
@@ -149,6 +157,12 @@ func (c *collector) GetStatus() int {
 	return c.status
 }
 
+// SetStatus implement SetStatus for collector
+// set the status error of collector scripts execution
+func (c *collector) SetStatus(status int) {
+	c.status = status
+}
+
 func (c *collector) SetLogger(logger log.Logger) {
 	c.content_mutex.Lock()
 	c.logger = logger
@@ -190,7 +204,7 @@ func (c *collector) SetSetStats(target Target) {
 func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_ch chan<- int) {
 	var (
 		reset_coll_id bool = false
-		status        int  = 0
+		status        int  = CollectorStatusError
 	)
 
 	// var wg sync.WaitGroup
@@ -229,8 +243,8 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		reset_coll_id = true
 	}
 
-	c.status = 0
-	status = 1
+	c.status = CollectorStatusError
+	status = CollectorStatusOk
 	for _, scr := range c.collect_script {
 		level.Debug(c.logger).Log(
 			"collid", CollectorId(c.client.symtab, c.logger),
@@ -238,10 +252,10 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		if err := scr.Play(c.client.symtab, false, c.logger); err != nil {
 			switch err {
 			case ErrInvalidLogin:
-				status = 2
+				status = CollectorStatusInvalidLogin
 				coll_ch <- MsgLogin
 			case ErrContextDeadLineExceeded:
-				status = 3
+				status = CollectorStatusTimeout
 				coll_ch <- MsgTimeout
 			default:
 				level.Warn(c.logger).Log(
@@ -249,7 +263,7 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 					"script", ScriptName(c.client.symtab, c.logger),
 					"errmsg", err)
 				coll_ch <- MsgQuit
-				status = 0
+				status = CollectorStatusError
 			}
 			break
 		}
@@ -259,7 +273,7 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 	c.status = status
 
 	// tell calling target that this collector is over.
-	if status != 0 {
+	if status != CollectorStatusError {
 		coll_ch <- MsgDone
 		level.Debug(c.logger).Log(
 			"collid", CollectorId(c.client.symtab, c.logger),
@@ -324,10 +338,16 @@ func (cc *cachingCollector) GetId() (id string) {
 	return cc.rawColl.config.id
 }
 
-// GetStatus implement GetStatus for collector
+// GetStatus implement GetStatus for cachingCollector
 // obtain the status of collector scripts execution
 func (cc *cachingCollector) GetStatus() int {
 	return cc.rawColl.status
+}
+
+// SetStatus implement SetStatus for cachingCollector
+// Set the status of collector scripts execution
+func (cc *cachingCollector) SetStatus(status int) {
+	cc.rawColl.status = status
 }
 
 func (cc *cachingCollector) SetLogger(logger log.Logger) {

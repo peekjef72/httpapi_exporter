@@ -167,3 +167,34 @@ How it works:
         # custom labels…
         environment: "DEV"
     ```
+# custom functions for templating
+
+Go template is used to manipulate data. So templates inherits from go functions and [sprig](https://masterminds.github.io/sprig/) v3 functions.
+Because the exporter uses most of the time data of type "any (interface{})" some of the sprig functions failed.
+Here is the list of exporter functions:
+
+name| usage | e.g. |
+|---|---|---|
+exporterDecryptPass | |
+exporterGet [varmap] [keyname] | get the keyname from the map. Like sprig/get function but accepts data of type map[any]any | exporterGet .svclb .svc
+exporterSet | |
+exporterKeys | |
+exporterValues | |
+exporterToRawJson | |
+|||
+lookupAddr [varstring] | obtain hostname from string representing and ip address ; like sprig/getHostByName but for string ip | lookupAddr .node.ipaddress
+convertToBytes | |
+getHeader [varmap] | |
+LEN [var]| obtain the len of the var. works like sprig/len but accepts data of type any. |
+
+## boolean checks
+name| usage | e.g. |
+|---|---|---|
+EQ [var1] [var2] | check equality for 2 variables; accepts any type of data; meaning that the second will be converted to the type of the first | EQ .val "2"
+NE [var1] [var2] | not equal | NE 2 .val
+GE [var1] [var2] | greater equal |
+GT [var1] [var2] | greater than |
+LE [var1] [var2] | less equal |
+LT [var1] [var2] | less than |
+exists [var1]| return boolean if variable exists| exists .config.cluster.node
+exporterHasKey [var] [key]| check if variable is a map and has a key | exporterHasKey .config "cluster"

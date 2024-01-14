@@ -6,11 +6,11 @@
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
-      # if you use a shared passphrase between prometheus and exporter
-      - source_labels: [__auth_key]
-        target_label: __param_auth_key
       # use the value set in __tmp_source_host as exporter host name
-      - source_labels: [__tmp_source_host]
+      - source_labels: [__tmp_exporter_host]
         target_label: __address__
+      # or directly:
+      # - target_label: __address__
+      #   replacement: "netscaler_exporter_host.domain.name:9258"  # The netscaler exporter's real hostname.
 
 #--------- End prometheus netscaler exporter ---------#

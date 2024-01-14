@@ -27,19 +27,19 @@ scripts:
           help: "Configured maximum Bandwidth."
           type: gauge
           values:
-            _: "{{ .results.nscapacity.maxbandwidth }}"
+            _: $results.nscapacity.maxbandwidth
 
         - metric_name: min
           help: "Configured minimum Bandwidth."
           type: gauge
           values:
-            _: "{{ .results.nscapacity.minbandwidth }}"
+            _: $results.nscapacity.minbandwidth
 
         - metric_name: actual
           help: "Bandwidth in MBPS."
           type: gauge
           values:
-            _: "{{ .results.nscapacity.actualbandwidth }}"
+            _: $results.nscapacity.actualbandwidth
 
         - metric_name: licensed
           help: "System bandwidth limit."
@@ -47,8 +47,8 @@ scripts:
           values:
             _: "{{ .results.nscapacity.bandwidth | default '0' }}"
           key_labels:
-            edition: "{{ .results.nscapacity.edition }}"
-            version: "{{ .nsversion.nsversion.version }}"
+            edition: $results.nscapacity.edition
+            version: $nsversion.nsversion.version
 
 ...
 

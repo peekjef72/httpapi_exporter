@@ -24,186 +24,186 @@ scripts:
           help: TCP packets received.
           type: counter
           values:
-            _: tcptotrxpkts
+            _: $tcptotrxpkts
 
         - metric_name: tot_rx_bytes
           help: Bytes of TCP data received.
           type: counter
           values:
-            _: tcptotrxbytes
+            _: $tcptotrxbytes
 
         - metric_name: tot_tx_packets
           help: TCP packets transmitted.
           type: counter
           values:
-            _: tcptottxpkts
+            _: $tcptottxpkts
 
         - metric_name: tot_tx_bytes
           help: Bytes of TCP data transmitted.
           type: counter
           values:
-            _: tcptottxbytes
+            _: $tcptottxbytes
 
         - metric_name: tot_client_connections_opened
           help: Client connections opened by the NetScaler since startup
           type: counter
           values:
-            _: tcptotclientconnopened
+            _: $tcptotclientconnopened
 
         - metric_name: tot_server_connections_opened
           help: Server connections initiated by the NetScaler since startup.
           type: counter
           values:
-            _: tcptotserverconnopened
+            _: $tcptotserverconnopened
 
         - metric_name: tot_syn
           help: SYN packets received
           type: counter
           values:
-            _: tcptotsyn
+            _: $tcptotsyn
 
         - metric_name: tot_syn_probe
           help: Probes from the NetScaler to a server.
           type: counter
           values:
-            _: tcptotsynprobe
+            _: $tcptotsynprobe
 
         - metric_name: tot_server_fin
           help: FIN packets received from the server.
           type: counter
           values:
-            _: tcptotsvrfin
+            _: $tcptotsvrfin
 
         - metric_name: tot_client_fin
           help: FIN packets received from the clients.
           type: counter
           values:
-            _: tcptotcltfin
+            _: $tcptotcltfin
 
         - metric_name: err_badchecksum
           help: Packets received with a TCP checksum error.
           type: counter
           values:
-            _: tcperrbadchecksum
+            _: $tcperrbadchecksum
 
         - metric_name: err_any_port_fail
           help: Port allocations that have failed on mapped IP address
           type: counter
           values:
-            _: tcperranyportfail
+            _: $tcperranyportfail
 
         - metric_name: err_ip_port_fail
           help: Port allocations that have failed on a subnet IP address or vserver IP address
           type: counter
           values:
-            _: tcperripportfail
+            _: $tcperripportfail
 
         - metric_name: err_bad_connection_state
           help: Connections that are not in a valid TCP state.
           type: counter
           values:
-            _: tcperrbadstateconn
+            _: $tcperrbadstateconn
 
         - metric_name: err_reset_threshold
           help: Reset packets dropped because the default threshold of 100 resets per 10 milliseconds has been exceeded.
           type: counter
           values:
-            _: tcperrrstthreshold
+            _: $tcperrrstthreshold
 
         - metric_name: err_out_of_window
           help: Packets received that are out of the current advertised window.
           type: counter
           values:
-            _: tcperroutofwindowpkts
+            _: $tcperroutofwindowpkts
 
         - metric_name: err_syn_dropped_congestion
           help: SYN packets dropped because of network congestion.
           type: counter
           values:
-            _: tcperrsyndroppedcongestion
+            _: $tcperrsyndroppedcongestion
 
         - metric_name: err_full_retransmit
           help: Full packets retransmitted by the client or the server.
           type: counter
           values:
-            _: tcperrfullretrasmit
+            _: $tcperrfullretrasmit
 
         - metric_name: active_server_connection
           help: Connections to a server currently responding to requests.
           type: gauge
           values:
-            _: tcpactiveserverconn
+            _: $tcpactiveserverconn
 
         - metric_name: current_client_connections_est
           help: Current client connections in the Established state.
           type: gauge
           values:
-            _: tcpcurclientconnestablished
+            _: $tcpcurclientconnestablished
 
         - metric_name: current_server_connections_est
           help: Current server connections in the Established state.
           type: gauge
           values:
-            _: tcpcurserverconnestablished
+            _: $tcpcurserverconnestablished
 
         - metric_name: rx_packets_rate
           help: Rate (/s) TCP packets received.
           type: gauge
           values:
-            _: tcprxpktsrate
+            _: $tcprxpktsrate
 
         - metric_name: rx_bytes_rate
           help: Rate (/s) bytes of TCP data received.
           type: gauge
           values:
-            _: tcprxbytesrate
+            _: $tcprxbytesrate
 
         - metric_name: tx_packets_rate
           help: Rate (/s) TCP packets transmitted.
           type: gauge
           values:
-            _: tcptxpktsrate
+            _: $tcptxpktsrate
 
         - metric_name: tx_bytes_rate
           help: Rate (/s) bytes of TCP data transmitted.
           type: gauge
           values:
-            _: tcptxbytesrate
+            _: $tcptxbytesrate
 
         - metric_name: client_connection_opened_rate
           help: Rate (/s) of client connections opened by the NetScaler since startup
           type: gauge
           values:
-            _: tcpclientconnopenedrate
+            _: $tcpclientconnopenedrate
 
         - metric_name: err_badchecksum_rate
           help: Rate (/s) of packets received with a TCP checksum error.
           type: gauge
           values:
-            _: tcperrbadchecksumrate
+            _: $tcperrbadchecksumrate
 
         - metric_name: syn_rate
           help: Rate (/s) of SYN packets received.
           type: gauge
           values:
-            _: tcpsynrate
+            _: $tcpsynrate
 
         - metric_name: syn_probe_rate
           help: Rate (/s) of Probes from the NetScaler to a server.
           type: gauge
           values:
-            _: tcpsynproberate
+            _: $tcpsynproberate
 
         - metric_name: reset_packet_rate
           help: Rate (/s) counter for tcperrsentrst
           type: gauge
           values:
-            _: tcperrsentrstrate
+            _: $tcperrsentrstrate
 
         - metric_name: retransmit_packet_rate
           help: Rate (/s) full packets retransmitted by the client or the server.
           type: gauge
           values:
-            _: tcperrfullretrasmitrate
+            _: $tcperrfullretrasmitrate
 
 ...

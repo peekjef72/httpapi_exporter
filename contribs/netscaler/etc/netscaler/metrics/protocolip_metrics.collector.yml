@@ -25,157 +25,157 @@ scripts:
           help: IP packets received.
           type: counter
           values:
-            _: iptotrxpkts
+            _: $iptotrxpkts
 
         - metric_name: tot_rx_bytes
           help: Bytes of IP data received.
           type: counter
           values:
-            _: iptotrxbytes
+            _: $iptotrxbytes
 
         - metric_name: tx_packets
           help: IP packets transmitted.
           type: counter
           values:
-            _: iptottxpkts
+            _: $iptottxpkts
 
         - metric_name: tx_bytes
           help: Bytes of IP data transmitted.
           type: counter
           values:
-            _: iptottxbytes
+            _: $iptottxbytes
 
         - metric_name: rx_mbits
           help: Megabits of IP data received.
           type: counter
           values:
-            _: iptotrxmbits
+            _: $iptotrxmbits
 
         - metric_name: tx_mbits
           help: Megabits of IP data transmitted.
           type: counter
           values:
-            _: iptottxmbits
+            _: $iptottxmbits
 
         - metric_name: tot_routed_packets
           help: Total routed packets.
           type: counter
           values:
-            _: iptotroutedpkts
+            _: $iptotroutedpkts
 
         - metric_name: tot_routed_mbits
           help: Total routed Mbits.
           type: counter
           values:
-            _: iptotroutedmbits
+            _: $iptotroutedmbits
 
         - metric_name: tot_fragments
           help: IP fragments received.
           type: counter
           values:
-            _: iptotfragments
+            _: $iptotfragments
 
         - metric_name: tot_successful_assembly
           help: Fragmented IP packets successfully reassembled on the NetScaler.
           type: counter
           values:
-            _: iptotsuccreassembly
+            _: $iptotsuccreassembly
 
         - metric_name: tot_address_lookup
           help: IP address lookups performed by the NetScaler.
           type: counter
           values:
-            _: iptotaddrlookup
+            _: $iptotaddrlookup
 
         - metric_name: tot_address_lookup_fail
           help: Failed IP address lookups performed by the NetScaler.
           type: counter
           values:
-            _: iptotaddrlookupfail
+            _: $iptotaddrlookupfail
 
         - metric_name: tot_udp_fragments_forwarded
           help: UDP fragments forwarded to the client or the server.
           type: counter
           values:
-            _: iptotudpfragmentsfwd
+            _: $iptotudpfragmentsfwd
 
         - metric_name: tot_tcp_fragments_forwarded
           help: TCP fragments forwarded to the client or the server.
           type: counter
           values:
-            _: iptottcpfragmentsfwd
+            _: $iptottcpfragmentsfwd
 
         - metric_name: tot_bad_checksums
           help: Packets received with an IP checksum error.
           type: counter
           values:
-            _: iptotbadchecksums
+            _: $iptotbadchecksums
 
         - metric_name: tot_unsuccessful_assembly
           help: Packets received that could not be reassembled.
           type: counter
           values:
-            _: iptotunsuccreassembly
+            _: $iptotunsuccreassembly
 
         - metric_name: tot_too_big
           help: Packets received for which the reassembled data exceeds 1500 bytes.
           type: counter
           values:
-            _: iptottoobig
+            _: $iptottoobig
 
         - metric_name: tot_udp_fragments
           help: Duplicate IP fragments received.
           type: counter
           values:
-            _: iptotdupfragments
+            _: $iptotdupfragments
 
         - metric_name: tot_out_of_order_fragments
           help: Fragments received that are out of order.
           type: counter
           values:
-            _: iptotoutoforderfrag
+            _: $iptotoutoforderfrag
 
         - metric_name: tot_vip_down
           help: Packets received for which the VIP is down.
           type: counter
           values:
-            _: iptotvipdown
+            _: $iptotvipdown
 
         - metric_name: tot_ttl_expired
           help: Packets for which the time-to-live (TTL) expired during transit.
           type: counter
           values:
-            _: iptotttlexpired
+            _: $iptotttlexpired
 
         - metric_name: tot_max_clients
           help: Attempts to open a new connection to a service for which the maximum limit has been exceeded
           type: counter
           values:
-            _: iptotmaxclients
+            _: $iptotmaxclients
 
         - metric_name: tot_unkown_services
           help: Packets received on a port or service that is not configured.
           type: counter
           values:
-            _: iptotunknownsvcs
+            _: $iptotunknownsvcs
 
         - metric_name: tot_invalid_header_size
           help: Packets received in which an invalid data length is specified
           type: counter
           values:
-            _: iptotinvalidheadersz
+            _: $iptotinvalidheadersz
 
         - metric_name: tot_invalid_packet_size
           help: Total number of packets received by NetScaler with invalid IP packet size.
           type: counter
           values:
-            _: iptotinvalidpacketsize
+            _: $iptotinvalidpacketsize
 
         - metric_name: tot_truncated_packets
           help: Truncated IP packets received.
           type: counter
           values:
-            _: iptottruncatedpackets
+            _: $iptottruncatedpackets
 
         - metric_name: non_ip_tot_truncated_packets
           help: Truncated non-IP packets received.
@@ -187,54 +187,54 @@ scripts:
           help: IP packets transmitted with a bad MAC address.
           type: counter
           values:
-            _: iptotbadmacaddrs
+            _: $iptotbadmacaddrs
 
         - metric_name: rx_packets_rate
           help: Rate (/s) IP packets received.
           type: gauge
           values:
-            _: iprxpktsrate
+            _: $iprxpktsrate
 
         - metric_name: rx_bytes_rate
           help: Rate (/s) Bytes of IP data received.
           type: gauge
           values:
-            _: iprxbytesrate
+            _: $iprxbytesrate
 
         - metric_name: tx_packets_rate
           help: Rate (/s) IP packets transmitted.
           type: gauge
           values:
-            _: iptxpktsrate
+            _: $iptxpktsrate
 
         - metric_name: bytes_rate
           help: Rate (/s) Bytes of IP data transmitted.
           type: gauge
           values:
-            _: iptxbytesrate
+            _: $iptxbytesrate
 
         - metric_name: rx_mbits_rate
           help: Rate (/s) Megabits of IP data received.
           type: gauge
           values:
-            _: iprxmbitsrate
+            _: $iprxmbitsrate
 
         - metric_name: tx_mbits_rate
           help: Rate (/s) Megabits of IP data transmitted.
           type: gauge
           values:
-            _: iptxmbitsrate
+            _: $iptxmbitsrate
 
         - metric_name: routed_packets_rate
           help: Rate (/s) total routed packets.
           type: gauge
           values:
-            _: iproutedpktsrate
+            _: $iproutedpktsrate
 
         - metric_name: routed_mbits_rate
           help: Rate (/s) total routed Mbits.
           type: gauge
           values:
-            _: iproutedmbitsrate
+            _: $iproutedmbitsrate
 
 ...

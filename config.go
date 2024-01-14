@@ -579,7 +579,15 @@ func (t *TargetConfig) Clone(host_path string, auth_name string) (*TargetConfig,
 		return nil, err
 	}
 	if url_elmt.Scheme != "" && new.Scheme != url_elmt.Scheme {
-		new.Scheme = url_elmt.Scheme
+		if url_elmt.Scheme == "https" || url_elmt.Scheme == "http" {
+			new.Scheme = url_elmt.Scheme
+		} else if url_elmt.Host == "" {
+			// url.Parse for input "host.domain:port" builds .Scheme = "host.domain" .Opaque = "port"
+			new.Host = url_elmt.Scheme
+			if url_elmt.Opaque != "" {
+				new.Port = url_elmt.Opaque
+			}
+		}
 	}
 	if url_elmt.Host == "" && url_elmt.Path != "" {
 		new.Host = url_elmt.Path

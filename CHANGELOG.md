@@ -3,6 +3,29 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.3.5 (not release) / 2024-01-14
+- fix panic when var is not found for metric
+- fix target parsing when exporter is use in proxy mode: allow formats 
+  - target=host.domain : use default scheme and default port
+  - target=host.domain:port : use default scheme
+- add status value for collector_status metric :
+  - 0: error
+  - 1: ok
+  - 2: invalid log
+  - 3: timeout
+- add new "template" format: $varname that allow a direct accept to variable in symbols table. it is easier to use this format for loop interaction.
+  e.g.:
+  ```
+  loop: "{{ .item.list | toRawJson }}"
+  ```
+  can be replaced by:
+  e.g.:
+  ```
+  loop: $item.list
+  ```
+- add a new template func "lookupAddr" to retrive DNS hostname from ip address.
+- adapt contribs (netscaler/veeam) with new features.
+  
 ## 0.3.4 / 2023-12-16
  - fix var evaluation (set_fact with template)
  - fix type evalution for cookies and header

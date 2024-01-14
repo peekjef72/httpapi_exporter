@@ -18,16 +18,17 @@ scripts:
         var_name: results
 
     - name: proceed elements
-      with_items: "{{ .results.sslcertkey | toRawJson }}"
+      with_items: $results.sslcertkey
+      # default scope is set to loop_var (here item)
       metrics:
         - metric_name: days_to_expire
           help: Days remaining for the certificate to expire
           type: gauge
           key_labels:
-            citrixadc_cert_key: certkey
-            citrixadc_cert_subject: subject
+            citrixadc_cert_key: $certkey
+            citrixadc_cert_subject: $subject
           values:
-            _ : daystoexpiration
+            _ : $daystoexpiration
 
 ...
 

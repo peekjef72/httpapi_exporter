@@ -32,7 +32,8 @@ scripts:
             var_name: results
             debug: true
         - name: build cluster conf
-          loop: "{{ .results.hanode | toRawJson }}"
+          # loop: "{{ .results.hanode | toRawJson }}"
+          loop: $results.hanode
           loop_var: node
           actions:
             - name: build node
@@ -43,6 +44,7 @@ scripts:
               set_fact:
                 _:  '{{- $node := dict
                     "id"      .node.id
+                    "name"    ( lookupAddr .node.ipaddress )
                     "ip"      .node.ipaddress
                     "state"   .state
                     "hastate" .hastate
@@ -50,7 +52,8 @@ scripts:
                     {{- exporterSet .config.cluster .node.id $node -}}'
         - name: keep config[cluster]
           set_stats:
-            config.cluster : '{{ .config.cluster | toRawJson }}'
+            # config.cluster : '{{ .config.cluster | toRawJson }}'
+            config.cluster : $config.cluster
 
     - name: proceed cluster config elements
       loop: '{{ (exporterValues .config.cluster) | toRawJson }}'
@@ -59,8 +62,9 @@ scripts:
         - name: build labels
           set_fact:
             key_labels:
-              hanode_id:  "{{ .node.id }}"
-              hanode_ip:    "{{ .node.ip }}"
+              hanode_id:   $node.id
+              hanode_ip:   $node.ip
+              hanode_name: $node.name
         - name: build metrics
           metric_prefix: citrixadc_ha_cluster_node
           scope: none
@@ -68,15 +72,15 @@ scripts:
             - metric_name: status
               help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary - 3 StaySecondary - 4 Claiming - 5 Force Change"
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: '{{ .node.state }}'
+                _: $node.state
             - metric_name: hastatus
               help: "Indicate the state of the node in the cluster 1 UP / 0 else."
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
-                _: '{{ .node.hastate }}'
+                _: $node.hastate
 
 
     - name: collect stat hanode
@@ -86,6 +90,7 @@ scripts:
         # debug: true
 
     - name: proceed elements
+      when: eq .hacurstatus "YES"
       scope: results.hanode
       metrics:
         - metric_name: available
@@ -103,7 +108,7 @@ scripts:
             state: "{{ .hacurstate | toString }}"
           values:
             _: '{{ if eq .hacurstate "UP" }}1{{ else }}0{{ end }}'
-          when: eq .hacurstatus "YES"
+          # when: eq .hacurstatus "YES"
 
         - metric_name: node_hastate
           help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary"
@@ -112,30 +117,30 @@ scripts:
             node_state: "{{ .hacurmasterstate | toString | lower }}"
           values:
             _: '{{ template "masterState" (.hacurmasterstate | upper) }}'
-          when: eq .hacurstatus "YES"
+          # when: eq .hacurstatus "YES"
 
         - metric_name: node_start_timestamp
           help: "Timestamp when the last master state transition occurred."
           type: gauge
           key_labels:
-            node_transtime: "{{ .transtime }}"
+            node_transtime: $transtime
           values:
             _: '{{ mustToDate "Mon Jan _2 15:04:05 2006" .transtime | unixEpoch }}'
-          when: eq .hacurstatus "YES"
+          # when: eq .hacurstatus "YES"
 
         - metric_name: node_propagation_timeout
           help: "Number of times propagation timed out."
           type: counter
           values:
-            _: haerrproptimeout
-          when: eq .hacurstatus "YES"
+            _: $haerrproptimeout
+          # when: eq .hacurstatus "YES"
 
         - metric_name: node_sync_failure
           help: "Number of times synchronization failed since that last transition."
           type: counter
           values: 
-            _: haerrsyncfailure
-          when: eq .hacurstatus "YES"
+            _: $haerrsyncfailure
+          # when: eq .hacurstatus "YES"
 
 ...
 

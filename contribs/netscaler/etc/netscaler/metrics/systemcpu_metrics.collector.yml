@@ -17,15 +17,15 @@ scripts:
         # debug: true
 
     - name: proceed elements
-      loop: "{{ .results.systemcpu | toRawJson }}"
+      loop: $results.systemcpu
       metrics:
         - metric_name: usage_percent
           help: cpu uage percent by core id
           type: gauge
           values:
-            _: percpuuse
+            _: $percpuuse
           key_labels:
-            citrixadc_cpu_core_id: id
+            citrixadc_cpu_core_id: $id
 
 ...
 

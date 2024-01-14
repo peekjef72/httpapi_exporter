@@ -14,21 +14,22 @@ scripts:
       query:
         url: /stat/ns
         var_name: results
+        debug: true
 
     - name: proceed elements
-      scope: results
+      scope: results.ns
       metrics:
         - metric_name: rx_mbits_rate
           help: "Rate (/s) of megabytes received by the NetScaler appliance."
           type: gauge
           values:
-            _: "{{ .ns.rxmbitsrate }}"
+            _: $rxmbitsrate
 
         - metric_name: tx_mbits_rate
           help: "Rate (/s) of megabytes transmitted by the NetScaler appliance."
           type: gauge
           values:
-            _: "{{ .ns.txmbitsrate }}"
+            _: $txmbitsrate
 
 ...
 

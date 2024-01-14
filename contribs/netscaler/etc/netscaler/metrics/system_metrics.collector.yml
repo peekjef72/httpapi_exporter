@@ -26,31 +26,31 @@ scripts:
           help: number of cpu for appliance (constant)
           type: gauge
           values:
-            _: numcpus
+            _: $numcpus
 
         - metric_name: cpu_usage_percent
           help: instant value for cpu usage percent
           type: gauge
           values:
-            _: cpuusagepcnt
+            _: $cpuusagepcnt
 
         - metric_name: management_cpu_usage_percent
           help: instant value for cpu management usage percent 
           type: gauge
           values:
-            _: mgmtcpuusagepcnt
+            _: $mgmtcpuusagepcnt
 
         - metric_name: packet_cpu_usage_percent
           help: instant value for cpu packet proccessing usage percent
           type: gauge
           values:
-            _: pktcpuusagepcnt
+            _: $pktcpuusagepcnt
 
         - metric_name: res_cpu_usage_percent
           help: instant value for cpu response proccessing usage percent
           type: gauge
           values:
-            _: rescpuusagepcnt
+            _: $rescpuusagepcnt
 
     - name: proceed disk elements
       metric_prefix: citrixadc_system_disk
@@ -110,7 +110,7 @@ scripts:
           key_labels:
             mount: /var
           values:
-            _: '{{ .disk1perusage }}'
+            _: $disk1perusage
 
         - metric_name: used_percent
           help: instant value for partition used percent
@@ -118,7 +118,7 @@ scripts:
             mount: /flash
           type: gauge
           values:
-            _: '{{ .disk0perusage }}'
+            _: $disk0perusage
 
         # collect in systemmemory_metrics.collector
         # - metric_name: memory_usage_percent
@@ -142,7 +142,7 @@ scripts:
         #   help: Seconds since the Citrix ADC started.
         #   type: gauge
         #   values:
-        #     _: '{{ .timesincestart }}'
+        #     _: $timesincestart
 
 ...
 

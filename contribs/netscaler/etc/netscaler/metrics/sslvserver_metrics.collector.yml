@@ -33,19 +33,19 @@ scripts:
         # debug: true
 
     - name: proceed elements
-      loop: "{{ .results.sslvserver | toRawJson }}"
+      loop: $results.sslvserver
       actions:
-        - name: debug
-          debug:
-            msg: "item: {{ .item }}"
+        # - name: debug
+        #   debug:
+        #     msg: "item: {{ .item }}"
 
         - name: build labels
           set_fact:
             key_labels:
-              sslvserver_name: "{{ .item.vservername }}"
-              sslvserver_type: "{{ .item.type }}"
-              sslvserver_ip:   "{{ .item.primaryipaddress }}"
-              sslvserver_port:   "{{ .item.primaryport }}"
+              sslvserver_name: $item.vservername
+              sslvserver_type: $item.type
+              sslvserver_ip:   $item.primaryipaddress
+              sslvserver_port: $item.primaryport
 
         - name: build metrics
           scope: none
@@ -53,119 +53,119 @@ scripts:
             - metric_name: status
               help: "Current state of sslvserver UP(7), DOWN(1), UNKNOWN(2), BUSY(3), OFS(Out of Service)(4), TROFS(Transition Out of Service)(5), TROFS_DOWN(Down When going Out of Service)(8)"
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values:
                 _: '{{ template "SSLVServerStatus" .item.state }}'
 
             - metric_name: total_decrypt_bytes
               help: Number of decrypted bytes per SSL vserver
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.sslctxtotdecbytes }}"
+                _: $item.sslctxtotdecbytes
 
             - metric_name: total_encrypt_bytes
               help: Number of encrypted bytes per SSL vserver
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.sslctxtotencbytes }}"
+                _: $item.sslctxtotencbytes
 
             - metric_name: total_decrypt_hardware_bytes
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-               _: "{{ .item.sslctxtothwdec_bytes }}"
+               _: $item.sslctxtothwdec_bytes
 
             - metric_name: total_encrypt_hardware_bytes
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-               _: "{{ .item.sslctxtothwencbytes }}"
+               _: $item.sslctxtothwencbytes
 
             - metric_name: total_session_new
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.sslctxtotsessionnew }}"
+                _: $item.sslctxtotsessionnew
 
             - metric_name: total_session_hits
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.sslctxtotsessionhits }}"
+                _: $item.sslctxtotsessionhits
 
             - metric_name: total_auth_success
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.ssltotclientauthsuccess }}"
+                _: $item.ssltotclientauthsuccess
 
             - metric_name: total_auth_failure
               type: counter
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.ssltotclientauthfailure }}"
+                _: $item.ssltotclientauthfailure
 
             - metric_name: health
               help: Health of the vserver. This gives percentage of UP services bound to this vserver.
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.vslbhealth }}"
+                _: $item.vslbhealth
 
             - metric_name: active_services
               type: gauge
-              key_labels: "{{ .key_labels | toRawJson }}"
+              key_labels: $key_labels
               values: 
-                _: "{{ .item.actsvcs }}"
+                _: $item.actsvcs
 
             # - metric_name: rate_auth_success
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values:
-            #     _: "{{ .item.sslclientauthsuccessrate }}"
+            #     _: $item.sslclientauthsuccessrate
 
             # - metric_name: rate_auth_failure
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values: 
-            #     _: "{{ .item.sslclientauthfailurerate }}"
+            #     _: $item.sslclientauthfailurerate
 
             # - metric_name: rate_encrypt_bytes
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values: 
-            #     _: "{{ .item.sslctxencbytesrate }}"
+            #     _: $item.sslctxencbytesrate
 
             # - metric_name: rate_decrypt_bytes
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values: 
-            #     _: "{{ .item.sslctxdecbytesrate }}"
+            #     _: $item.sslctxdecbytesrate
 
             # - metric_name: rate_hw_encrypt_bytes
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values: 
-            #     _: "{{ .item.sslctxhwencbytesrate }}"
+            #     _: $item.sslctxhwencbytesrate
 
             # - metric_name: rate_hw_decrypt_bytes
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values:
-            #     _: "{{ .item.sslctxhwdec_bytesrate }}"
+            #     _: $item.sslctxhwdec_bytesrate
 
             # - metric_name: rate_session_new
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values: 
-            #     _: "{{ .item.sslctxsessionnewrate }}"
+            #     _: $item.sslctxsessionnewrate
 
             # - metric_name: rate_session_hits
             #   type: gauge
-            #   key_labels: "{{ .key_labels | toRawJson }}"
+            #   key_labels: $key_labels
             #   values: 
-            #     _: "{{ .item.sslctxsessionhitsrate }}"
+            #     _: $item.sslctxsessionhitsrate
 
 ...

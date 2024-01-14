@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -162,6 +163,8 @@ func checkOp(op uint, val1 any, val2 any) bool {
 func exporterEQ(val1 any, val2 any) bool {
 	return checkOp(opEqual, val1, val2)
 }
+
+// not equal is reverse of eq
 func exporterNE(val1 any, val2 any) bool {
 	return !checkOp(opEqual, val1, val2)
 }
@@ -369,6 +372,20 @@ func exporterDecryptPass(passwd string, auth_key string) (string, error) {
 
 	return passwd, nil
 }
+
+func exportLookupAddr(ip string) (string, error) {
+	host := "<no host>"
+	res, err := net.LookupAddr(ip)
+	if err != nil {
+		return host, err
+	}
+	if len(res) > 0 {
+		host = res[0]
+		return strings.TrimSuffix(host, "."), nil
+	}
+	return host, nil
+}
+
 func mymap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
 	// my_map := make(map[string]interface{}, len(sprig_map)+1)
@@ -393,6 +410,7 @@ func mymap() ttemplate.FuncMap {
 	sprig_map["exporterKeys"] = exporterKeys
 	sprig_map["exporterValues"] = exporterValues
 	sprig_map["exporterToRawJson"] = exporterToRawJson
+	sprig_map["lookupAddr"] = exportLookupAddr
 
 	return sprig_map
 }

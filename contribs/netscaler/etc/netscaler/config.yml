@@ -25,6 +25,8 @@ httpapi_config:
             value: "application/json"
         base_url: /nitro/v1
         verifySSL: true
+        #** reload config info every one hour
+        configCacheDuration: 1h
 
   auth_check:
     - name: analyze login response ok

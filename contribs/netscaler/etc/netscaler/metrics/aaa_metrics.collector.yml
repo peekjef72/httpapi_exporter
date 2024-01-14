@@ -17,147 +17,148 @@ scripts:
         var_name: results
 
     - name: proceed elements
+      scope: results.aaa
       metrics:
         - metric_name: auth_success
           type: counter
           values:
-            _: aaaauthsuccess
+            _: $aaaauthsuccess
 
         - metric_name: auth_fail
           type: counter
           values:
-            _: aaaauthfail
+            _: $aaaauthfail
 
         - metric_name: auth_only_http_success
           type: counter
           values:
-            _: aaaauthonlyhttpsuccess
+            _: $aaaauthonlyhttpsuccess
 
         - metric_name: auth_only_http_fail
           type: counter
           values:
-            _: aaaauthonlyhttpfail
+            _: $aaaauthonlyhttpfail
 
         - metric_name: auth_non_http_success
           type: counter
           values:
-            _: aaaauthnonhttpsuccess
+            _: $aaaauthnonhttpsuccess
 
         - metric_name: auth_non_http_fail
           type: counter
           values:
-            _: aaaauthnonhttpfail
+            _: $aaaauthnonhttpfail
 
         - metric_name: tot_sessions
           type: counter
           values:
-            _: aaatotsessions
+            _: $aaatotsessions
 
         - metric_name: tot_sessiontimeout
           type: counter
           values:
-            _: aaatotsessiontimeout
+            _: $aaatotsessiontimeout
 
         - metric_name: tot_tm_sessions
           type: counter
           values:
-            _: aaatottmsessions
+            _: $aaatottmsessions
 
         - metric_name: cur_ica_sessions
           type: gauge
           values:
-            _: aaacuricasessions
+            _: $aaacuricasessions
 
         - metric_name: cur_ica_only_conn
           type: gauge
           values:
-            _: aaacuricaonlyconn
+            _: $aaacuricaonlyconn
 
         - metric_name: cur_ica_conn
           help: "Count of current SmartAccess ICA connections."
           type: gauge
           values:
-            _: aaacuricaconn
+            _: $aaacuricaconn
 
         - metric_name: cur_tm_sessions
           help: "Count of current AAATM sessions."
           type: gauge
           values:
-            _: aaacurtmsessions
+            _: $aaacurtmsessions
 
         - metric_name: cur_sessions
           type: gauge
           values:
-            _: aaacursessions
+            _: $aaacursessions
 
         - metric_name: auth_success_rate
           type: gauge
           values:
-            _: aaaauthsuccessrate
+            _: $aaaauthsuccessrate
 
         - metric_name: auth_fail_rate
           type: gauge
           values:
-            _: aaaauthfailrate
+            _: $aaaauthfailrate
 
         - metric_name: auth_only_http_success_rate
           type: gauge
           values:
-            _: aaaauthonlyhttpsuccessrate
+            _: $aaaauthonlyhttpsuccessrate
 
         - metric_name: auth_only_http_fail_rate
           type: gauge
           values:
-            _: aaaauthonlyhttpfailrate
+            _: $aaaauthonlyhttpfailrate
 
         - metric_name: auth_non_http_success_rate
           type: gauge
           values:
-            _: aaaauthnonhttpsuccessrate
+            _: $aaaauthnonhttpsuccessrate
 
         - metric_name: auth_non_http_fail_rate
           type: gauge
           values:
-            _: aaaauthnonhttpfailrate
+            _: $aaaauthnonhttpfailrate
 
         - metric_name: cur_sessions_rate
           type: gauge
           values:
-            _: aaacursessionsrate
+            _: $aaacursessionsrate
 
         - metric_name: sessions_rate
           type: gauge
           values:
-            _: aaasessionsrate
+            _: $aaasessionsrate
 
         - metric_name: session_timeout_rate
           type: gauge
           values:
-            _: aaasessiontimeoutrate
+            _: $aaasessiontimeoutrate
 
         - metric_name: cur_ica_sessions_rate
           type: gauge
           values:
-            _: aaacuricasessionsrate
+            _: $aaacuricasessionsrate
 
         - metric_name: cur_ica_only_conn_rate
           type: gauge
           values:
-            _: aaacuricaonlyconnrate
+            _: $aaacuricaonlyconnrate
 
         - metric_name: cur_ica_conn_rate
           type: gauge
           values:
-            _: aaacuricaconnrate
+            _: $aaacuricaconnrate
 
         - metric_name: cur_tm_sessions_rate
           type: gauge
           values:
-            _: aaacurtmsessionsrate
+            _: $aaacurtmsessionsrate
 
         - metric_name: tm_sessions_rate
           type: gauge
           values:
-            _: aaatmsessionsrate
+            _: $aaatmsessionsrate
 
 ...
