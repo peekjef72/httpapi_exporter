@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.3.6 / 2024-02-11
+- upgrade to go 1.22
+- upgrage modules version
+  
 ## 0.3.5 / 2024-02-11
 - fix panic when var is not found for metric
 - fix target parsing when exporter is used in proxy mode: allow formats 
