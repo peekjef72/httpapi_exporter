@@ -87,32 +87,35 @@ scripts:
         url: /cpgs
         debug: yes
         var_name: results
-    - name: collect cpgs
-      scope: results
-      metrics:
-        - metric_name: cpg_available_bytes
-          help: avail byte of cpg (/cgps .freeSpaceMiB)
-          type: gauge
-          key_labels:
-            name: _
-          values:
-            _: '{{ convertToBytes .freeSpaceMiB "Mb" }}'
-          loop: members
 
-        - metric_name: cpg_total_bytes
-          help: avail byte of cpg (/cgps .totalSpaceMiB)
-          type: gauge
-          key_labels:
-            name: _
-          values:
-            _: '{{ convertToBytes .totalSpaceMiB "Mb" }}'
-          loop: members
+    - name: proceed cpgs config elements
+      loop: $results.members
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              name: $item.name
 
-        - metric_name: cpg_snapshot_used_bytes
-          help: avail byte of cpg (/cgps .privateSpaceMiB.snapshot)
-          type: gauge
-          key_labels:
-            name: _
-          values:
-            _: '{{ convertToBytes .privateSpaceMiB.snapshot "Mb" }}'
-          loop: members
+        - name: collect cpgs
+          scope: none
+          metrics:
+            - metric_name: cpg_available_bytes
+              help: avail byte of cpg (/cgps .freeSpaceMiB)
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.freeSpaceMiB "Mb" }}'
+
+            - metric_name: cpg_total_bytes
+              help: avail byte of cpg (/cgps .totalSpaceMiB)
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.totalSpaceMiB "Mb" }}'
+
+            - metric_name: cpg_snapshot_used_bytes
+              help: avail byte of cpg (/cgps .privateSpaceMiB.snapshot)
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.privateSpaceMiB.snapshot "Mb" }}'

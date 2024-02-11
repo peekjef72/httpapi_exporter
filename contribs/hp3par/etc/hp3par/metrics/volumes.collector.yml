@@ -123,100 +123,63 @@ scripts:
         url: /volumes
         # debug: true
         var_name: results
-    - name: collect volumes
-      scope: results
-      metrics:
-        - metric_name: volume_total_bytes
-          help: total volume allocated in bytes
-          type: gauge
-          key_labels:
-            name: '{{ .item.name }}'
-            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
-          values:
-            _: '{{ convertToBytes .item.sizeMiB "Mb" }}'
-          when:
-            # only base volume
-            - .item.copyType | int | eq 1
-            # not a system volume
-            - not .item.policies.system
-            # not a system maintained deduplication storage
-            - .item.provisioningType | int | eq 7 | not
-          loop: members
-          scope: none
 
-        - metric_name: volume_used_bytes
-          help: volume usage in bytes
-          type: gauge
-          key_labels:
-            name: '{{ .item.name }}'
-            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
-          values:
-            _: '{{ convertToBytes .item.totalUsedMiB "Mb" }}'
-          when:
-            # only base volume
-            - .item.copyType | int | eq 1
-            # not a system volume
-            - not .item.policies.system
-            # not a system maintained deduplication storage
-            - .item.provisioningType | int | eq 7 | not
-          loop: members
-          scope: none
+    - name: proceed volumes elements
+      loop: $results.members
+      # loop: item
+      when:
+        # only base volume
+        - .item.copyType | int | eq 1
+        # not a system volume
+        - not .item.policies.system
+        # not a system maintained deduplication storage
+        - .item.provisioningType | int | eq 7 | not
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels: 
+              name: $item.name
+              provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
 
-        - metric_name: volume_available_bytes
-          help: volume available bytes
-          type: gauge
-          key_labels:
-            name: '{{ .item.name }}'
-            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
-          values:
-            _: >-
-              {{ $avail := subf .item.sizeMiB .item.totalUsedMiB .item.totalReservedMiB }}
-              {{ convertToBytes $avail "Mb" }}
-          when:
-            # only base volume
-            - .item.copyType | int | eq 1
-            # not a system volume
-            - not .item.policies.system
-            # not a system maintained deduplication storage
-            - .item.provisioningType | int | eq 7 | not
-          loop: members
+        - name: build metrics
           scope: none
+          metrics:
+            - metric_name: volume_total_bytes
+              help: total volume allocated in bytes
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.sizeMiB "Mb" }}'
 
-        - metric_name: volume_compaction_ratio
-          help: The compaction ratio indicates the overall amount of storage space saved with 3PAR thin technology.
-          type: gauge
-          key_labels:
-            name: '{{ .item.name }}'
-            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
-          values:
-            _: '{{ .item.capacityEfficiency.compaction }}'
-          when:
-              # only base volume
-              - .item.copyType | int | eq 1
-              # not a system volume
-              - not .item.policies.system
-              # not a system maintained deduplication storage
-              - .item.provisioningType | int | eq 7 | not
-          loop: members
-          scope: none
+            - metric_name: volume_used_bytes
+              help: volume usage in bytes
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.totalUsedMiB "Mb" }}'
 
-        - metric_name: volume_deduplication_ratio
-          help: The deduplication ratio indicates the amount of storage space saved with 3PAR thin deduplication.
-          type: gauge
-          key_labels:
-            name: '{{ .item.name }}'
-            provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
-          values:
-            _: '{{ .item.capacityEfficiency.deduplication }}'
-          when:
-            # only base volume
-            - .item.copyType | int | eq 1
-            # not a system volume
-            - not .item.policies.system
-            # not a system maintained deduplication storage
-            - .item.provisioningType | int | eq 7 | not
-          loop: members
-          scope: none
+            - metric_name: volume_available_bytes
+              help: volume available bytes
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: >-
+                  {{ $avail := subf .item.sizeMiB .item.totalUsedMiB .item.totalReservedMiB }}
+                  {{ convertToBytes $avail "Mb" }}
+
+            - metric_name: volume_compaction_ratio
+              help: The compaction ratio indicates the overall amount of storage space saved with 3PAR thin technology.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.capacityEfficiency.compaction
+
+            - metric_name: volume_deduplication_ratio
+              help: The deduplication ratio indicates the amount of storage space saved with 3PAR thin deduplication.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.capacityEfficiency.deduplication
 
 # volume IO stats: from vluns group by volume
 # {
@@ -260,80 +223,68 @@ scripts:
         url: "/systemreporter/attime/vlunstatistics/hires;groupby:volumeName"
         # debug: true
         var_name: results
-    - name: collect volumes_io
-      scope: results
-      metrics:
-        # read and write io per second
-        - metric_name: volume_read_io_per_second
-          help: Number of IO read operations per second.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ .item.IO.read }}'
-          loop: members
-          scope: none
 
-        - metric_name: volume_write_io_per_second
-          help: Number of IO write operations per second.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ .item.IO.write }}'
-          loop: members
-          scope: none
+    - name: proceed volumes elements
+      loop: $results.members
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels: 
+              name: $item.volumeName
 
-        # read and write bytes per seconds
-        - metric_name: volume_read_bytes_per_second
-          help: Number of kilobytes per second.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ convertToBytes .item.KBytes.read "Kb"}}'
-          loop: members
+        - name: build volume_io metrics
           scope: none
+          metrics:
+            # read and write io per second
+            - metric_name: volume_read_io_per_second
+              help: Number of IO read operations per second.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.IO.read
 
-        - metric_name: volume_write_bytes_per_second
-          help: Number of kilobytes per second.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ convertToBytes .item.KBytes.write "Kb" }}'
-          loop: members
-          scope: none
+            - metric_name: volume_write_io_per_second
+              help: Number of IO write operations per second.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.IO.write
 
-        # read and write latency Service Time
-        - metric_name: volume_read_latency_second
-          help: Number of kilobytes per second.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ mulf .item.serviceTimeMS.read 1E-3}}'
-          loop: members
-          scope: none
+            # read and write bytes per seconds
+            - metric_name: volume_read_bytes_per_second
+              help: Number of kilobytes per second.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.KBytes.read "Kb"}}'
 
-        - metric_name: volume_write_latency_second
-          help: Write service time in millisecond statistic data.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ mulf .item.serviceTimeMS.write 1E-3 }}'
-          loop: members
-          scope: none
+            - metric_name: volume_write_bytes_per_second
+              help: Number of kilobytes per second.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.KBytes.write "Kb" }}'
 
-        # busy percent
-        - metric_name: volume_busy_percent
-          help: Busy percentage.
-          type: gauge
-          key_labels:
-            name: "{{ .item.volumeName }}"
-          values:
-            _: '{{ .item.busyPct }}'
-          loop: members
-          scope: none
+            # read and write latency Service Time
+            - metric_name: volume_read_latency_second
+              help: Number of kilobytes per second.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ mulf .item.serviceTimeMS.read 1E-3}}'
+
+            - metric_name: volume_write_latency_second
+              help: Write service time in second statistic data.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ mulf .item.serviceTimeMS.write 1E-3 }}'
+
+            # busy percent
+            - metric_name: volume_busy_percent
+              help: Busy percentage.
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.busyPct
 

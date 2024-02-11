@@ -167,51 +167,43 @@ scripts:
       loop_var: task
       # default: scope: cur_var=> task
       actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              backupserver: $task.backupserver
+              jobname:      $task.jobname
+              taskname:     $task.taskname
+              vmname:       $task.vmname
+
         - name: build metrics from computed jobs
           metrics:
             - metric_name: state
               help: "vm backup task status (0 undefined / 1 Success / 2 Warning / 3 Failed / 4 Pending-Idle / 5 Working-In Progress)"
               type: gauge
-              key_labels:
-                backupserver: _
-                jobname:      _
-                taskname:     _
-                vmname:       _
+              key_labels: $root.key_labels
               values: 
-                _: state
+                _: $state
 
             - metric_name: duration
               help: 'vm backup task operation duration in second'
               type: gauge
-              key_labels:
-                backupserver: _
-                jobname:      _
-                taskname:     _
-                vmname:       _
+              key_labels: $root.key_labels
               values: 
                 _: "{{ sub .endtimestamp .starttimestamp }}"
 
             - metric_name: retries
               help: "number of times of the vm backup task has been retried (0: no retry)"
               type: gauge
-              key_labels:
-                backupserver: _
-                jobname:      _
-                taskname:     _
-                vmname:       _
+              key_labels: $root.key_labels
               values: 
-                _: retries
+                _: $retries
 
             - metric_name: total_bytes
               help: "total bytes save by the vm backup task for vm"
               type: gauge
-              key_labels:
-                backupserver: _
-                jobname:      _
-                taskname:     _
-                vmname:       _
+              key_labels: $root.key_labels
               values: 
-                _: total_size_bytes
+                _: $total_size_bytes
 
             - metric_name: error
               help: "use to set error's message label"
@@ -223,8 +215,7 @@ scripts:
                 vmname:       _
                 message:      reason
               values: 
-                _: state
+                _: $state
               when:
                 - or ( EQ (toString .task.state) "2" ) ( EQ (toString .task.state) "3" )
-
 ...

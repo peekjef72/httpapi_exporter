@@ -22,33 +22,41 @@ scripts:
 
     - name: proceed elements count
       with_items:
-        - { type: "protected", value: "{{ .results.ProtectedVms }}" }
-        - { type: "backedup", value: "{{ .results.BackedUpVms }}" }
-        - { type: "replicated", value: "{{ .results.ReplicatedVms }}" }
-        - { type: "restore_points", value: "{{ .results.RestorePoints }}" }
+        - type: protected
+          value: $results.ProtectedVms
+        - type: backedup
+          value: $results.BackedUpVms
+        - type: replicated
+          value: $results.ReplicatedVms
+        - type: restore_points
+          value: $results.RestorePoints
       metrics:
         - metric_name: count
           help: VMs count by protection type "protected","backedup","replicated","restore_points"
           type: gauge
           key_labels:
-            type: _
+            type: $type
           values:
-            _: value
+            _: $value
 
     - name: proceed elements total_bytes
       with_items:
-        - { type: "full_backup_points", value: "{{ .results.FullBackupPointsSize }}" }
-        - { type: "incremental_backup_points", value: "{{ .results.IncrementalBackupPointsSize }}" }
-        - { type: "replica_restore_points", value: "{{ .results.ReplicaRestorePointsSize }}" }
-        - { type: "source_vms", value: "{{ .results.SourceVmsSize }}" }
+        - type: full_backup_points
+          value: $results.FullBackupPointsSize
+        - type: incremental_backup_points
+          value: $results.IncrementalBackupPointsSize
+        - type: replica_restore_points
+          value: $results.ReplicaRestorePointsSize
+        - type: source_vms
+          value: $results.SourceVmsSize
       metrics:
         - metric_name: total_bytes
           help: VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"
           type: gauge
           key_labels:
-            type: _
+            type: $type
           values:
-            _: value
+            _: $value
 
     - name: proceed elements total_bytes
       metrics:
@@ -57,6 +65,6 @@ scripts:
           help: percent of sucessful backup of VMs
           type: gauge
           values:
-            _: "{{ .results.SuccessBackupPercents }}"
+            _: $results.SuccessBackupPercents
 
 ...

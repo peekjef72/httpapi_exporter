@@ -62,19 +62,19 @@ scripts:
         - metric_name: config
           help: config of each backup repository 
           type: gauge
-          # implicit scopr item !
+          # implicit scope to item !
           key_labels:
-            name: Name
-            description: Description
-            port: Port
-            version: '{{ template "backupServerVersion" .Version }}'
-            full_version: Version
+            name:         $Name
+            description:  $Description
+            port:         $Port
+            version:      '{{ template "backupServerVersion" .Version }}'
+            full_version: $Version
             # - name: version
             #   value: "{{ item.Version | backup_server }}"
             # - name: full_version
             #   value: "{{ item.Version }}"
           values:
             _: 1
-          loop: BackupServers
+          loop: $BackupServers
 
 ...

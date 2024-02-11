@@ -29,13 +29,13 @@ scripts:
             version: systemVersion
             patches: _
           values:
-            _: id
+            _: $id
 
         - metric_name: system_nodes_total
           help: total nodes in system
           type: gauge
           values:
-            _: totalNodes
+            _: $totalNodes
 
         - metric_name: system_nodes_active
           help: total active nodes in system
@@ -71,10 +71,10 @@ scripts:
             cpu: _
           value_label: mode
           values:
-            user: userPct
-            system: systemPct
-            idle: idlePct
-          loop: members
+            user:   $userPct
+            system: $systemPct
+            idle:   $idlePct
+          loop: $members
 
   #**************************************************************************************************
   # memory stats: collect reports
@@ -155,9 +155,9 @@ scripts:
             node: _
           value_label: mode
           values:
-            read: '{{ .hitIO.read }}'
-            write: '{{ .hitIO.write }}'
-          loop: members
+            read:  $hitIO.read
+            write: $hitIO.write
+          loop: $members
 
         - metric_name: memory_missIO
           help: Number of Read/Write I/Os per second in which data was not already in cache
@@ -166,9 +166,9 @@ scripts:
             node: _
           value_label: mode
           values:
-            read: '{{ .missIO.read }}'
-            write: '{{ .missIO.write }}'
-          loop: members
+            read:  $missIO.read
+            write: $missIO.write
+          loop: $members
 
         - metric_name: memory_accessIO
           help: Number of read/write I/Os per second.
@@ -177,9 +177,9 @@ scripts:
             node: _
           value_label: mode
           values:
-            read: '{{ .accessIO.read }}'
-            write: '{{ .accessIO.write }}'
-          loop: members
+            read:  $accessIO.read
+            write: $accessIO.write
+          loop: $members
 
         - metric_name: memory_hit_percent
           help: Hits divided accesses displayed in percentage. (hitIO / accessIO percent)
@@ -188,9 +188,9 @@ scripts:
             node: _
           value_label: mode
           values:
-            read: '{{ .hitPct.read }}'
-            write: '{{ .hitPct.write }}'
-          loop: members
+            read:  $hitPct.read
+            write: $hitPct.write
+          loop: $members
 
         - metric_name: memory_page_stats
           help: "mode: 
@@ -206,11 +206,11 @@ scripts:
             node: _
           value_label: mode
           values:
-            free: "{{ .pageStatistic.pageStates.free }}"
-            clean: "{{ .pageStatistic.pageStates.clean }}"
-            writeOne: "{{ .pageStatistic.pageStates.writeOnce }}"
-            writeMultiple: "{{ .pageStatistic.pageStates.writeMultiple }}"
-            writeScheduled: "{{ .pageStatistic.pageStates.writeScheduled }}"
-            writing: "{{ .pageStatistic.pageStates.writing }}"
-            dcowpend: "{{ .pageStatistic.pageStates.dcowpend }}"
-          loop: members
+            free:           $pageStatistic.pageStates.free
+            clean:          $pageStatistic.pageStates.clean
+            writeOne:       $pageStatistic.pageStates.writeOnce
+            writeMultiple:  $pageStatistic.pageStates.writeMultiple
+            writeScheduled: $pageStatistic.pageStates.writeScheduled
+            writing:        $pageStatistic.pageStates.writing
+            dcowpend:       $pageStatistic.pageStates.dcowpend
+          loop: $members

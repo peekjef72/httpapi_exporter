@@ -17,23 +17,38 @@ scripts:
       query:
         url: /reports/summary/overview
         var_name: results
+
     - name: proceed elements
       loop:
-          - { type: "backup", count_type: "server", value: "{{ .results.BackupServers }}" }
-          - { type: "proxy", count_type: "server", value: "{{ .results.ProxyServers }}" }
-          - { type: "repository", count_type: "server", value: "{{ .results.RepositoryServers }}" }
-          - { type: "scheduled_jobs", count_type: "tasks", value: "{{ .results.ScheduledJobs }}" }
-          - { type: "successful_vms", count_type: "tasks", value: "{{ .results.SuccessfulVmLastestStates }}" }
-          - { type: "warning_vms", count_type: "tasks", value: "{{ .results.WarningVmLastestStates }}" }
-          - { type: "failed_vms", count_type: "tasks", value: "{{ .results.FailedVmLastestStates }}" }
+          - type: backup
+            count_type: server
+            value: $results.BackupServers
+          - type: proxy
+            count_type: server
+            value: $results.ProxyServers
+          - type: repository
+            count_type: server
+            value: $results.RepositoryServers
+          - type: scheduled_jobs
+            count_type: tasks
+            value: $results.ScheduledJobs
+          - type: successful_vms
+            count_type: tasks
+            value: $results.SuccessfulVmLastestStates
+          - type: warning_vms
+            count_type: tasks
+            value: $results.WarningVmLastestStates
+          - type: failed_vms
+            count_type: tasks
+            value: $results.FailedVmLastestStates
       metrics:
         - metric_name: element_count
           help: count by type "backup", "proxy", "repository", "scheduled_jobs", "successful_vms", "warning_vms"
           type: gauge
           key_labels:
-            type: _
-            count_type: _
+            type: $type
+            count_type: $count_type
           values:
-            _: value
+            _: $value
 
 ...

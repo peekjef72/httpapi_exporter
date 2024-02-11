@@ -19,36 +19,38 @@ scripts:
         var_name: results
         # debug: true
 
-    - name: procceed elements
-      scope: results
-      metrics:
-        # - name: build metric
-        #   vars:
-        #     labels:
-        #       - name: name
-        #         value: "{{ item.Name }}"
-        #       - name: type
-        #         value: "{{ item.Kind }}"
-        # implicit scope to item element [=> repository]
-        - metric_name: capacity_total_bytes
-          help: total size in bytes of each repository by name and type
-          type: gauge
-          values: 
-            _: Capacity
-          key_labels:
-            name: Name
-            type: Kind
-            uid: UID
-          loop: Repositories
+    - name: procceed repositories config elements
+      loop: $results.Repositories
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              name: $item.Name
+              type: $item.Kind
+              uid:  $item.UID
 
-        - metric_name: capacity_free_bytes
-          help: free size in bytes of each repository by name and type
-          type: gauge
-          values:
-            value: FreeSpace
-          key_labels:
-            name: Name
-            type: Kind
-            uid: UID
-          loop: Repositories
+        - name: build metrics
+          # default scope: item
+          metrics:
+            # - name: build metric
+            #   vars:
+            #     labels:
+            #       - name: name
+            #         value: "{{ item.Name }}"
+            #       - name: type
+            #         value: "{{ item.Kind }}"
+            # implicit scope to item element [=> repository]
+            - metric_name: capacity_total_bytes
+              help: total size in bytes of each repository by name and type
+              type: gauge
+              values: 
+                _: $Capacity
+              key_labels: $root.key_labels
+
+            - metric_name: capacity_free_bytes
+              help: free size in bytes of each repository by name and type
+              type: gauge
+              key_labels: $root.key_labels
+              values:
+                value: $FreeSpace
 ...

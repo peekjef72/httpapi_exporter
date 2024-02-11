@@ -60,37 +60,35 @@ scripts:
         # debug: yes
         var_name: results
 
-    - name: collect physical_disk_usage
-      scope: results
-      metrics:
-        - metric_name: physical_disk_life_left_percent
-          help: Percentage of life left
-          type: gauge
-          key_labels:
-            id: _
-            cageID: _
-            cageSide: _
-            magazine: mag
-            diskPos: _
-            type: '{{ template "diskType" .type }}'
-          values:
-            _: lifeLeftPct
-          loop: members
+    - name: proceed physical_disk_usage config elements
+      loop: $results.members
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              id:       $item.id
+              cageID:   $item.cageID
+              cageSide: $item.cageSide
+              magazine: $item.mag
+              diskPos:  $item.diskPos
+              type:     '{{ template "diskType" .item.type }}'
 
-        - metric_name: physical_disk_temperature
-          help: Temperature in Celsius
-          type: gauge
-          key_labels:
-            id: _
-            cageID: _
-            cageSide: _
-            magazine: mag
-            diskPos: _
-            type: '{{ template "diskType" .type }}'
-          values:
-            _: temperatureC
-          loop: members
+        - name: collect physical_disk_usage
+          scope: none
+          metrics:
+            - metric_name: physical_disk_life_left_percent
+              help: Percentage of life left
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.lifeLeftPct
 
+            - metric_name: physical_disk_temperature
+              help: Temperature in Celsius
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $item.temperatureC
 
   get physical_disk_capacity:
     - name: get physical_disk_capacity
@@ -99,48 +97,39 @@ scripts:
         # debug: yes
         var_name: results
 
-    - name: collect physical_disk_capacity
-      scope: results
-      metrics:
+    - name: proceed physical_disk_usage config elements
+      loop: $results.members
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              id:       $item.id
+              cageID:   $item.cageID
+              cageSide: $item.cageSide
+              magazine: $item.mag
+              diskPos:  $item.diskPos
+              type:     '{{ template "diskType" .item.type }}'
 
-        - metric_name: physical_disk_total_bytes
-          help: Total physical disk capacity in the system in bytes
-          type: gauge
-          key_labels:
-            id: _
-            cageID: _
-            cageSide: _
-            magazine: mag
-            diskPos: _
-            type: '{{ template "diskType" .type }}'
-          values:
-            _: '{{ convertToBytes .totalMiB "Mb" }}'
-          loop: members
+        - name: collect physical_disk_capacity
+          scope: none
+          metrics:
+            - metric_name: physical_disk_total_bytes
+              help: Total physical disk capacity in the system in bytes
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.totalMiB "Mb" }}'
 
-        - metric_name: physical_disk_free_bytes
-          help: Free physical disk capacity in the system in bytes
-          type: gauge
-          key_labels:
-            id: _
-            cageID: _
-            cageSide: _
-            magazine: mag
-            diskPos: _
-            type: '{{ template "diskType" .type }}'
-          values:
-            _: '{{ convertToBytes .freeMiB "Mb" }}'
-          loop: members
+            - metric_name: physical_disk_free_bytes
+              help: Free physical disk capacity in the system in bytes
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.freeMiB "Mb" }}'
 
-        - metric_name: physical_disk_failed_bytes
-          help: Failed physical disk capacity in the system in bytes
-          type: gauge
-          key_labels:
-            id: _
-            cageID: _
-            cageSide: _
-            magazine: mag
-            diskPos: _
-            type: '{{ template "diskType" .type }}'
-          values:
-            _: '{{ convertToBytes .failedMiB "Mb" }}'
-          loop: members
+            - metric_name: physical_disk_failed_bytes
+              help: Failed physical disk capacity in the system in bytes
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ convertToBytes .item.failedMiB "Mb" }}'

@@ -281,7 +281,7 @@ func AddCustomTemplate(ba BaseAction, customTemplate *exporterTemplate) error {
 }
 
 // ********************************************************************************
-func ValorizeValue(symtab map[string]any, item any, logger log.Logger, name string, cur_level int) (any, error) {
+func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_name string, cur_level int) (any, error) {
 	var data any
 	var err error
 	// fmt.Println("item = ", reflect.TypeOf(item))
@@ -321,12 +321,12 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, name stri
 		ldata := make(map[string]any, len(curval))
 
 		for r_key, r_value := range curval {
-			key, err := ValorizeValue(symtab, r_key, logger, name, cur_level+1)
+			key, err := ValorizeValue(symtab, r_key, logger, action_name, cur_level+1)
 			if err != nil {
 				level.Warn(logger).Log(
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", name,
+					"name", action_name,
 					"msg", fmt.Sprintf("error building map key: %v", r_key), "errmsg", err)
 				continue
 			}
@@ -336,12 +336,12 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, name stri
 			} else {
 				continue
 			}
-			value, err := ValorizeValue(symtab, r_value, logger, name, cur_level+1)
+			value, err := ValorizeValue(symtab, r_value, logger, action_name, cur_level+1)
 			if err != nil {
 				level.Warn(logger).Log(
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", name,
+					"name", action_name,
 					"msg", fmt.Sprintf("error building map value for key '%s'", key_val), "errmsg", err)
 				continue
 			}
@@ -349,7 +349,7 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, name stri
 				level.Warn(logger).Log(
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", name,
+					"name", action_name,
 					"msg", fmt.Sprintf("error setting map value for key '%s'", key_val), "errmsg", err)
 				continue
 			}
@@ -358,12 +358,12 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, name stri
 	case []any:
 		ldata := make([]any, len(curval))
 		for idx, r_value := range curval {
-			values, err := ValorizeValue(symtab, r_value, logger, name, cur_level+1)
+			values, err := ValorizeValue(symtab, r_value, logger, action_name, cur_level+1)
 			if err != nil {
 				level.Warn(logger).Log(
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", name,
+					"name", action_name,
 					"msg", fmt.Sprintf("error building list value for index: %d", idx), "errmsg", err)
 				continue
 			}

@@ -11,6 +11,7 @@ global:
   metric_prefix: "hp3par"
   # all http codes that will be consider auth is invalid and must do a Login()
   invalid_auth_code: [401,403]
+  exporter_name: hp3par_exporter
 
 httpapi_config:
   init:
@@ -22,12 +23,13 @@ httpapi_config:
           - name: Accept
             value: "application/json"
         base_url: /api/v1
+        port: 8080
         verifySSL: false
         
         # default values for parameters that you don't want to set for each target
         # base_url: /api/v1
         # scheme: https
-        # port: 8080
+        # port: 443
         # verifySSL: true|false
         # query_retry: 3
 
@@ -116,7 +118,6 @@ targets:
   - name: default
     scheme: https
     host: set_later
-    port: 8080
     auth_name: prometheus_encrypted
     # auth_mode:
     #   # mode: basic|token|[anything else:=> user defined login script]

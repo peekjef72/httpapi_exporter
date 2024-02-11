@@ -36,7 +36,7 @@ scripts:
       actions:
         - name: proceed elements
           # scope: results
-          loop: '{{ .results.DiscoveredComputers | toRawJson }}'
+          loop: $results.DiscoveredComputers
           loop_var: agent
           actions:
             - name: add element
@@ -48,9 +48,9 @@ scripts:
                   key_labels:
                     # item.Links[0].Name !
                     backupserver: "{{ (index .Links 0).Name }}"
-                    name: Name
-                    version: AgentVersion
-                    osversion: OsVersion
+                    name: $Name
+                    version: $AgentVersion
+                    osversion: $OsVersion
                   values: 
                     _: '{{ template "agentStatus" .HostStatus }}'
 

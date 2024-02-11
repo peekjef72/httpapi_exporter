@@ -136,40 +136,36 @@ scripts:
       loop_var: job
       # default: scope: cur_var=> job
       actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              backupserver: $job.backupserver
+              name:         $job.name
+              jobname:      $job.jobname
+              jobtype:      $job.jobtype
+
         - name: build metrics from computed jobs
           metrics:
             - metric_name: state
               help: "resulting status of the job (0: undefined - 1: Success - 2: Warning - 3: Failed - 4: Idle - 5: Working)"
               type: gauge
-              key_labels:
-                backupserver: backupserver
-                name:         name
-                jobname:      jobname
-                jobtype:      jobtype
+              key_labels: $root.key_labels
               values: 
-                _: state
+                _: $state
 
             - metric_name: duration
               help: 'operation duration in second'
               type: gauge
-              key_labels:
-                backupserver: backupserver
-                name:         name
-                jobname:      jobname
-                jobtype:      jobtype
+              key_labels: $root.key_labels
               values: 
                 _: "{{ sub .endtimestamp .starttimestamp }}"
 
             - metric_name: retries
               help: "number of times of the job has been retried (0: no retry)"
               type: gauge
-              key_labels:
-                backupserver: backupserver
-                name:         name
-                jobname:      jobname
-                jobtype:      jobtype
+              key_labels: $root.key_labels
               values: 
-                _: retries
+                _: $retries
 
 
 ...

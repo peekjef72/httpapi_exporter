@@ -87,10 +87,10 @@ scripts:
       query:
         url: /stat/hanode
         var_name: results
-        # debug: true
+        debug: true
 
     - name: proceed elements
-      when: eq .hacurstatus "YES"
+      when: eq .results.hanode.hacurstatus "YES"
       scope: results.hanode
       metrics:
         - metric_name: available

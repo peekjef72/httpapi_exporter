@@ -9,6 +9,7 @@
       "pluginName": "Prometheus"
     }
   ],
+  "__elements": {},
   "__requires": [
     {
       "type": "panel",
@@ -20,18 +21,18 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "7.5.16"
+      "version": "9.5.15"
     },
     {
       "type": "panel",
       "id": "graph",
-      "name": "Graph",
+      "name": "Graph (old)",
       "version": ""
     },
     {
       "type": "panel",
       "id": "piechart",
-      "name": "Pie chart v2",
+      "name": "Pie chart",
       "version": ""
     },
     {
@@ -48,8 +49,20 @@
     },
     {
       "type": "panel",
+      "id": "state-timeline",
+      "name": "State timeline",
+      "version": ""
+    },
+    {
+      "type": "panel",
       "id": "table",
       "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
       "version": ""
     }
   ],
@@ -57,7 +70,10 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -68,15 +84,18 @@
   },
   "description": "",
   "editable": true,
-  "gnetId": null,
+  "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1695551238041,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ww63Ic7Mk"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -85,11 +104,23 @@
       },
       "id": 2,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ww63Ic7Mk"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Enterprise Manager - Summary",
       "type": "row"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -167,9 +198,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"server\", type=\"backup\"}",
           "interval": "",
@@ -181,7 +216,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -222,9 +260,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"server\", type=\"repository\"}",
           "interval": "",
@@ -236,7 +278,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -277,9 +322,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"server\", type=\"proxy\"}",
           "interval": "",
@@ -291,7 +340,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -332,9 +384,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"tasks\", type=\"scheduled_jobs\"}",
           "interval": "",
@@ -346,7 +402,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -388,9 +447,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_vms_total_bytes{instance=~\"$enterprisemanager\", type=\"source_vms\"}",
           "interval": "",
@@ -402,7 +465,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -444,9 +510,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_vms_total_bytes{instance=~\"$enterprisemanager\", type=\"full_backup_points\"}",
           "interval": "",
@@ -458,7 +528,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -499,9 +572,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"tasks\", type=\"successful_vms\"}",
           "interval": "",
@@ -513,7 +590,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -554,9 +634,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"tasks\", type=\"warning_vms\"}",
           "interval": "",
@@ -568,7 +652,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -609,9 +696,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_element_count{instance=~\"$enterprisemanager\", count_type=\"tasks\", type=\"failed_vms\"}",
           "interval": "",
@@ -623,7 +714,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -664,9 +758,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_vms_count{instance=~\"$enterprisemanager\", type=\"protected\"}",
           "interval": "",
@@ -678,7 +776,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -720,9 +821,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_vms_total_bytes{instance=~\"$enterprisemanager\", type=\"incremental_backup_points\"}",
           "interval": "",
@@ -734,7 +839,10 @@
       "type": "stat"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -776,9 +884,13 @@
         "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_vms_total_bytes{instance=~\"$enterprisemanager\", type=\"replica_restore_points\"}",
           "interval": "",
@@ -791,7 +903,10 @@
     },
     {
       "collapsed": true,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ww63Ic7Mk"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -801,7 +916,10 @@
       "id": 157,
       "panels": [
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "description": "",
           "fieldConfig": {
             "defaults": {
@@ -809,16 +927,19 @@
                 "mode": "thresholds"
               },
               "custom": {
-                "align": null,
-                "filterable": false
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": false,
+                "inspect": false
               },
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "#EAB839",
@@ -840,8 +961,11 @@
                 },
                 "properties": [
                   {
-                    "id": "custom.displayMode",
-                    "value": "lcd-gauge"
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "lcd",
+                      "type": "gauge"
+                    }
                   },
                   {
                     "id": "thresholds",
@@ -849,8 +973,7 @@
                       "mode": "percentage",
                       "steps": [
                         {
-                          "color": "green",
-                          "value": null
+                          "color": "green"
                         },
                         {
                           "color": "#EAB839",
@@ -862,6 +985,10 @@
                         }
                       ]
                     }
+                  },
+                  {
+                    "id": "max",
+                    "value": 1
                   }
                 ]
               },
@@ -919,6 +1046,15 @@
           },
           "id": 14,
           "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
             "showHeader": true,
             "sortBy": [
               {
@@ -927,9 +1063,13 @@
               }
             ]
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "1 - (sum(veeam_em_overview_repositories_capacity_free_bytes{}) by (name, type) / sum(veeam_em_overview_repositories_capacity_total_bytes{}) by (name, type) )",
               "format": "table",
@@ -939,6 +1079,10 @@
               "refId": "A"
             },
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "sum(veeam_em_overview_repositories_capacity_total_bytes{}) by (name, type)",
               "format": "table",
@@ -949,6 +1093,10 @@
               "refId": "B"
             },
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "sum(veeam_em_overview_repositories_capacity_free_bytes{}) by (name, type)",
               "format": "table",
@@ -1002,12 +1150,24 @@
           "type": "table"
         }
       ],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ww63Ic7Mk"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Repositories",
       "type": "row"
     },
     {
       "collapsed": false,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ww63Ic7Mk"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1016,26 +1176,36 @@
       },
       "id": 36,
       "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ww63Ic7Mk"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Job Historical Performance and Duration",
       "type": "row"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
           },
+          "mappings": [],
           "unit": "short"
         },
         "overrides": [
@@ -1101,8 +1271,8 @@
           },
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/(Idle)|(Working)/"
+              "id": "byName",
+              "options": "Working"
             },
             "properties": [
               {
@@ -1131,6 +1301,7 @@
         "legend": {
           "displayMode": "table",
           "placement": "right",
+          "showLegend": true,
           "values": [
             "value"
           ]
@@ -1143,11 +1314,19 @@
           "fields": "",
           "values": false
         },
-        "text": {}
+        "text": {},
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "pluginVersion": "7.5.5",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 1) or vector(0)",
           "instant": true,
@@ -1156,6 +1335,10 @@
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 2) or vector(0)",
           "hide": false,
@@ -1165,6 +1348,10 @@
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 3) or vector(0)",
           "hide": false,
@@ -1174,6 +1361,10 @@
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 4) or vector(0)",
           "hide": false,
@@ -1183,36 +1374,42 @@
           "refId": "D"
         },
         {
-          "exemplar": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
           "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 5) or vector(0)",
           "hide": false,
+          "instant": true,
           "interval": "",
           "legendFormat": "Working",
+          "range": false,
           "refId": "E"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Backup Job State (last 24 hours)",
       "type": "piechart"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
           },
+          "mappings": [],
           "unit": "short"
         },
         "overrides": [
@@ -1278,8 +1475,8 @@
           },
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "/(Idle)|(Working)/"
+              "id": "byName",
+              "options": "Working"
             },
             "properties": [
               {
@@ -1308,6 +1505,7 @@
         "legend": {
           "displayMode": "table",
           "placement": "right",
+          "showLegend": true,
           "values": [
             "value"
           ]
@@ -1320,58 +1518,170 @@
           "fields": "",
           "values": false
         },
-        "text": {}
+        "text": {},
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "pluginVersion": "7.5.5",
       "targets": [
         {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\"} == 1) or vector(0)",
-          "instant": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\"} == 1) or vector(0)",
+          "instant": true,
           "interval": "",
           "legendFormat": "Success",
+          "range": false,
           "refId": "A"
         },
         {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\"} == 2) or vector(0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\"} == 2) or vector(0)",
           "hide": false,
+          "instant": true,
           "interval": "",
           "legendFormat": "Warning",
+          "range": false,
           "refId": "B"
         },
         {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\"} == 3) or vector(0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\"} == 3) or vector(0)",
           "hide": false,
+          "instant": true,
           "interval": "",
           "legendFormat": "Failed",
+          "range": false,
           "refId": "C"
         },
         {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 4) or vector(0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\"} == 4) or vector(0)",
           "hide": false,
+          "instant": true,
           "interval": "",
           "legendFormat": "Idle",
+          "range": false,
           "refId": "D"
         },
         {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"} == 5) or vector(0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\"} == 5) or vector(0)",
           "hide": false,
+          "instant": true,
           "interval": "",
           "legendFormat": "Working",
+          "range": false,
           "refId": "E"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Backup VM Jobs State  (last 24 hours)",
+      "title": "Backup VM Jobs Tasks State  (last 24 hours)",
       "type": "piechart"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "fillOpacity": 70,
+            "lineWidth": 0,
+            "spanNulls": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 231,
+      "options": {
+        "alignValue": "left",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "avg without(name)(veeam_em_jobs_sessions_retries{instance=~\"$enterprisemanager\"})\r\n\r\n+ 0 * (avg without(name) (veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"}==3) )",
+          "legendFormat": "{{ jobname }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Jobs Retries",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1379,16 +1689,19 @@
             "mode": "thresholds"
           },
           "custom": {
-            "align": null,
-            "filterable": false
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1405,59 +1718,37 @@
             },
             "properties": [
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "mappings",
                 "value": [
                   {
-                    "from": "",
-                    "id": 1,
-                    "text": "Success",
-                    "to": "",
-                    "type": 1,
-                    "value": "1"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "Warning",
-                    "to": "",
-                    "type": 1,
-                    "value": "2"
-                  },
-                  {
-                    "from": "",
-                    "id": 3,
-                    "text": "Failed",
-                    "to": "",
-                    "type": 1,
-                    "value": "3"
-                  },
-                  {
-                    "from": "",
-                    "id": 4,
-                    "text": "Idle",
-                    "to": "",
-                    "type": 1,
-                    "value": "4"
-                  },
-                  {
-                    "from": "",
-                    "id": 6,
-                    "text": "Working",
-                    "to": "",
-                    "type": 1,
-                    "value": "5"
-                  },
-                  {
-                    "from": "",
-                    "id": 7,
-                    "text": "!! undefined !!",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
+                    "options": {
+                      "0": {
+                        "text": "!! undefined !!"
+                      },
+                      "1": {
+                        "text": "Success"
+                      },
+                      "2": {
+                        "text": "Warning"
+                      },
+                      "3": {
+                        "text": "Failed"
+                      },
+                      "4": {
+                        "text": "Idle"
+                      },
+                      "5": {
+                        "text": "Working"
+                      }
+                    },
+                    "type": "value"
                   }
                 ]
               },
@@ -1467,8 +1758,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "rgb(106, 107, 105)",
-                      "value": null
+                      "color": "rgb(106, 107, 105)"
                     },
                     {
                       "color": "green",
@@ -1485,6 +1775,10 @@
                     {
                       "color": "rgb(164, 168, 168)",
                       "value": 4
+                    },
+                    {
+                      "color": "super-light-purple",
+                      "value": 5
                     }
                   ]
                 }
@@ -1555,7 +1849,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 308
+                "value": 509
               }
             ]
           },
@@ -1579,7 +1873,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 602
+                "value": 649
               }
             ]
           },
@@ -1601,10 +1895,19 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 32
       },
       "id": 87,
       "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
         "showHeader": true,
         "sortBy": [
           {
@@ -1613,9 +1916,13 @@
           }
         ]
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\"}",
           "format": "table",
@@ -1626,6 +1933,10 @@
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_jobs_sessions_duration{instance=~\"$enterprisemanager\"}",
           "format": "table",
@@ -1636,6 +1947,10 @@
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_jobs_sessions_retries{instance=~\"$enterprisemanager\"}",
           "format": "table",
@@ -1690,7 +2005,10 @@
       "type": "table"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1698,16 +2016,19 @@
             "mode": "thresholds"
           },
           "custom": {
-            "align": null,
-            "filterable": false
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1724,59 +2045,37 @@
             },
             "properties": [
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "mappings",
                 "value": [
                   {
-                    "from": "",
-                    "id": 1,
-                    "text": "Success",
-                    "to": "",
-                    "type": 1,
-                    "value": "1"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "Warning",
-                    "to": "",
-                    "type": 1,
-                    "value": "2"
-                  },
-                  {
-                    "from": "",
-                    "id": 3,
-                    "text": "Failed",
-                    "to": "",
-                    "type": 1,
-                    "value": "3"
-                  },
-                  {
-                    "from": "",
-                    "id": 4,
-                    "text": "Idle",
-                    "to": "",
-                    "type": 1,
-                    "value": "4"
-                  },
-                  {
-                    "from": "",
-                    "id": 5,
-                    "text": "!! Undefined !!",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
-                  },
-                  {
-                    "from": "",
-                    "id": 6,
-                    "text": "Working",
-                    "to": "",
-                    "type": 1,
-                    "value": "5"
+                    "options": {
+                      "0": {
+                        "text": "!! Undefined !!"
+                      },
+                      "1": {
+                        "text": "Success"
+                      },
+                      "2": {
+                        "text": "Warning"
+                      },
+                      "3": {
+                        "text": "Failed"
+                      },
+                      "4": {
+                        "text": "Idle"
+                      },
+                      "5": {
+                        "text": "Working"
+                      }
+                    },
+                    "type": "value"
                   }
                 ]
               },
@@ -1786,8 +2085,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "rgb(106, 107, 105)",
-                      "value": null
+                      "color": "rgb(106, 107, 105)"
                     },
                     {
                       "color": "green",
@@ -1804,6 +2102,10 @@
                     {
                       "color": "rgb(164, 168, 168)",
                       "value": 4
+                    },
+                    {
+                      "color": "super-light-purple",
+                      "value": 5
                     }
                   ]
                 }
@@ -1912,23 +2214,37 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 40
       },
       "id": 160,
       "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
         "showHeader": true,
         "sortBy": [
           {
-            "desc": false,
-            "displayName": "vmname"
+            "desc": true,
+            "displayName": "Status"
           }
         ]
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\"}",
+          "expr": "veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1937,8 +2253,13 @@
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_duration{instance=~\"$enterprisemanager\"}",
+          "expr": "veeam_em_jobs_tasks_sessions_duration{instance=~\"$enterprisemanager\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1947,8 +2268,13 @@
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_retries{instance=~\"$enterprisemanager\"}",
+          "expr": "veeam_em_jobs_tasks_sessions_retries{instance=~\"$enterprisemanager\"}",
           "format": "table",
           "hide": true,
           "instant": true,
@@ -1957,8 +2283,13 @@
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_total_bytes{instance=~\"$enterprisemanager\"}",
+          "expr": "veeam_em_jobs_tasks_sessions_total_bytes{instance=~\"$enterprisemanager\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1967,7 +2298,7 @@
           "refId": "D"
         }
       ],
-      "title": "Backup VMJob Status",
+      "title": "Backup VM JobTasks Status",
       "transformations": [
         {
           "id": "filterFieldsByName",
@@ -2014,23 +2345,29 @@
       "type": "table"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
           "custom": {
-            "align": null,
-            "filterable": false
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2050,50 +2387,33 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "from": "",
-                    "id": 1,
-                    "text": "Undefined",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "Failed",
-                    "to": "",
-                    "type": 1,
-                    "value": "3"
-                  },
-                  {
-                    "from": "",
-                    "id": 3,
-                    "text": "Pending",
-                    "to": "",
-                    "type": 1,
-                    "value": "4"
-                  },
-                  {
-                    "from": "",
-                    "id": 4,
-                    "text": "Working",
-                    "to": "",
-                    "type": 1,
-                    "value": "5"
-                  },
-                  {
-                    "from": "",
-                    "id": 5,
-                    "text": "Warning",
-                    "to": "",
-                    "type": 1,
-                    "value": "2"
+                    "options": {
+                      "0": {
+                        "text": "Undefined"
+                      },
+                      "2": {
+                        "text": "Warning"
+                      },
+                      "3": {
+                        "text": "Failed"
+                      },
+                      "4": {
+                        "text": "Pending"
+                      },
+                      "5": {
+                        "text": "Working"
+                      }
+                    },
+                    "type": "value"
                   }
                 ]
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -2101,8 +2421,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "rgb(131, 135, 135)",
@@ -2171,18 +2490,32 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 49
       },
       "id": 169,
       "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_error{instance=~\"$enterprisemanager\"}",
+          "expr": "veeam_em_jobs_tasks_sessions_error{instance=~\"$enterprisemanager\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -2190,7 +2523,7 @@
           "refId": "A"
         }
       ],
-      "title": "Backup VMJob Errors",
+      "title": "Backup VM JobTasks Errors",
       "transformations": [
         {
           "id": "filterFieldsByName",
@@ -2233,7 +2566,10 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "s"
@@ -2246,7 +2582,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 47
+        "y": 57
       },
       "hiddenSeries": false,
       "id": 34,
@@ -2266,7 +2602,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.5.16",
+      "pluginVersion": "9.5.15",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -2276,6 +2612,10 @@
       "steppedLine": false,
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "veeam_em_overview_jobs_max_duration{instance=~\"$enterprisemanager\"}",
           "interval": "",
@@ -2283,6 +2623,10 @@
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "avg(veeam_em_jobs_sessions_duration{instance=~\"$enterprisemanager\"}) by(backupserver)",
           "hide": false,
@@ -2292,9 +2636,7 @@
         }
       ],
       "thresholds": [],
-      "timeFrom": null,
       "timeRegions": [],
-      "timeShift": null,
       "title": "Job Duration (All type)",
       "tooltip": {
         "shared": true,
@@ -2303,9 +2645,7 @@
       },
       "type": "graph",
       "xaxis": {
-        "buckets": null,
         "mode": "time",
-        "name": null,
         "show": true,
         "values": []
       },
@@ -2313,75 +2653,103 @@
         {
           "$$hashKey": "object:341",
           "format": "s",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         },
         {
           "$$hashKey": "object:342",
           "format": "short",
-          "label": null,
           "logBase": 1,
-          "max": null,
-          "min": null,
           "show": true
         }
       ],
       "yaxis": {
-        "align": false,
-        "alignLevel": null
+        "align": false
       }
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
           "unit": "percentunit"
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 47
+        "y": 57
       },
-      "hiddenSeries": false,
       "id": 133,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null",
       "options": {
-        "alertThreshold": true
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "percentage": false,
-      "pluginVersion": "7.5.16",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
+      "pluginVersion": "9.5.15",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "exemplar": true,
           "expr": "1 - (count (veeam_em_jobs_sessions_retries{instance=~\"$enterprisemanager\"} != 0 ) by(instance, backupserver)/ count(veeam_em_jobs_sessions_retries{instance=~\"$enterprisemanager\"} ) by(instance, backupserver) )",
           "interval": "",
@@ -2389,1301 +2757,1113 @@
           "refId": "A"
         }
       ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Job Reries percent (All type)",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "$$hashKey": "object:341",
-          "format": "percentunit",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "$$hashKey": "object:342",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "collapsed": false,
-      "datasource": null,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 55
-      },
-      "id": 135,
-      "panels": [],
-      "repeat": "backupserver",
-      "title": "backup Jobs for [$backupserver]",
-      "type": "row"
-    },
-    {
-      "datasource": null,
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Warning"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Failed"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Idle"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Working"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "super-light-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 8,
-        "x": 0,
-        "y": 56
-      },
-      "id": 136,
-      "options": {
-        "displayLabels": [
-          "value",
-          "name"
-        ],
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "values": [
-            "value"
-          ]
-        },
-        "pieType": "donut",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "text": {}
-      },
-      "pluginVersion": "7.5.5",
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 1) or vector(0)",
-          "instant": false,
-          "interval": "",
-          "legendFormat": "Success",
-          "refId": "A"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 2) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Warning",
-          "refId": "B"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 3) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Failed",
-          "refId": "C"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 4) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Idle",
-          "refId": "D"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 5) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Working",
-          "refId": "E"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Job State",
-      "type": "piechart"
-    },
-    {
-      "datasource": null,
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Status"
-            },
-            "properties": [
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "from": "",
-                    "id": 1,
-                    "text": "Success",
-                    "to": "",
-                    "type": 1,
-                    "value": "1"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "Warning",
-                    "to": "",
-                    "type": 1,
-                    "value": "2"
-                  },
-                  {
-                    "from": "",
-                    "id": 3,
-                    "text": "Failed",
-                    "to": "",
-                    "type": 1,
-                    "value": "3"
-                  },
-                  {
-                    "from": "",
-                    "id": 4,
-                    "text": "Idle",
-                    "to": "",
-                    "type": 1,
-                    "value": "4"
-                  },
-                  {
-                    "from": "",
-                    "id": 5,
-                    "text": "!! Undefined !!",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
-                  },
-                  {
-                    "from": "",
-                    "id": 6,
-                    "text": "Working",
-                    "to": "",
-                    "type": 1,
-                    "value": "5"
-                  }
-                ]
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "rgb(106, 107, 105)",
-                      "value": null
-                    },
-                    {
-                      "color": "green",
-                      "value": 1
-                    },
-                    {
-                      "color": "#EAB839",
-                      "value": 2
-                    },
-                    {
-                      "color": "red",
-                      "value": 3
-                    },
-                    {
-                      "color": "rgb(164, 168, 168)",
-                      "value": 4
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Duration"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 99
-              },
-              {
-                "id": "unit",
-                "value": "s"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "type"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 146
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "startdate"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 193
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "backupserver"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 197
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "jobname"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 256
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "jobretries"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 75
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "name"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 369
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Retries"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 54
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "jobtype"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 16,
-        "x": 8,
-        "y": 56
-      },
-      "id": 155,
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Status"
-          }
-        ]
-      },
-      "pluginVersion": "7.5.16",
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        },
-        {
-          "exemplar": true,
-          "expr": "veeam_em_jobs_sessions_duration{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "B"
-        },
-        {
-          "exemplar": true,
-          "expr": "veeam_em_jobs_sessions_retries{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "C"
-        }
-      ],
-      "title": "Backup Job Status",
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "jobname",
-                "name",
-                "Value #A",
-                "Value #B",
-                "Value #C",
-                "jobtype"
-              ]
-            }
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {
-              "Value #A": 1,
-              "Value #B": 3,
-              "Value #C": 4,
-              "jobname": 0,
-              "name": 2
-            },
-            "renameByName": {
-              "Value #A": "Status",
-              "Value #B": "Duration",
-              "Value #C": "Retries"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": null,
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Warning"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Failed"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Idle"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Working"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "super-light-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 8,
-        "x": 0,
-        "y": 65
-      },
-      "id": 158,
-      "options": {
-        "displayLabels": [
-          "value",
-          "name"
-        ],
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "values": [
-            "value"
-          ]
-        },
-        "pieType": "donut",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "text": {}
-      },
-      "pluginVersion": "7.5.5",
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 1) or vector(0)",
-          "instant": false,
-          "interval": "",
-          "legendFormat": "Success",
-          "refId": "A"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 2) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Warning",
-          "refId": "B"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 3) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Failed",
-          "refId": "C"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 4) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Idle",
-          "refId": "D"
-        },
-        {
-          "exemplar": true,
-          "expr": "count(veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 5) or vector(0)",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "Working",
-          "refId": "E"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "VM Jobs State",
-      "type": "piechart"
-    },
-    {
-      "datasource": null,
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Status"
-            },
-            "properties": [
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "from": "",
-                    "id": 1,
-                    "text": "Success",
-                    "to": "",
-                    "type": 1,
-                    "value": "1"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "Warning",
-                    "to": "",
-                    "type": 1,
-                    "value": "2"
-                  },
-                  {
-                    "from": "",
-                    "id": 3,
-                    "text": "Failed",
-                    "to": "",
-                    "type": 1,
-                    "value": "3"
-                  },
-                  {
-                    "from": "",
-                    "id": 4,
-                    "text": "Idle",
-                    "to": "",
-                    "type": 1,
-                    "value": "4"
-                  },
-                  {
-                    "from": "",
-                    "id": 5,
-                    "text": "!! Undefined !!",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
-                  },
-                  {
-                    "from": "",
-                    "id": 6,
-                    "text": "Working",
-                    "to": "",
-                    "type": 1,
-                    "value": "5"
-                  }
-                ]
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "rgb(106, 107, 105)",
-                      "value": null
-                    },
-                    {
-                      "color": "green",
-                      "value": 1
-                    },
-                    {
-                      "color": "#EAB839",
-                      "value": 2
-                    },
-                    {
-                      "color": "red",
-                      "value": 3
-                    },
-                    {
-                      "color": "rgb(164, 168, 168)",
-                      "value": 4
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "custom.width",
-                "value": 86
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Duration"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 99
-              },
-              {
-                "id": "unit",
-                "value": "s"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "jobname"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 240
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Retries"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 65
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "vmname"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 131
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "VM Size"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "decbytes"
-              },
-              {
-                "id": "custom.width",
-                "value": 91
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "taskname"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 271
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 16,
-        "x": 8,
-        "y": 65
-      },
-      "id": 159,
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Status"
-          }
-        ]
-      },
-      "pluginVersion": "7.5.16",
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        },
-        {
-          "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_duration{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "B"
-        },
-        {
-          "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_retries{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "C"
-        },
-        {
-          "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_total_bytes{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "D"
-        }
-      ],
-      "title": "Backup VMJob Status",
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "jobname",
-                "taskname",
-                "vmname",
-                "Value #A",
-                "Value #B",
-                "Value #D"
-              ]
-            }
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {
-              "Value #A": 3,
-              "Value #B": 4,
-              "Value #C": 5,
-              "jobname": 1,
-              "taskname": 2,
-              "vmname": 0
-            },
-            "renameByName": {
-              "Value #A": "Status",
-              "Value #B": "Duration",
-              "Value #C": "Retries",
-              "Value #D": "VM Size"
-            }
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": null,
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Status"
-            },
-            "properties": [
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "from": "",
-                    "id": 1,
-                    "text": "Undefined",
-                    "to": "",
-                    "type": 1,
-                    "value": "0"
-                  },
-                  {
-                    "from": "",
-                    "id": 2,
-                    "text": "Failed",
-                    "to": "",
-                    "type": 1,
-                    "value": "3"
-                  },
-                  {
-                    "from": "",
-                    "id": 3,
-                    "text": "Pending",
-                    "to": "",
-                    "type": 1,
-                    "value": "4"
-                  },
-                  {
-                    "from": "",
-                    "id": 4,
-                    "text": "Working",
-                    "to": "",
-                    "type": 1,
-                    "value": "5"
-                  },
-                  {
-                    "from": "",
-                    "id": 5,
-                    "text": "Warning",
-                    "to": "",
-                    "type": 1,
-                    "value": "2"
-                  }
-                ]
-              },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "rgb(131, 135, 135)",
-                      "value": 1
-                    },
-                    {
-                      "color": "#EAB839",
-                      "value": 2
-                    },
-                    {
-                      "color": "red",
-                      "value": 3
-                    },
-                    {
-                      "color": "dark-purple",
-                      "value": 4
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "custom.width",
-                "value": 108
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "vmname"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 108
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "message"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 507
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "taskname"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 283
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 74
-      },
-      "id": 170,
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Status"
-          }
-        ]
-      },
-      "pluginVersion": "7.5.16",
-      "targets": [
-        {
-          "exemplar": true,
-          "expr": "veeam_em_vmjobs_sessions_error{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
-          "format": "table",
-          "instant": true,
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "title": "VM Backup Errors",
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "backupserver",
-                "jobname",
-                "message",
-                "taskname",
-                "vmname",
-                "Value"
-              ]
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {
-              "Value #A": 4,
-              "backupserver": 0,
-              "jobname": 1,
-              "message": 5,
-              "taskname": 3,
-              "vmname": 2
-            },
-            "renameByName": {
-              "Value": "Status",
-              "Value #A": "Status"
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "title": "Job Retries percent (All type)",
+      "type": "timeseries"
     },
     {
       "collapsed": true,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ww63Ic7Mk"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 325
+        "y": 65
       },
-      "id": 38,
+      "id": 135,
       "panels": [
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "mappings": [],
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Warning"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "orange",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Success"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Failed"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Idle"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "dark-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Working"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "super-light-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 0,
+            "y": 26
+          },
+          "id": 136,
+          "options": {
+            "displayLabels": [
+              "value",
+              "name"
+            ],
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "values": [
+                "value"
+              ]
+            },
+            "pieType": "donut",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "7.5.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 1) or vector(0)",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "Success",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 2) or vector(0)",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Warning",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 3) or vector(0)",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Failed",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 4) or vector(0)",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Idle",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "count(veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 5) or vector(0)",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Working",
+              "refId": "E"
+            }
+          ],
+          "title": "Job State",
+          "type": "piechart"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
               "custom": {
-                "align": null,
-                "filterable": false
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": false,
+                "inspect": false
               },
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "text": "!! Undefined !!"
+                          },
+                          "1": {
+                            "text": "Success"
+                          },
+                          "2": {
+                            "text": "Warning"
+                          },
+                          "3": {
+                            "text": "Failed"
+                          },
+                          "4": {
+                            "text": "Idle"
+                          },
+                          "5": {
+                            "text": "Working"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "rgb(106, 107, 105)"
+                        },
+                        {
+                          "color": "green",
+                          "value": 1
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 2
+                        },
+                        {
+                          "color": "red",
+                          "value": 3
+                        },
+                        {
+                          "color": "rgb(164, 168, 168)",
+                          "value": 4
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 86
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 99
+                  },
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "type"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 146
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "startdate"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 193
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "backupserver"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 197
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "jobname"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 256
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "jobretries"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 75
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "name"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 369
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Retries"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 54
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "jobtype"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 86
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 16,
+            "x": 8,
+            "y": 26
+          },
+          "id": 155,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Status"
+              }
+            ]
+          },
+          "pluginVersion": "9.5.15",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "veeam_em_jobs_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "veeam_em_jobs_sessions_duration{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "exemplar": true,
+              "expr": "veeam_em_jobs_sessions_retries{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            }
+          ],
+          "title": "Backup Job Status",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "jobname",
+                    "name",
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "jobtype"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Value #A": 1,
+                  "Value #B": 3,
+                  "Value #C": 4,
+                  "jobname": 0,
+                  "name": 2
+                },
+                "renameByName": {
+                  "Value #A": "Status",
+                  "Value #B": "Duration",
+                  "Value #C": "Retries"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "mappings": [],
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Warning"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "orange",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Success"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Failed"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Idle"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "dark-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Working"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "super-light-purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 0,
+            "y": 35
+          },
+          "id": 158,
+          "options": {
+            "displayLabels": [
+              "value",
+              "name"
+            ],
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "values": [
+                "value"
+              ]
+            },
+            "pieType": "donut",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "7.5.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 1) or vector(0)",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "Success",
+              "range": false,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 2) or vector(0)",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "Warning",
+              "range": false,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 3) or vector(0)",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "Failed",
+              "range": false,
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 4) or vector(0)",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "Idle",
+              "range": false,
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"} == 5) or vector(0)",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "Working",
+              "range": false,
+              "refId": "E"
+            }
+          ],
+          "title": "VM Jobs Tasks State",
+          "type": "piechart"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": false,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "text": "!! Undefined !!"
+                          },
+                          "1": {
+                            "text": "Success"
+                          },
+                          "2": {
+                            "text": "Warning"
+                          },
+                          "3": {
+                            "text": "Failed"
+                          },
+                          "4": {
+                            "text": "Idle"
+                          },
+                          "5": {
+                            "text": "Working"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "rgb(106, 107, 105)"
+                        },
+                        {
+                          "color": "green",
+                          "value": 1
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 2
+                        },
+                        {
+                          "color": "red",
+                          "value": 3
+                        },
+                        {
+                          "color": "rgb(164, 168, 168)",
+                          "value": 4
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 86
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 99
+                  },
+                  {
+                    "id": "unit",
+                    "value": "s"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "jobname"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 240
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Retries"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 65
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "vmname"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 131
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "VM Size"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "decbytes"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 91
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "taskname"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 271
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 16,
+            "x": 8,
+            "y": 35
+          },
+          "id": 159,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Status"
+              }
+            ]
+          },
+          "pluginVersion": "9.5.15",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "veeam_em_jobs_tasks_sessions_state{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "veeam_em_jobs_tasks_sessions_duration{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "veeam_em_jobs_tasks_sessions_retries{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "veeam_em_jobs_tasks_sessions_total_bytes{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            }
+          ],
+          "title": "Backup VM Job Tasks Status",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "jobname",
+                    "taskname",
+                    "vmname",
+                    "Value #A",
+                    "Value #B",
+                    "Value #D"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Value #A": 3,
+                  "Value #B": 4,
+                  "Value #C": 5,
+                  "jobname": 1,
+                  "taskname": 2,
+                  "vmname": 0
+                },
+                "renameByName": {
+                  "Value #A": "Status",
+                  "Value #B": "Duration",
+                  "Value #C": "Retries",
+                  "Value #D": "VM Size"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": false,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3703,34 +3883,33 @@
                     "id": "mappings",
                     "value": [
                       {
-                        "from": "",
-                        "id": 1,
-                        "text": "Unknown",
-                        "to": "",
-                        "type": 1,
-                        "value": "0"
-                      },
-                      {
-                        "from": "",
-                        "id": 2,
-                        "text": "Online",
-                        "to": "",
-                        "type": 1,
-                        "value": "1"
-                      },
-                      {
-                        "from": "",
-                        "id": 3,
-                        "text": "Offline",
-                        "to": "",
-                        "type": 1,
-                        "value": "2"
+                        "options": {
+                          "0": {
+                            "text": "Undefined"
+                          },
+                          "2": {
+                            "text": "Warning"
+                          },
+                          "3": {
+                            "text": "Failed"
+                          },
+                          "4": {
+                            "text": "Pending"
+                          },
+                          "5": {
+                            "text": "Working"
+                          }
+                        },
+                        "type": "value"
                       }
                     ]
                   },
                   {
-                    "id": "custom.displayMode",
-                    "value": "color-background"
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
                   },
                   {
                     "id": "thresholds",
@@ -3738,8 +3917,252 @@
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "rgb(142, 143, 142)",
-                          "value": null
+                          "color": "green"
+                        },
+                        {
+                          "color": "rgb(131, 135, 135)",
+                          "value": 1
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 2
+                        },
+                        {
+                          "color": "red",
+                          "value": 3
+                        },
+                        {
+                          "color": "dark-purple",
+                          "value": 4
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 108
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "vmname"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 108
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "message"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 507
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "taskname"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 283
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 44
+          },
+          "id": 170,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Status"
+              }
+            ]
+          },
+          "pluginVersion": "9.5.15",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "veeam_em_jobs_tasks_sessions_error{instance=~\"$enterprisemanager\", backupserver=~\"$backupserver\"}",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "VM Backup Errors",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "backupserver",
+                    "jobname",
+                    "message",
+                    "taskname",
+                    "vmname",
+                    "Value"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "Value #A": 4,
+                  "backupserver": 0,
+                  "jobname": 1,
+                  "message": 5,
+                  "taskname": 3,
+                  "vmname": 2
+                },
+                "renameByName": {
+                  "Value": "Status",
+                  "Value #A": "Status"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "repeat": "backupserver",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ww63Ic7Mk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "backup Jobs for [$backupserver]",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ww63Ic7Mk"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 76
+      },
+      "id": 38,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "filterable": false,
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "text": "Unknown"
+                          },
+                          "1": {
+                            "text": "Online"
+                          },
+                          "2": {
+                            "text": "Offline"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "mode": "gradient",
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "rgb(142, 143, 142)"
                         },
                         {
                           "color": "green",
@@ -3788,10 +4211,19 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 24
+            "y": 67
           },
           "id": 40,
           "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
             "showHeader": true,
             "sortBy": [
               {
@@ -3800,9 +4232,13 @@
               }
             ]
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "veeam_em_agents_status{instance=~\"$enterprisemanager\"}",
               "format": "table",
@@ -3845,23 +4281,37 @@
           "type": "table"
         }
       ],
-      "repeat": null,
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ww63Ic7Mk"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Veeam Agent Overview",
       "type": "row"
     },
     {
       "collapsed": true,
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ww63Ic7Mk"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 326
+        "y": 77
       },
       "id": 16,
       "panels": [
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3872,8 +4322,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               }
@@ -3884,7 +4333,7 @@
             "h": 3,
             "w": 7,
             "x": 0,
-            "y": 149
+            "y": 16
           },
           "id": 164,
           "options": {
@@ -3902,9 +4351,13 @@
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "veeam_em_backup_servers_config{instance=~\"$enterprisemanager\", name=~\"$backupserver\"}",
               "format": "table",
@@ -3918,7 +4371,10 @@
           "type": "stat"
         },
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3929,8 +4385,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               }
@@ -3941,7 +4396,7 @@
             "h": 3,
             "w": 7,
             "x": 7,
-            "y": 149
+            "y": 16
           },
           "id": 166,
           "options": {
@@ -3959,9 +4414,13 @@
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "veeam_em_backup_servers_config{instance=~\"$enterprisemanager\", name=~\"$backupserver\"}",
               "format": "table",
@@ -3975,7 +4434,10 @@
           "type": "stat"
         },
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3986,8 +4448,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
-                    "value": null
+                    "color": "blue"
                   }
                 ]
               }
@@ -3998,7 +4459,7 @@
             "h": 3,
             "w": 7,
             "x": 14,
-            "y": 149
+            "y": 16
           },
           "id": 165,
           "options": {
@@ -4016,9 +4477,13 @@
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "veeam_em_backup_servers_config{instance=~\"$enterprisemanager\", name=~\"$backupserver\"}",
               "format": "table",
@@ -4038,7 +4503,10 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "${DS_PROMETHEUS}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "unit": "percentunit"
@@ -4049,9 +4517,9 @@
           "fillGradient": 0,
           "gridPos": {
             "h": 8,
-            "w": 24,
+            "w": 6,
             "x": 0,
-            "y": 152
+            "y": 19
           },
           "hiddenSeries": false,
           "hideTimeOverride": false,
@@ -4075,18 +4543,11 @@
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "repeat": "backupserver",
-          "scopedVars": {
-            "backupserver": {
-              "selected": true,
-              "text": "",
-              "value": ""
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": true,
@@ -4095,6 +4556,10 @@
             {
               "application": {
                 "filter": ""
+              },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
               "expr": "1 - (sum by (host) (rate(windows_cpu_time_total{host=\"$backupserver\", mode=\"idle\"}[5m])) / count by (host) (windows_cpu_core_frequency_mhz{host=\"$backupserver\"}) )",
@@ -4123,9 +4588,7 @@
             }
           ],
           "thresholds": [],
-          "timeFrom": null,
           "timeRegions": [],
-          "timeShift": null,
           "title": "CPU Usage / $backupserver",
           "tooltip": {
             "shared": false,
@@ -4134,9 +4597,7 @@
           },
           "type": "graph",
           "xaxis": {
-            "buckets": null,
             "mode": "time",
-            "name": null,
             "show": true,
             "values": []
           },
@@ -4144,25 +4605,19 @@
             {
               "$$hashKey": "object:104",
               "format": "percentunit",
-              "label": null,
               "logBase": 1,
-              "max": null,
               "min": "0",
               "show": true
             },
             {
               "$$hashKey": "object:105",
               "format": "short",
-              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
               "show": true
             }
           ],
           "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "align": false
           }
         },
         {
@@ -4170,18 +4625,17 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "${DS_PROMETHEUS}",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
           },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
             "h": 8,
-            "w": 24,
+            "w": 6,
             "x": 0,
-            "y": 168
+            "y": 43
           },
           "hiddenSeries": false,
           "hideTimeOverride": false,
@@ -4205,18 +4659,11 @@
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "repeat": "backupserver",
-          "scopedVars": {
-            "backupserver": {
-              "selected": true,
-              "text": "",
-              "value": ""
-            }
-          },
           "seriesOverrides": [],
           "spaceLength": 10,
           "stack": false,
@@ -4225,6 +4672,10 @@
             {
               "application": {
                 "filter": ""
+              },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
               "expr": "windows_os_virtual_memory_bytes{host=~\"$backupserver\"}",
@@ -4255,6 +4706,10 @@
               "application": {
                 "filter": ""
               },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "windows_cs_physical_memory_bytes{host=~\"$backupserver\"}",
               "format": "time_series",
@@ -4284,6 +4739,10 @@
               "application": {
                 "filter": ""
               },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "windows_os_physical_memory_free_bytes{host=~\"$backupserver\"}",
               "format": "time_series",
@@ -4311,9 +4770,7 @@
             }
           ],
           "thresholds": [],
-          "timeFrom": null,
           "timeRegions": [],
-          "timeShift": null,
           "title": "Memory / $backupserver",
           "tooltip": {
             "shared": true,
@@ -4322,9 +4779,7 @@
           },
           "type": "graph",
           "xaxis": {
-            "buckets": null,
             "mode": "time",
-            "name": null,
             "show": true,
             "values": []
           },
@@ -4332,63 +4787,54 @@
             {
               "$$hashKey": "object:271",
               "format": "decbytes",
-              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
               "show": true
             },
             {
               "$$hashKey": "object:272",
               "format": "short",
-              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
               "show": true
             }
           ],
           "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "align": false
           }
         },
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "mappings": [
                 {
-                  "from": "",
-                  "id": 0,
-                  "text": "Up",
-                  "to": "",
-                  "type": 1,
-                  "value": "1"
+                  "options": {
+                    "0": {
+                      "text": "Down"
+                    },
+                    "1": {
+                      "text": "Up"
+                    }
+                  },
+                  "type": "value"
                 },
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "Down",
-                  "to": "",
-                  "type": 1,
-                  "value": "0"
-                },
-                {
-                  "from": "",
-                  "id": 2,
-                  "text": "No Data",
-                  "to": "",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "No Data"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "semi-dark-red",
-                    "value": null
+                    "color": "semi-dark-red"
                   },
                   {
                     "color": "semi-dark-green",
@@ -4401,9 +4847,9 @@
           },
           "gridPos": {
             "h": 4,
-            "w": 24,
+            "w": 6,
             "x": 0,
-            "y": 184
+            "y": 67
           },
           "id": 21,
           "options": {
@@ -4421,17 +4867,14 @@
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "repeat": "backupserver",
-          "scopedVars": {
-            "backupserver": {
-              "selected": true,
-              "text": "",
-              "value": ""
-            }
-          },
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "up{host=~\"$backupserver\"}",
               "format": "time_series",
@@ -4441,22 +4884,24 @@
               "refId": "A"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
           "title": "Satus $backupserver",
           "type": "stat"
         },
         {
-          "datasource": null,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "fieldConfig": {
             "defaults": {
               "mappings": [],
+              "max": 100,
+              "min": 0,
               "thresholds": {
                 "mode": "percentage",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4470,13 +4915,15 @@
           },
           "gridPos": {
             "h": 7,
-            "w": 24,
+            "w": 6,
             "x": 0,
-            "y": 192
+            "y": 79
           },
           "id": 27,
           "options": {
             "displayMode": "lcd",
+            "minVizHeight": 10,
+            "minVizWidth": 0,
             "orientation": "horizontal",
             "reduceOptions": {
               "calcs": [
@@ -4486,19 +4933,17 @@
               "values": false
             },
             "showUnfilled": true,
-            "text": {}
+            "text": {},
+            "valueMode": "color"
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "repeat": "backupserver",
-          "scopedVars": {
-            "backupserver": {
-              "selected": true,
-              "text": "",
-              "value": ""
-            }
-          },
           "targets": [
             {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "100 - (windows_logical_disk_free_bytes{host=~\"$backupserver\"} / windows_logical_disk_size_bytes{host=~\"$backupserver\"})*100",
               "interval": "",
@@ -4506,8 +4951,6 @@
               "refId": "A"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
           "title": "Disks $backupserver",
           "type": "bargauge"
         },
@@ -4516,18 +4959,17 @@
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "${DS_PROMETHEUS}",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
           },
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 24,
+            "w": 6,
             "x": 0,
-            "y": 206
+            "y": 100
           },
           "hiddenSeries": false,
           "hideTimeOverride": false,
@@ -4551,18 +4993,11 @@
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "9.5.15",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
           "repeat": "backupserver",
-          "scopedVars": {
-            "backupserver": {
-              "selected": true,
-              "text": "",
-              "value": ""
-            }
-          },
           "seriesOverrides": [
             {
               "$$hashKey": "object:305",
@@ -4577,6 +5012,10 @@
             {
               "application": {
                 "filter": ""
+              },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
               "expr": "rate(windows_net_bytes_sent_total{host=~\"$backupserver\"}[5m]) >0",
@@ -4607,6 +5046,10 @@
               "application": {
                 "filter": ""
               },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
               "exemplar": true,
               "expr": "rate(windows_net_bytes_received_total{host=~\"$backupserver\"}[5m]) <0",
               "format": "time_series",
@@ -4634,9 +5077,7 @@
             }
           ],
           "thresholds": [],
-          "timeFrom": null,
           "timeRegions": [],
-          "timeShift": null,
           "title": "Network $backupserver",
           "tooltip": {
             "shared": true,
@@ -4645,9 +5086,7 @@
           },
           "type": "graph",
           "xaxis": {
-            "buckets": null,
             "mode": "time",
-            "name": null,
             "show": true,
             "values": []
           },
@@ -4655,46 +5094,49 @@
             {
               "$$hashKey": "object:439",
               "format": "short",
-              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
               "show": true
             },
             {
               "$$hashKey": "object:440",
               "format": "short",
-              "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
               "show": true
             }
           ],
           "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "align": false
           }
         }
       ],
-      "repeat": null,
+      "repeat": "backupserver",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ww63Ic7Mk"
+          },
+          "refId": "A"
+        }
+      ],
       "title": "Backup Server Performance [ $backupserver ( $backupserver_version )]  (node_exporter)",
       "type": "row"
     }
   ],
   "refresh": "5m",
-  "schemaVersion": 27,
+  "schemaVersion": 38,
   "style": "dark",
   "tags": [],
   "templating": {
     "list": [
       {
-        "allValue": null,
         "current": {},
-        "datasource": "${DS_PROMETHEUS}",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
         "definition": "label_values(veeam_em_up, instance)",
-        "description": null,
-        "error": null,
         "hide": 0,
         "includeAll": true,
         "label": "Enterprise Manager",
@@ -4710,21 +5152,19 @@
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
       },
       {
-        "allValue": null,
         "current": {},
-        "datasource": "${DS_PROMETHEUS}",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
         "definition": "label_values(veeam_em_backup_servers_config, name)",
-        "description": null,
-        "error": null,
         "hide": 0,
         "includeAll": true,
-        "label": null,
         "multi": true,
         "name": "backupserver",
         "options": [],
@@ -4737,18 +5177,17 @@
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
       },
       {
-        "allValue": null,
         "current": {},
-        "datasource": "${DS_PROMETHEUS}",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
         "definition": "label_values(veeam_em_backup_servers_config{name=~\"$backupserver\"},version)",
-        "description": null,
-        "error": null,
         "hide": 2,
         "includeAll": false,
         "label": "BackupServer Version",
@@ -4764,20 +5203,16 @@
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
-        "tags": [],
         "tagsQuery": "",
         "type": "query",
         "useTags": false
       },
       {
-        "allValue": null,
         "current": {
           "selected": false,
           "text": "Warning",
           "value": "2"
         },
-        "description": null,
-        "error": null,
         "hide": 0,
         "includeAll": false,
         "label": "VM BackupJob Status",
@@ -4823,12 +5258,13 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Veeam Enterprise Manager",
   "uid": "bpHLHK6Mk",
-  "version": 28
+  "version": 38,
+  "weekStart": ""
 }

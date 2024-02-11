@@ -374,10 +374,10 @@ func exporterDecryptPass(passwd string, auth_key string) (string, error) {
 }
 
 func exportLookupAddr(ip string) (string, error) {
-	host := "<no host>"
+	host := "<no reverse host>"
 	res, err := net.LookupAddr(ip)
 	if err != nil {
-		return host, err
+		return host, nil
 	}
 	if len(res) > 0 {
 		host = res[0]

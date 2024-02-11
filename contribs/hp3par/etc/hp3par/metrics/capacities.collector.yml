@@ -97,10 +97,6 @@ scripts:
             type: _
           values:
             _: '{{ convertToBytes .result.totalMiB "Mb" }}' # convert MiB to bytes
-          # when:
-          #   - eq .item.type "SSD"
-          # default scope
-          # scope: item
 
 
         - metric_name: capacity_free_bytes
@@ -110,9 +106,3 @@ scripts:
             type: _
           values:
             _: '{{ convertToBytes .result.freeMiB "Mb" }}' # convert MiB to bytes
-          # results: 
-          #   # build a list of results each typed by each disk type
-          #   - '{{ $v1 := dict "type" "FC" "result" .FCCapacity }}{{ $v2 := dict "type" "NL" "result" .NLCapacity }}{{ $v3 := dict "type" "SSD" "result" .SSDCapacity }}{{ list $v1 $v2 $v3 | toRawJson }}'
-          # when:
-          #   - eq .item.type "SSD"
-          scope: none

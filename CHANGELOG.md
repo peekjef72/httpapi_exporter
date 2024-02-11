@@ -3,9 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.3.5 (not release) / 2024-01-14
+## 0.3.5 / 2024-02-11
 - fix panic when var is not found for metric
-- fix target parsing when exporter is use in proxy mode: allow formats 
+- fix target parsing when exporter is used in proxy mode: allow formats 
   - target=host.domain : use default scheme and default port
   - target=host.domain:port : use default scheme
 - add status value for collector_status metric :

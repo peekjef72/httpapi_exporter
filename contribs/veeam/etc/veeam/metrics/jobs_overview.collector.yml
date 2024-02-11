@@ -19,37 +19,41 @@ scripts:
 
     - name: procceed elements count
       with_items: 
-        - type: "running"
-          value: "{{ .results.RunningJobs }}"
-        - type: "scheduled"
-          value: "{{ .results.ScheduledJobs }}"
-        - type: "scheduled_backup"
-          value: "{{ .results.ScheduledBackupJobs }}"
-        - type: "scheduled_replica"
-          value: "{{ .results.ScheduledReplicaJobs }}"
+        - type: running
+          value: $results.RunningJobs
+        - type: scheduled
+          value: $results.ScheduledJobs
+        - type: scheduled_backup
+          value: $results.ScheduledBackupJobs
+        - type: scheduled_replica
+          value: $results.ScheduledReplicaJobs
       metrics:
         - metric_name: count
           help: various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"
           type: gauge
           key_labels:
-            type: _
+            type: $type
           values: 
-            _: value
+            _: $value
 
     - name: procceed elements count
       with_items: 
-          - { type: "total", value: "{{ .results.TotalJobRuns }}" }
-          - { type: "successfull", value: "{{ .results.SuccessfulJobRuns }}" }
-          - { type: "warning", value: "{{ .results.WarningsJobRuns }}" }
-          - { type: "failed", value: "{{ .results.FailedJobRuns }}" }
+          - type: total
+            value: $results.TotalJobRuns
+          - type: successfull
+            value: $results.SuccessfulJobRuns
+          - type: warning
+            value: $results.WarningsJobRuns
+          - type: failed
+            value: $results.FailedJobRuns
       metrics:
         - metric_name: runs_count
           help: total number of job runs by type "total", "successfull", "warning", "failed"
           type: gauge
           key_labels:
-            type: _
+            type: $type
           values: 
-            _: value
+            _: $value
 
     - name: procceed elements duration
       with_items: 
