@@ -17,23 +17,6 @@ global:
   invalid_auth_code: [401,403]
   exporter_name: <name_exporter>
 
-# optional dictionnary of authentication parameters (name: AuthConfig)
-# they can be used in local target definitions, or used in dynamic target scrapping
-auth_configs:
-  name_entry_1:
-      auth_mode:
-      # mode: basic|token|[anything else:=> user defined login script]
-      mode: script
-      user: <login>
-      password: <password>
-
-  name_entry_2:
-      auth_mode:
-      # mode: basic|token|[anything else:=> user defined login script]
-      mode: basic
-      user: <login>
-      password: <password>
-
 # dictionnary of scripts definitions to handle connections to REST API
 # some script names are use internally to perform actions:
 # "init": script used to initialize connections parameters like headers, vars, etc...
@@ -163,14 +146,46 @@ collectors:
     # it is generally a query on a specific url of the API, then an analizis of the results an a format on them.
     scripts:
 
+# optional dictionnary of authentication parameters (name: AuthConfig)
+# they can be used in local target definitions, or used in dynamic target scrapping
+# user, password or token can be set to use system environment variable
+#  e.g.:
+#  user: $env:EXPORTER_USER
+#  password: $env:EXPORTER_PASSWD
+
+auth_configs:
+  name_entry_1:
+    # mode: basic|token|[anything else:=> user defined login script]
+    mode: script
+    user: <login>
+    password: <password>
+
+  name_entry_2:
+    mode: basic
+    user: <login>
+    password: /encrypted/<encryped_password>
+
+  name_entry_3:
+    mode: token
+    token: <bearer token>
+
+  # use this auth_config to authenticate via env vars
+  name_entry_4:
+    mode: script
+    user: $env:VEEAM_EXPORTER_USER
+    password: $env:VEEAM_EXPORTER_PASSWD
+
 # The targets to monitor and the collectors to execute on it.
 targets:
-  # default target is used as a pattern for exporter queries with target name not defined locally.
+  # target "default" is used as a pattern for all targets name not defined locally.
+  # exporter is used in "proxy" mode.
+
   - name: default
     scheme: https
     host: set_latter
     port: 443
-    # if target uses a auth_name
+    # if target needs to authenticate, define here the auth params
+    # either use an auth_name or a statically defined params:
     # auth_name: default
     # or has its own auth paramaters
     # auth_mode:

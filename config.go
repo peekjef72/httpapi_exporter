@@ -940,6 +940,13 @@ type AuthConfig struct {
 	authKey  string
 }
 
+func check_env_var(value string) string {
+	if value != "" && strings.HasPrefix(value, "$env:") {
+		value = os.Getenv(value[5:])
+	}
+	return value
+}
+
 // UnmarshalYAML implements the yaml.Unmarshaler interface for authConfig
 func (auth *AuthConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain AuthConfig
@@ -963,6 +970,11 @@ func (auth *AuthConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if auth.Mode == "token" && auth.Token == "" {
 		return fmt.Errorf("token not set with auth mode 'token'")
 	}
+
+	// auth.Username == $env:VAR_NAME
+	auth.Username = check_env_var(auth.Username)
+	auth.Password = Secret(check_env_var(string(auth.Password)))
+	auth.Token = Secret(check_env_var(string(auth.Token)))
 
 	return nil
 }
