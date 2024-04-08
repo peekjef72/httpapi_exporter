@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 ## 0.3.7 / 2024-02-17
-- add support for env vars in auth_config [#1](issues/1)
+- add support for env vars in auth_config [#1](https://github.com/peekjef72/httpapi_exporter/issues/1)
 
 ## 0.3.6 / 2024-02-11
 - upgrade to go 1.22
