@@ -367,7 +367,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 			go func(t *target, met_ch chan<- Metric, coll_ch chan<- int) {
 				defer wg_coll.Done()
 				// collector.Collect(ctx, met_ch, &t.wake_cond)
-				targetUp, err = t.ping(ctx, met_ch, collectChan)
+				targetUp, err = t.ping(collectChan)
 			}(t, met_ch, collectChan)
 			level.Debug(logger).Log(
 				"collid", fmt.Sprintf("ping/%s", t.name),
@@ -722,7 +722,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 }
 
 // ping implement ping for target
-func (t *target) ping(ctx context.Context, ch chan<- Metric, coll_ch chan<- int) (bool, error) {
+func (t *target) ping(coll_ch chan<- int) (bool, error) {
 	t.client.symtab["__coll_channel"] = coll_ch
 	// t.client.symtab["__collector_id"] = t.name
 	status, err := t.client.Ping()

@@ -363,10 +363,15 @@ func (c *Client) Execute(
 				// 	level.Debug(c.logger).Log("msg", fmt.Sprintf("Ping()/Login() successfull: retrying (%d)", i+1))
 				// }
 			} else {
-				data = c.getJSONResponse(resp)
+				if resp.RawResponse.ContentLength > 0 {
+					data = c.getJSONResponse(resp)
+				} else {
+					data = make(map[any]any)
+				}
 				i = query_retry + 1
 			}
 			c.symtab["response_headers"] = resp.Header()
+			c.symtab["response_cookies"] = resp.Cookies()
 		} else {
 			level.Debug(c.logger).Log(
 				"collid", CollectorId(c.symtab, c.logger),
@@ -378,6 +383,7 @@ func (c *Client) Execute(
 				err = ErrContextDeadLineExceeded
 			} else {
 				delete(c.symtab, "response_headers")
+				delete(c.symtab, "response_cookies")
 			}
 			break
 		}
@@ -419,6 +425,25 @@ func (cl *Client) proceedHeaders() error {
 				case string:
 					head_name = header
 				}
+
+				switch value := r_value.(type) {
+				case *Field:
+					if head_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+						return err
+					}
+				case string:
+					head_value = value
+				}
+				if head_value == "__delete__" || head_value == "__remove__" {
+					cl.client.Header.Del(head_name)
+				} else {
+					cl.client.SetHeader(head_name, head_value)
+				}
+			}
+		} else if s_headers, ok := r_headers.(map[string]any); ok {
+			for head_name, r_value := range s_headers {
+				// ** get header name
+				// nothing: already head_name
 
 				switch value := r_value.(type) {
 				case *Field:
@@ -543,6 +568,8 @@ func (cl *Client) proceedHeaders() error {
 				}
 			}
 		}
+		// reset special var headers from th symbols table
+		delete(cl.symtab, "headers")
 	}
 	return nil
 }
@@ -788,7 +815,7 @@ func (cl *Client) proceedCookies() error {
 		}
 
 		// reset cookies var in symbols table
-		// delete(cl.symtab, "cookies")
+		delete(cl.symtab, "cookies")
 	}
 	return nil
 }
@@ -950,6 +977,14 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 
 	var_name := params.VarName
 
+	// set local headers and cookies map
+	if err := c.proceedHeaders(); err != nil {
+		return err
+	}
+	if err := c.proceedCookies(); err != nil {
+		return err
+	}
+
 	//******************
 	//* play the request
 	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
@@ -993,7 +1028,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		err = ErrInvalidQueryResult
 	} else {
 		if data == nil {
-			err = fmt.Errorf("fail to decode json results: %s", err)
+			err = fmt.Errorf("fail to decode json results: %v", err)
 			// level.Error(c.logger).Log("errmsg", err)
 			return err
 		} else {
@@ -1270,6 +1305,7 @@ func (cl *Client) Login() (bool, error) {
 	if script, ok := cl.sc["login"]; ok && script != nil {
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
+
 		err := script.Play(cl.symtab, false, cl.logger)
 		delete(cl.symtab, "__method")
 
@@ -1306,6 +1342,7 @@ func (cl *Client) Logout() error {
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
 		cl.symtab["__collector_id"] = "tg"
+
 		err := script.Play(cl.symtab, false, cl.logger)
 		delete(cl.symtab, "__collector_id")
 		delete(cl.symtab, "__method")
@@ -1334,6 +1371,7 @@ func (cl *Client) Clear() error {
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
 		// cl.symtab["__collector_id"] = "tg"
+
 		err := script.Play(cl.symtab, false, cl.logger)
 		// delete(cl.symtab, "__collector_id")
 		delete(cl.symtab, "__method")
@@ -1375,6 +1413,7 @@ func (cl *Client) Ping() (bool, error) {
 			"script", ScriptName(cl.symtab, logger),
 			"msg", fmt.Sprintf("starting script '%s'", script.name))
 		// cl.symtab["__client"] = cl.client
+
 		cl.symtab["__method"] = cl.callClientExecute
 		// cl.symtab["check_invalid_auth"] = false
 		err := script.Play(cl.symtab, false, logger)

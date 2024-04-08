@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	// "strconv"
@@ -56,6 +57,26 @@ func convertToBytes(curval any, unit string) (int64, error) {
 // allow to retrive string header from response's headers
 func getHeader(headers http.Header, header string) (string, error) {
 	return headers.Get(header), nil
+}
+
+// allow to retrive string header from response's headers
+func getCookie(cookies []*http.Cookie, find_cookie string) (string, error) {
+	found_cookie := ""
+
+	for _, cookie := range cookies {
+		if cookie.Name == find_cookie {
+			if err := cookie.Valid(); err != nil {
+				return "", err
+			}
+			found_cookie = cookie.Value
+			break
+		}
+	}
+	return found_cookie, nil
+}
+
+func QueryEscape(s string) string {
+	return url.QueryEscape(s)
 }
 
 func exists(data any) (bool, error) {
@@ -395,6 +416,9 @@ func mymap() ttemplate.FuncMap {
 	// my_map["convertToBytes"] = convertToBytes
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["getHeader"] = getHeader
+	sprig_map["getCookie"] = getCookie
+	sprig_map["queryEscape"] = QueryEscape
+
 	sprig_map["exists"] = exists
 	sprig_map["EQ"] = exporterEQ
 	sprig_map["NE"] = exporterNE

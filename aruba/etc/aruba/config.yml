@@ -1,0 +1,148 @@
+# Global defaults.
+global:
+  scrape_timeout: 30s
+  # Subtracted from Prometheus' scrape_timeout to give us some headroom and prevent Prometheus from timing out first.
+  scrape_timeout_offset: 500ms
+  # Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+  min_interval: 0s
+  # all unsuccessful queries will be retried this number of times
+  query_retry: 3
+  # all metrics will be named "[metric_prefix]_[metric_name]"
+  metric_prefix: "aruba"
+  # all http codes that will be consider auth is invalid and must do a Login()
+  invalid_auth_code: [401,403]
+  exporter_name: aruba_exporter
+
+httpapi_config:
+  init:
+    - name: default headers
+      set_fact:
+        session_id: ''
+        headers:
+          - name: "Content-Type"
+            value: application/json
+          - name: Accept
+            value: "application/json"
+        base_url: /rest/v1
+        verifySSL: false
+        #** reload config info every one hour
+        configCacheDuration: 1h
+
+  auth_check:
+    - name: analyze login response ok
+      set_fact:
+        cookies: 
+          - name: "sessionid"
+            value: '{{ getCookie .response_cookies "id" }}'
+        logged: true
+        # session_id: '{{ .login.sessionid }}'
+        login_retry: "{{ .queryRetry }}"
+        # remove .login entry from symbols table
+        # login: ~
+      when:
+        - eq .results_status 201
+    - name: analyze login response
+      set_fact:
+        # session_id: ''
+        logged: false
+        login_retry: "{{ .queryRetry  }}"
+      when:
+        - or (eq .results_status 401) (eq .results_status 403)
+    - name: analyze login response not ok with retry
+      set_fact:
+        # auth_token: ""
+        logged: false
+        login_retry: "{{ add .login_retry 1 }}"
+      when:
+        - and (and (ne .results_status 200) (ne .results_status 401)) (ne .result_status 403)
+
+  login:
+    - name: init login loop
+      vars:
+        login_retry: 0
+        results_status: 0
+      until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+
+      actions:
+        - name: login phase
+          query:
+            url: /login
+            method: post
+            data: >-
+              {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+              username={{ queryEscape .user }}&password={{ queryEscape $tmp_pass }}
+            ok_status: 200
+            # don't store the value
+            # var_name: login
+        - name: analyze login response
+          play_script: auth_check
+
+  # method called to determine if a target is responding; will call login script if necessary
+  # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
+  ping:
+    - name: check ping cnx
+      query: 
+        # will call /api in fact !
+        url: /system?attributes=platform_name
+        method: get
+        ok_status: 200
+        # to catch and store the result and use it later...
+        var_name: platform
+
+    - name: set config cache vars
+      set_fact:
+        config:
+          ts_next_check: 0
+      when: not ( exists .config )
+      # when: gt (len .config ) 0
+
+    - name: set config cache vars
+      when: 
+        - exists .config
+        - GT ( unixEpoch now ) .config.ts_next_check
+      set_fact:
+        _ : '
+            # {{- $_ := exporterSet .config "svclb" (dict) -}}
+            # {{- $_ := exporterSet .config "svcgrplb" (dict) -}}
+            # {{- $_ := exporterSet .config "cluster" (dict) -}}
+            {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch) -}}'
+
+  # script called to reset all login infos after the ping script has received an invalid_auth_code.
+  # remove cookie sessionid and set var logged to false
+  clear:
+    - name: reset session_id
+      set_fact:
+        cookies: 
+          - name: "sessionid"
+            action: delete
+        # or
+        #  sessionid: __delete__
+        logged: false
+
+auth_configs:
+  prometheus_encrypted:
+    mode: script
+    user: prometheus
+    password: "/encrypted/__________XXXXXXX_______________XXXXXXX_______"
+
+# The targets to monitor and the collectors to execute on it.
+targets:
+  # default target is used as a pattern for exporter queries with target name not defined locally.
+  - name: default
+    scheme: https
+    host: set_later
+    port: 443
+    auth_name: prometheus_encrypted
+    # auth_mode:
+    #   # mode: basic|token|[anything else:=> user defined login script]
+    #   mode: script
+    #   user: usrNetScalerSupervision
+    #   password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+    collectors:
+      - ~.*_metrics
+
+  - targets_files: [ "/etc/httpapi_exporter/aruba/targets/*.yml" ]
+
+# Collector files specifies a list of globs. One collector definition is read from each matching file.
+collector_files:
+  - "metrics/*.collector.yml"

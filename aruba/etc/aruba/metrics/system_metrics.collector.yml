@@ -1,0 +1,31 @@
+---
+
+###
+##
+##
+###
+
+collector_name: aruba_powersupplies
+metric_prefix: arub_ps
+
+scripts:
+  get stat_system:
+    - name: collect power supplies stats
+      query:
+        url: /system/subsystems?depth=2&attributes=power_supplies
+        var_name: results
+        # debug: true
+
+    - name: proceed cpu elements
+      with_items: $results.power_supplies
+      when:
+        - LT (LEN .item) 0
+      metrics:
+        - metric_name: status
+          help: "power supply status: 0: not ok - 1: ok"
+          type: gauge
+          keylabels:
+            name: $name
+            description: $description
+          values:
+            _: '{{ if eq .status "ok"}}1{{ else }}0{{ end }}'
