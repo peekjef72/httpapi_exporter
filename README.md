@@ -25,7 +25,7 @@ this will build the exporter and a tool to crypt/decrypt ciphertext with a share
 
 ## Usage
 
-```shell
+```text
 usage: httpapi_exporter [<flags>]
 
 
@@ -62,6 +62,8 @@ Exporter requires configuration to works:
 - collectors
 - targets
 - authentication definitions
+  
+  see [config.md](doc/config.md) documentation
 
 ## exporter http server
 
@@ -91,6 +93,32 @@ parameters to scrape a target:
 2. `/metrics?auth_key=<cipherkey>&target=mytarget2` scrapes the target `mytarget2` that is fully defined in the exporter configuration files, and has a password that is encrypted and can be decrypted with the cipherkey.
 3. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>` define a dynamic target that is reachable at url `https://myhost.domain.name:port`, using the authentication parameters defined by `<auth_name>` and "default" model, then scrapes it. This target was not initially defined in the exporter configuration files, and only exists until the exporter is running.
 4. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>&model=mytarget` same than previous example but the dynamic target creation use "mytarget" model instead of default.
+
+## Authentication
+
+Most of the time the access to a http api requires an authentication. It is the case for the 3 contribs (hp3par, veeam, netscaler).
+The exporter allows you 2 modes:
+ - to define the authentication parameters statically for each target.
+ - to define a dictionnary (map) of authentications and then to use it a target definition, or even to set it in the prometheus query.
+
+The auth parameters are :
+  - mode: should be 
+    - basic: use http basic authentication: the "user" and "password" values will be sent in the http header request
+    - token: use bearer token to authenticate
+    - script: user, password will be used in the login script to access the api.
+  - user
+  - password
+  - token
+
+The user, password and token values can be raw strings or retrive the values from environment variables. To use env var the value must be prefixed by "$env:" followed by the name of the variable.
+
+```yml
+  # use this auth_config to authenticate via env vars
+  default:
+    mode: script
+    user: $env:VEEAM_EXPORTER_USER
+    password: $env:VEEAM_EXPORTER_PASSWD
+```
 
 ## password encryption
 
@@ -130,7 +158,6 @@ How it works:
     ```yaml
     auth_configs:
       <auth_name>:
-        auth_mode:
         # mode: basic|token|[anything else:=> user defined login script]
         mode: <mode>
         user: <user>
@@ -168,6 +195,8 @@ How it works:
         environment: "DEV"
     ```
 # custom functions for templating
+ 
+(**still incomplete**)
 
 Go template is used to manipulate data. So templates inherits from go functions and [sprig](https://masterminds.github.io/sprig/) v3 functions.
 Because the exporter uses most of the time data of type "any (interface{})" some of the sprig functions failed.

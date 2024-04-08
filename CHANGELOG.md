@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.3.7 / 2024-02-17
+- add support for env vars in auth_config [#1](issues/1)
+
 ## 0.3.6 / 2024-02-11
 - upgrade to go 1.22
 - upgrage modules version
