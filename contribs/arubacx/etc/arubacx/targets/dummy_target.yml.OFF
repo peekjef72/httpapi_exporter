@@ -1,4 +1,4 @@
-name: arubahost
+name: arubacxhost
 scheme: https
 host: "1.2.3.4"
 port: 443

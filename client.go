@@ -139,7 +139,7 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	}
 
 	// duplicate cookies from source into clone
-	cl.client.SetCookies(cl.client.Cookies)
+	cl.client.SetCookies(c.client.Cookies)
 
 	auth_set, _ := GetMapValueBool(c.symtab, "auth_set")
 	if auth_set && c.client.UserInfo != nil {
@@ -242,6 +242,8 @@ func (c *Client) getJSONResponse(resp *resty.Response) any {
 					"errmsg", fmt.Sprintf("Fail to decode json results %v", err))
 			}
 		}
+	} else {
+		data = make(map[any]any)
 	}
 	return data
 }
@@ -363,11 +365,7 @@ func (c *Client) Execute(
 				// 	level.Debug(c.logger).Log("msg", fmt.Sprintf("Ping()/Login() successfull: retrying (%d)", i+1))
 				// }
 			} else {
-				if resp.RawResponse.ContentLength > 0 {
-					data = c.getJSONResponse(resp)
-				} else {
-					data = make(map[any]any)
-				}
+				data = c.getJSONResponse(resp)
 				i = query_retry + 1
 			}
 			c.symtab["response_headers"] = resp.Header()

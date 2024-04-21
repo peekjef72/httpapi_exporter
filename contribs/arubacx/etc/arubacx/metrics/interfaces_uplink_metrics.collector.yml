@@ -1,0 +1,259 @@
+---
+
+###
+##
+##
+###
+
+collector_name: arubacx_if
+metric_prefix: arubacx_if
+
+scripts:
+  get stat_interfaces:
+    - name: init interface cache
+      when:
+        - GT (LEN .config.interfaces) 0
+      actions:
+        - name: init interfaces
+          set_fact:
+            interfaces: $config.interfaces
+            populate_if: false
+
+    - name: init interface cache
+      when:
+        - EQ (LEN .config.interfaces) 0
+      actions:
+        - name: init interfaces
+          set_fact:
+            interfaces: []
+            populate_if: true
+        - name: collect specific interfaces links
+          query:
+            # here should query by description or by name: name:{{ queryEscape "1/1/1" }}
+            url: /system/interfaces?filter=description:UPLINK
+            var_name: ifs
+            debug: true
+        - name: proceed each elements from list
+          with_items: $ifs
+          loop_var: if_url
+          actions:
+            - name: set if urls list
+              set_fact:
+                interfaces: '
+                  {{- $tmp_url := printf "%s?attributes=name,description,admin_state,link_speed,link_state,link_errors,statistics,duplex" (replace "/rest/v1" "" .if_url) -}}
+                  {{- $new := mustAppend .interfaces $tmp_url -}}
+                  {{- $new | toRawJson -}}'
+
+    - name: collect interface stats
+      with_items: $interfaces
+      loop_var: if_url
+      when:
+        - GT (LEN .interfaces) 0
+      actions:
+        - name: collect interface stats
+          query:
+            # here should query by description or by name: name:{{ queryEscape "1/1/1" }}
+            url: $if_url
+            var_name: if
+            debug: true
+          # => results:
+          # {
+          #     "admin_state": "up",
+          #     "description": "UPLINK",
+          #     "duplex": "full",
+          #     "link_errors": 0,
+          #     "link_speed": 10000000000,
+          #     "link_state": "up",
+          #     "name": "1/1/52",
+          #     "queue_tx_bytes": {
+          #         "0": 235497003,
+          #         "1": 57317219403,
+          #         "2": 47174236,
+          #         "3": 116865711,
+          #         "4": 490515942,
+          #         "5": 3143421587,
+          #         "6": 412089,
+          #         "7": 136895020
+          #     },
+          #     "queue_tx_packets": {
+          #         "0": 214852,
+          #         "1": 214879965,
+          #         "2": 265145,
+          #         "3": 414420,
+          #         "4": 664696,
+          #         "5": 8827917,
+          #         "6": 6408,
+          #         "7": 1012660
+          #     },
+          #     "statistics": {
+          #         "dot1d_tp_port_in_frames": 5965964019,
+          #         "ethernet_stats_broadcast_packets": 636728061,
+          #         "ethernet_stats_bytes": 7689728813117,
+          #         "ethernet_stats_packets": 6192250082,
+          #         "ethernet_stats_packets_1024_to_1518_bytes": 164741920,
+          #         "ethernet_stats_packets_128_to_255_bytes": 82712957,
+          #         "ethernet_stats_packets_1519_to_2047_bytes": 4763617818,
+          #         "ethernet_stats_packets_256_to_511_bytes": 116627023,
+          #         "ethernet_stats_packets_512_to_1023_bytes": 110770991,
+          #         "ethernet_stats_packets_64_bytes": 12650480,
+          #         "ethernet_stats_packets_65_to_127_bytes": 941128893,
+          #         "ethernet_stats_rx_no_errors": 5965964019,
+          #         "ethernet_stats_rx_packets_1024_to_1518_bytes": 157463767,
+          #         "ethernet_stats_rx_packets_128_to_255_bytes": 57721434,
+          #         "ethernet_stats_rx_packets_1519_to_2047_bytes": 4744981533,
+          #         "ethernet_stats_rx_packets_256_to_511_bytes": 101907529,
+          #         "ethernet_stats_rx_packets_512_to_1023_bytes": 105212499,
+          #         "ethernet_stats_rx_packets_64_bytes": 12650464,
+          #         "ethernet_stats_rx_packets_65_to_127_bytes": 786026793,
+          #         "ethernet_stats_tx_no_errors": 226286063,
+          #         "ethernet_stats_tx_packets_1024_to_1518_bytes": 7278153,
+          #         "ethernet_stats_tx_packets_128_to_255_bytes": 24991523,
+          #         "ethernet_stats_tx_packets_1519_to_2047_bytes": 18636285,
+          #         "ethernet_stats_tx_packets_256_to_511_bytes": 14719494,
+          #         "ethernet_stats_tx_packets_512_to_1023_bytes": 5558492,
+          #         "ethernet_stats_tx_packets_64_bytes": 16,
+          #         "ethernet_stats_tx_packets_65_to_127_bytes": 155102100,
+          #         "fe_if_in_discard_packets": 743595174,
+          #         "if_hc_in_broadcast_packets": 635429280,
+          #         "if_hc_in_bytes": 7627405794466,
+          #         "if_hc_in_multicast_packets": 207863010,
+          #         "if_hc_in_unicast_packets": 5122671729,
+          #         "if_hc_out_broadcast_packets": 1298781,
+          #         "if_hc_out_bytes": 62323018651,
+          #         "if_hc_out_multicast_packets": 2144267,
+          #         "if_hc_out_unicast_packets": 222843015,
+          #         "if_in_broadcast_bytes": 48067289365,
+          #         "if_in_broadcast_packets": 635429280,
+          #         "if_in_multicast_bytes": 41190296699,
+          #         "if_in_multicast_packets": 207863010,
+          #         "if_in_non_unicast_packets": 843292290,
+          #         "if_in_unicast_bytes": 7538148208402,
+          #         "if_in_unicast_packets": 5122671729,
+          #         "if_out_broadcast_packets": 1298781,
+          #         "if_out_multicast_packets": 2144267,
+          #         "if_out_non_unicast_packets": 3443048,
+          #         "if_out_unicast_packets": 222843015,
+          #         "multicast": 210007277,
+          #         "rx_bytes": 7627405794466,
+          #         "rx_jumbos": 4744981533,
+          #         "rx_packets": 5965964019,
+          #         "total_dropped": 271,
+          #         "total_jumbos": 4763617818,
+          #         "total_packets_no_errors": 6192250082,
+          #         "total_uc_packets": 5345514744,
+          #         "tx_bytes": 62323018651,
+          #         "tx_dropped": 271,
+          #         "tx_jumbos": 18636285,
+          #         "tx_packets": 226286063
+          #     }
+          # }
+        - name: build labels
+          set_fact:
+            key_labels:
+              name: $if.name
+              desc: $if.description
+        - name: if metrics
+          # by default scope is set to loop_var, here $ps; because we need $key_labels var
+          # scope must be set to none
+          scope: none
+          metrics:
+            - metric_name: admin_status
+              help: "admin status: 0: down - 1: up"
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ if eq .if.admin_state "up"}}1{{ else }}0{{ end }}'
+
+            - metric_name: link_status
+              help: "link status: 0: down - 1: up"
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ if eq .if.link_state "up"}}1{{ else }}0{{ end }}'
+
+            - metric_name: link_duplex
+              help: "link duplex: 0: unknown - 1: half - 2: full"
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ if eq .if.duplex "half"}}1{{ else if eq .if.duplex "full"}}2{{ else }}0{{ end }}'
+
+            - metric_name: link_error
+              help: "link error (crc?)"
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $if.link_errors
+
+            - metric_name: link_speed
+              help: "link speed bits per seconds"
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: $if.link_speed
+
+            - metric_name: in_bytes
+              help: "link received bytes"
+              type: counter
+              key_labels: $key_labels
+              values:
+                _: $if.statistics.rx_bytes
+
+            - metric_name: in_dropped
+              help: "link received packets dropped"
+              type: counter
+              key_labels: $key_labels
+              values:
+                _: '{{- if exporterHasKey .if.statistics "rx_dropped" -}}
+                      {{- print .if.statistics.rx_dropped -}}
+                    {{- else -}}
+                      {{- print "0" -}}
+                    {{- end -}}'
+
+            - metric_name: in_error
+              help: "link received packets errors"
+              type: counter
+              key_labels: $key_labels
+              values:
+                _: '{{- if exporterHasKey .if.statistics "rx_errors" -}}
+                      {{- .if.statistics.rx_errors -}}
+                    {{- else -}}
+                      {{- print "0" -}}
+                    {{- end -}}'
+
+            - metric_name: out_bytes
+              help: "link transmitted bytes"
+              type: counter
+              key_labels: $key_labels
+              values:
+                _: $if.statistics.tx_bytes
+
+            - metric_name: out_dropped
+              help: "link transmittedpackets dropped"
+              type: counter
+              key_labels: $key_labels
+              values:
+                _: '{{- if exporterHasKey .if.statistics "tx_dropped" -}}
+                      {{- .if.statistics.tx_dropped -}}
+                    {{- else -}}
+                      {{- print "0" -}}
+                    {{- end -}}'
+
+            - metric_name: out_error
+              help: "link transmitted packets errors"
+              type: counter
+              key_labels: $key_labels
+              values:
+                _: '{{- if exporterHasKey .if.statistics "tx_errors" -}}
+                      {{- .if.statistics.tx_errors -}}
+                    {{- else -}}
+                      {{- print "0" -}}
+                    {{- end -}}'
+
+    #**************************************************
+    # keep interfaces config
+    - name: keep interfaces config
+      when: .populate_if
+      set_stats:
+        .config.interfaces: $interfaces
+

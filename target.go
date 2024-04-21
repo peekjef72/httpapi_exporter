@@ -574,7 +574,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 								}
 								level.Debug(logger).Log(
 									"collid", t.name,
-									"msg", "collector has panic-ed: %s", err.Error())
+									"msg", fmt.Sprintf("collector has panic-ed: %s", err.Error()))
 							}
 						}()
 						defer func() {

@@ -8,10 +8,10 @@ global:
   # all unsuccessful queries will be retried this number of times
   query_retry: 3
   # all metrics will be named "[metric_prefix]_[metric_name]"
-  metric_prefix: "aruba"
+  metric_prefix: "arubacx"
   # all http codes that will be consider auth is invalid and must do a Login()
   invalid_auth_code: [401,403]
-  exporter_name: aruba_exporter
+  exporter_name: arubacx_exporter
 
 httpapi_config:
   init:
@@ -32,20 +32,19 @@ httpapi_config:
     - name: analyze login response ok
       set_fact:
         cookies: 
-          - name: "sessionid"
+          - name: "id"
             value: '{{ getCookie .response_cookies "id" }}'
         logged: true
-        # session_id: '{{ .login.sessionid }}'
         login_retry: "{{ .queryRetry }}"
         # remove .login entry from symbols table
         # login: ~
       when:
-        - eq .results_status 201
+        - eq .results_status 200
     - name: analyze login response
       set_fact:
         # session_id: ''
         logged: false
-        login_retry: "{{ .queryRetry  }}"
+        login_retry: "{{ .queryRetry }}"
       when:
         - or (eq .results_status 401) (eq .results_status 403)
     - name: analyze login response not ok with retry
@@ -65,17 +64,33 @@ httpapi_config:
 
       actions:
         - name: login phase
+          vars:
+            headers:
+              Content-Type: application/x-www-form-urlencoded
+              Accept: "*/*"
           query:
             url: /login
             method: post
+              # {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+              # username={{ queryEscape .user }}&password={{ queryEscape $tmp_pass }}
             data: >-
-              {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-              username={{ queryEscape .user }}&password={{ queryEscape $tmp_pass }}
+              username={{ queryEscape .user }}&password={{ queryEscape .password }}
             ok_status: 200
             # don't store the value
-            # var_name: login
+            var_name: _
         - name: analyze login response
           play_script: auth_check
+
+  logout:
+        - name: logout phase
+          vars:
+            headers:
+              Content-Type: application/x-www-form-urlencoded
+              Accept: "*/*"
+          query:
+            url: /logout
+            method: post
+            ok_status: 200
 
   # method called to determine if a target is responding; will call login script if necessary
   # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
@@ -102,21 +117,19 @@ httpapi_config:
         - GT ( unixEpoch now ) .config.ts_next_check
       set_fact:
         _ : '
-            # {{- $_ := exporterSet .config "svclb" (dict) -}}
-            # {{- $_ := exporterSet .config "svcgrplb" (dict) -}}
-            # {{- $_ := exporterSet .config "cluster" (dict) -}}
+            {{- $_ := exporterSet .config "interfaces" (list) -}}
             {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch) -}}'
 
   # script called to reset all login infos after the ping script has received an invalid_auth_code.
-  # remove cookie sessionid and set var logged to false
+  # remove cookie id and set var logged to false
   clear:
     - name: reset session_id
       set_fact:
         cookies: 
-          - name: "sessionid"
+          - name: "id"
             action: delete
         # or
-        #  sessionid: __delete__
+        #  id: __delete__
         logged: false
 
 auth_configs:
@@ -139,9 +152,9 @@ targets:
     #   user: usrNetScalerSupervision
     #   password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
     collectors:
-      - ~.*_metrics
+      - ~^arubacx_.*
 
-  - targets_files: [ "/etc/httpapi_exporter/aruba/targets/*.yml" ]
+  - targets_files: [ "/etc/httpapi_exporter/arubacx/targets/*.yml" ]
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
 collector_files:

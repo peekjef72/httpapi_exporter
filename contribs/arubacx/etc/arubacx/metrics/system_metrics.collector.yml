@@ -1,0 +1,316 @@
+---
+
+###
+##
+##
+###
+
+collector_name: arubacx_system
+metric_prefix: arubacx_system
+
+scripts:
+  get stat_system:
+    - name: collect hadware info
+      query:
+        url: /system?attributes=software_version,boot_time,other_config
+        var_name: results
+        # debug: true
+
+    - name: boot time sys_info
+      # by default scope is set to loop_var, here $item; because we need $key_labels var
+      # scope must be set to none
+      scope: none
+      metrics:
+        - metric_name: boot_time
+          help: unix timestamp when the system boot
+          type: gauge
+          values:
+            _: $results.boot_time
+
+        - metric_name: version
+          help: dummy value 1 labeled by system description and software version
+          type: gauge
+          key_labels:
+            system: $results.other_config.system_description
+            software_version: $results.software_version
+          values:
+            _: 1
+    - name: collect hadware info
+      query:
+        url: /system/redundant_managements?depth=1
+        var_name: results
+        # debug: true
+
+      # results: [
+      #     {
+      #         "comm_ip_addr": "172.17.17.100",
+      #         "comm_mac_addr": "bc:d7:a5:cc:ce:01",
+      #         "hardware_revision": "",
+      #         "is_local": true,
+      #         "mgmt_module": "/rest/v1/system/subsystems/management_module/1%2F1",
+      #         "mgmt_role": "Active",
+      #         "name": "1/MM1",
+      #         "remote_present": false,
+      #         "software_revision": "",
+      #         "state": "ready"
+      #     }
+      # ]
+
+    - name: proceed each elements from list
+      with_items: $results
+      loop_var: mod
+      actions:
+        - name: management module status
+          # by default scope is set to loop_var, here $ts; because we need $key_labels var
+          # scope must be set to none
+          scope: none
+          metrics:
+            - metric_name: management_module_status
+              help: "management module status: 0: not ok / 1: ready / 2: empty"
+              type: gauge
+              key_labels:
+                name: $mod.name
+              values:
+                _: '{{ if eq .mod.state "ready"}}1{{ else if eq .mod.state "empty"}}2{{ else }}0{{ end }}'
+
+        - name: collect resource utilization stats
+          when:
+            - EQ .mod.mgmt_role "Active"
+          vars:
+            mgt_url: '{{ replace "/rest/v1" "" .mod.mgmt_module }}'
+          query:
+            url: $mgt_url
+            var_name: res
+            # debug: true
+
+        - name: hardware product info
+          when:
+            - exporterHasKey .res "product_info"
+          # by default scope is set to loop_var, here $item; because we need $key_labels var
+          # scope must be set to none
+          scope: none
+          metrics:
+            - metric_name: product_info
+              help: dummy value 1 labeled by product_name serial_number
+              type: gauge
+              key_labels:
+                mgmt_name: $mod.name
+                product_name: $res.product_info.product_name
+                serial_number: $res.product_info.serial_number
+              values:
+                _: 1
+
+        - name: collect resource_utilization
+          when:
+            - exporterHasKey .res "resource_utilization"
+          actions:
+            - name: set rs
+              set_fact:
+                rs: $res.resource_utilization
+            # - name: debug rs
+            #   debug:
+            #     msg: "rs {{ .rs }}"
+            - name: get partition percent usage
+              with_items:
+                - name: coredump_partition_utilization
+                  label: coredump
+                - name: log_partition_utilization
+                  label: log
+                - name: nos_partition_utilization
+                  label: nos
+                - name: security_partition_utilization
+                  label: security
+                - name: selftest_partition_utilization
+                  label: selftest
+              loop_var: met
+              scope: none
+              metrics:
+                - metric_name: partition_percent_used
+                  help: "partition current usage labeled by partition name"
+                  type: gauge
+                  key_labels:
+                    partition: $met.label
+                  values:
+                    _: "{{ exporterGet .rs .met.name }}"
+
+            - name: get partition write usage
+              with_items:
+                - name: coredump_partition_write_since_boot
+                  label: coredump
+                - name: log_partition_write_since_boot
+                  label: log
+                - name: nos_partition_write_since_boot
+                  label: nos
+                - name: security_partition_write_since_boot
+                  label: security
+                - name: selftest_partition_write_since_boot
+                  label: selftest
+                - name: swap_write_since_boot
+                  label: swap
+              loop_var: met
+              scope: none
+              metrics:
+                - metric_name: partition_write_operation
+                  help: "partition write operation since boot labeled by partition name"
+                  type: counter
+                  key_labels:
+                    partition: $met.label
+                  values:
+                    _: "{{ exporterGet .rs .met.name }}"
+
+            - name: cpu, mem, open_fds metrics
+              # by default scope is set to loop_var, here $item; because we need $key_labels var
+              # scope must be set to none
+              scope: none
+              metrics:
+                - metric_name: cpu_usage_percent
+                  help: cpu usage percent
+                  type: gauge
+                  values:
+                    _: $rs.cpu
+
+                - metric_name: memory_usage_percent
+                  help: "memory usage"
+                  type: gauge
+                  values:
+                    _: $rs.memory
+
+                - metric_name: open_fds
+                  help: "number of opened file descriptor (open_fds)"
+                  type: gauge
+                  values:
+                    _: $rs.open_fds
+
+    # **** storages collect
+        # e.g.:
+        # "storage": {
+        #   "mmc-type-a": {
+        #     "endurance":"0",
+        #     "endurance_step_size":"10",
+        #     "storage_health":"normal"
+        #   },
+        #   "mmc-type-b": {
+        #     "endurance": "0",
+        #     "endurance_step_size": "10", 
+        #     "storage_health":"normal"
+        #   }
+        # }
+        - name: collect storage
+          when:
+            - exporterHasKey .res "storage"
+          actions:
+            - name: set storage
+              set_fact:
+                storage: $res.storage
+            # - name: debug storage
+            #   debug:
+            #     msg: "storage {{ .storage }}"
+            - name: get storage info
+              with_items: '{{ exporterKeys .storage | toRawJson }}'
+              loop_var: storage_name
+              # by default scope is set to loop_var, here $item; because we need $key_labels var
+              # scope must be set to none
+              scope: none
+              metric_prefix: arubacx
+              metrics:
+                - metric_name: storage_status
+                  help: "storage status labeled by name : 0: not ok / 1: normal"
+                  type: gauge
+                  vars:
+                    value: '{{ (exporterGet .storage .storage_name).storage_health }}'
+                  key_labels:
+                    name: $storage_name
+                  values:
+                    _: '{{ if eq .value "normal"}}1{{ else if eq .value "empty"}}2{{ else }}0{{ end }}'
+
+#**************************
+# OLD
+#**************************
+    # - name: collect resource utilization stats
+    #   query:
+    #     url: /system/subsystems/management_module?&attributes=resource_utilization
+    #     var_name: results
+    #     debug: true
+    # - name: proceed each elements from list
+    #   with_items: $results
+    #   loop_var: elmt
+    #   when:
+    #     - exporterHasKey .elmt "resource_utilization"
+    #     - GT (LEN .elmt.resource_utilization) 0
+    #   actions:
+    #     - name: set rs
+    #       set_fact:
+    #         rs: $elmt.resource_utilization
+    #     - name: debug rs
+    #       debug:
+    #         msg: "rs {{ .rs }}"
+    #     - name: get partition percent usage
+    #       with_items:
+    #         - name: coredump_partition_utilization
+    #           label: coredump
+    #         - name: log_partition_utilization
+    #           label: log
+    #         - name: nos_partition_utilization
+    #           label: nos
+    #         - name: security_partition_utilization
+    #           label: security
+    #         - name: selftest_partition_utilization
+    #           label: selftest
+    #       loop_var: met
+    #       scope: none
+    #       metrics:
+    #         - metric_name: partition_percent_used
+    #           help: "partition current usage labeled by partition name"
+    #           type: gauge
+    #           key_labels:
+    #             partition: $met.label
+    #           values:
+    #             _: "{{ exporterGet .rs .met.name }}"
+
+    #     - name: get partition write usage
+    #       with_items:
+    #         - name: coredump_partition_write_since_boot
+    #           label: coredump
+    #         - name: log_partition_write_since_boot
+    #           label: log
+    #         - name: nos_partition_write_since_boot
+    #           label: nos
+    #         - name: security_partition_write_since_boot
+    #           label: security
+    #         - name: selftest_partition_write_since_boot
+    #           label: selftest
+    #         - name: swap_write_since_boot
+    #           label: swap
+    #       loop_var: met
+    #       scope: none
+    #       metrics:
+    #         - metric_name: partition_write_operation
+    #           help: "partition write operation since boot labeled by partition name"
+    #           type: counter
+    #           key_labels:
+    #             partition: $met.label
+    #           values:
+    #             _: "{{ exporterGet .rs .met.name }}"
+
+    #     - name: cpu, mem, open_fds metrics
+    #       # by default scope is set to loop_var, here $item; because we need $key_labels var
+    #       # scope must be set to none
+    #       scope: none
+    #       metrics:
+    #         - metric_name: cpu_usage_percent
+    #           help: cpu usage percent
+    #           type: gauge
+    #           values:
+    #             _: $rs.cpu
+
+    #         - metric_name: memory_usage_percent
+    #           help: "memory usage"
+    #           type: gauge
+    #           values:
+    #             _: $rs.memory
+
+    #         - metric_name: open_fds
+    #           help: "number of opened file descriptor (open_fds)"
+    #           type: gauge
+    #           values:
+    #             _: $rs.open_fds

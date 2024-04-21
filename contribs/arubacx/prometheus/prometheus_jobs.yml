@@ -1,0 +1,27 @@
+#--------- Start prometheus arubacx exporter  ---------#
+  - job_name: "arubacx"
+    metrics_path: /metrics
+    file_sd_configs:
+      - files: [ "/etc/prometheus/arubacx_nodes/*.yml" ]
+
+    # or static configs...
+    # static_configs:
+    #   - targets: [ 1.2.3.4 ]
+    #     labels:
+    #       __param_auth_key: "__shared__auth_passphrase__"
+    #       host: "RZO-TEST"
+    #       # optional labels for dashboard
+    #       application: "NETWORK"
+    #       environment: "DEV"
+    #       site: "my_site#1"
+    #       group: "my_group#1"
+
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "arubacx_exporter_host.domain.name:9259"  # The arubacx exporter's real hostname.
+
+#--------- End prometheus arubacx exporter ---------#

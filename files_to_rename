@@ -1,0 +1,4 @@
+/usr/bin/mv -f contribs/arubacx/etc/arubacx/config.yml aruba/etc/aruba/config.yml
+/usr/bin/git mv aruba/etc/aruba/config.yml contribs/arubacx/etc/arubacx/config.yml
+/usr/bin/mv -f contribs/arubacx/etc/arubacx/targets/dummy_target.yml.OFF aruba/etc/aruba/targets/dummy_target.yml.OFF
+/usr/bin/git mv aruba/etc/aruba/targets/dummy_target.yml.OFF contribs/arubacx/etc/arubacx/targets/dummy_target.yml.OFF

@@ -1,0 +1,11 @@
+- targets: [ "arubacx_node_1" ]
+  labels:
+   # if you have activated password encrypted passphrass
+    __param_auth_key: __shared__auth_passphrase__
+    host: "arubacx_node_1_fullqualified.domain.name"
+    target_address: 1.2.3.4
+    #custom labels…
+    application: "NETWORK"
+    environment: "DEV"
+    site: "my_site#1"
+    group: "my_group#1"

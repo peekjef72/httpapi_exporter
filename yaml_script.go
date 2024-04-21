@@ -524,6 +524,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 					value, err := ValorizeValue(symtab, pair[1], logger, ba.GetName(symtab, logger), 0)
 					if err == nil {
 						if value != nil {
+							add_symbol := true
 							if s_value, ok := value.(string); ok {
 								if s_value == "_" {
 									DeleteSymtab(symtab, key_name)
@@ -532,8 +533,10 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 										"script", ScriptName(symtab, logger),
 										"name", ba.GetName(symtab, logger),
 										"msg", fmt.Sprintf("vars(%s) has '_' value (removed)", key_name))
+									add_symbol = false
 								}
-							} else {
+							}
+							if add_symbol {
 								if err := preserve_sym_tab(symtab, old_values, key_name, value); err != nil {
 									level.Warn(logger).Log(
 										"collid", CollectorId(symtab, logger),
