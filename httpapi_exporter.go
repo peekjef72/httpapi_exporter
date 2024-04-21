@@ -44,14 +44,6 @@ var (
 	logConfig      = promlog.Config{}
 )
 
-// func init() {
-// 	// prometheus.MustRegister(version.NewCollector(exporter_name))
-// 	prometheus.MustRegister(
-// 		promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}),
-// 		promcollectors.NewGoCollector(),
-// 	)
-// }
-
 const (
 	OpEgals = 1
 	OpMatch = 2
