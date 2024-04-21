@@ -1,0 +1,17 @@
+name: arubacxhost
+scheme: https
+host: "1.2.3.4"
+port: 443
+baseUrl: /rest/v1
+auth_mode:
+  # mode: basic|token|[anything else:=> user defined login script]
+  user: prometheus
+  # password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+  password: "password"
+# proxy: ""
+# verifySSL: false
+# custom constant labels add to all metrics
+#labels:
+  # - name: value
+collectors:
+  - system_statistics

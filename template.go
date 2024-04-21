@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	// "strconv"
@@ -58,6 +59,26 @@ func getHeader(headers http.Header, header string) (string, error) {
 	return headers.Get(header), nil
 }
 
+// allow to retrive string header from response's headers
+func getCookie(cookies []*http.Cookie, find_cookie string) (string, error) {
+	found_cookie := ""
+
+	for _, cookie := range cookies {
+		if cookie.Name == find_cookie {
+			if err := cookie.Valid(); err != nil {
+				return "", err
+			}
+			found_cookie = cookie.Value
+			break
+		}
+	}
+	return found_cookie, nil
+}
+
+func QueryEscape(s string) string {
+	return url.QueryEscape(s)
+}
+
 func exists(data any) (bool, error) {
 	res := false
 	if data != nil {
@@ -77,6 +98,8 @@ func getfloat(val any) (float64, bool) {
 
 	// it is a raw value not a template look in "item"
 	switch curval := val.(type) {
+	case int:
+		f_value = float64(curval)
 	case int64:
 		f_value = float64(curval)
 	case float64:
@@ -181,7 +204,7 @@ func exporterLT(val1 any, val2 any) bool {
 	return checkOp(opGT, val2, val1)
 }
 
-func exporterLEN(dict any) int {
+func exporterLEN(dict any) int64 {
 	var res int = 0
 
 	switch maptype := dict.(type) {
@@ -197,7 +220,7 @@ func exporterLEN(dict any) int {
 		res = len(maptype)
 	}
 
-	return res
+	return int64(res)
 }
 
 // function for template: custom dict hasKey() key that allow to query key from dict of map[any]any type instead of map[string]any
@@ -395,6 +418,9 @@ func mymap() ttemplate.FuncMap {
 	// my_map["convertToBytes"] = convertToBytes
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["getHeader"] = getHeader
+	sprig_map["getCookie"] = getCookie
+	sprig_map["queryEscape"] = QueryEscape
+
 	sprig_map["exists"] = exists
 	sprig_map["EQ"] = exporterEQ
 	sprig_map["NE"] = exporterNE

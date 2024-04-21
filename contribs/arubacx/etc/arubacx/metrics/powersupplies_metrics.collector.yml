@@ -1,0 +1,56 @@
+---
+
+###
+##
+##
+###
+
+collector_name: arubacx_powersupplies
+metric_prefix: arubacx_ps
+
+scripts:
+  get stat_power_supplies:
+    - name: collect power supplies stats
+      query:
+        url: /system/subsystems?depth=2&attributes=power_supplies
+        var_name: results
+        # debug: true
+
+    - name: proceed each elements from list
+      with_items: $results
+      loop_var: elmt
+      when:
+        - exporterHasKey .elmt "power_supplies"
+        - GT (LEN .elmt.power_supplies) 0
+      actions:
+        - name: loop ps
+          with_items: $elmt.power_supplies
+          loop_var: ps
+          actions:
+            # - name: debug ps
+            #   debug:
+            #     msg: "ps {{ .ps}}"
+            - name: build labels
+              set_fact:
+                key_labels:
+                  name: $ps.name
+                  desc: $ps.identity.description
+                  sn: $ps.identity.serial_number
+            - name: ps status metric
+              # by default scope is set to loop_var, here $ps; because we need $key_labels var
+              # scope must be set to none
+              scope: none
+              metrics:
+                - metric_name: status
+                  help: "power supply status: 0: not ok - 1: ok"
+                  type: gauge
+                  key_labels: $key_labels
+                  values:
+                    _: '{{ if eq .ps.status "ok"}}1{{ else }}0{{ end }}'
+
+                - metric_name: consumption_watts
+                  help: "power supply instanenous consumption in watt"
+                  type: gauge
+                  key_labels: $key_labels
+                  values:
+                    _: $ps.characteristics.instantaneous_power

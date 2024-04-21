@@ -130,7 +130,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 				}
 				level.Debug(e.logger).Log(
 					"collid", target.Name(),
-					"msg", "target has panic-ed: %s", err.Error())
+					"msg", fmt.Sprintf("target has panic-ed: %s", err.Error()))
 			}
 		}()
 		defer wg.Done()

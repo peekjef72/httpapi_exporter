@@ -439,7 +439,9 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	}
 
 	// reset special var headers from th symbols table
-	delete(symtab, "headers")
+	// removed 2024/03/18: don't know why to remove headers that should be set by user !
+	// delete(symtab, "headers")
+
 	params := &CallClientExecuteParams{
 		Payload:  payload,
 		Method:   method,

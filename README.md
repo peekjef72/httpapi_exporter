@@ -6,10 +6,11 @@ This exporter wants to be a generic JSON REST API exporter. That's mean it can l
 
 Nothing is hard coded in the exporter. That why it is a generic exporter.
 
-As examples 3 configurations for exporters are provided (see contribs):
+As examples 4 configurations for exporters are provided (see contribs):
 - [hp3par_exporter](contribs/hp3par/README.md)
 - [veeam_exporter](contribs/veeam/README.md)
 - [netscaler_exporter](contribs/netscaler/README.md)
+- [aruba_exporter](contribs/arubacx/README.md)
 
 # Build
 

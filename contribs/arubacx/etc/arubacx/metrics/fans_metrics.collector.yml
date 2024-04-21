@@ -1,0 +1,55 @@
+---
+
+###
+##
+##
+###
+
+collector_name: arubacx_fans
+metric_prefix: arubacx_fans
+
+scripts:
+  get stat_fans:
+    - name: collect fans stats
+      query:
+        url: /system/subsystems?depth=2&attributes=fans
+        var_name: results
+        # debug: true
+
+    - name: proceed each elements from list
+      with_items: $results
+      loop_var: elmt
+      when:
+        - exporterHasKey .elmt "fans"
+        - GT (LEN .elmt.fans) 0
+      actions:
+        - name: loop fans
+          with_items: $elmt.fans
+          loop_var: fan
+          actions:
+            # - name: debug fan
+            #   debug:
+            #     msg: "fan {{ .fan }}"
+            - name: build labels
+              set_fact:
+                key_labels:
+                  name: $fan.name
+                  # sn: $fan.identity.serial_number
+            - name: fan status metric
+              # by default scope is set to loop_var, here $fan; because we need $key_labels var
+              # scope must be set to none
+              scope: none
+              metrics:
+                - metric_name: status
+                  help: "fan supply status: 0: not ok / 1: ok / 2: empty"
+                  type: gauge
+                  key_labels: $key_labels
+                  values:
+                    _: '{{ if eq .fan.status "ok"}}1{{ else if eq .fan.status "empty"}}2{{ else }}0{{ end }}'
+
+                - metric_name: speed_rpm
+                  help: "fan supply instanenous rotation speed in rpm"
+                  type: gauge
+                  key_labels: $key_labels
+                  values:
+                    _: $fan.rpm

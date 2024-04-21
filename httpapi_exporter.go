@@ -44,10 +44,6 @@ var (
 	logConfig      = promlog.Config{}
 )
 
-func init() {
-	prometheus.MustRegister(version.NewCollector(exporter_name))
-}
-
 const (
 	OpEgals = 1
 	OpMatch = 2
@@ -182,7 +178,7 @@ func main() {
 		}
 
 		//dump metric to stdout
-		enc := expfmt.NewEncoder(os.Stdout, expfmt.FmtText)
+		enc := expfmt.NewEncoder(os.Stdout, `text/plain; version=`+expfmt.TextVersion+`; charset=utf-8`)
 
 		for _, mf := range mfs {
 			err := enc.Encode(mf)
