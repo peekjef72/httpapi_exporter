@@ -467,11 +467,21 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		if Func, ok := raw_func.(func(*CallClientExecuteParams, map[string]any) error); ok {
 			if err = Func(params, symtab); err != nil {
 				if err != ErrInvalidLogin {
-					level.Warn(logger).Log(
-						"collid", CollectorId(symtab, logger),
-						"script", ScriptName(symtab, logger),
-						"name", a.GetName(symtab, logger),
-						"msg", fmt.Sprintf("internal method returns error: '%v'", err))
+					switch err {
+					case ErrContextDeadLineExceeded:
+						level.Warn(logger).Log(
+							"collid", CollectorId(symtab, logger),
+							"script", ScriptName(symtab, logger),
+							"name", a.GetName(symtab, logger),
+							"msg", fmt.Sprintf("internal method returns error: '%v'", err),
+							"timeout", fmt.Sprintf("%v", a.Query.Timeout))
+					default:
+						level.Warn(logger).Log(
+							"collid", CollectorId(symtab, logger),
+							"script", ScriptName(symtab, logger),
+							"name", a.GetName(symtab, logger),
+							"msg", fmt.Sprintf("internal method returns error: '%v'", err))
+					}
 				}
 			}
 		}

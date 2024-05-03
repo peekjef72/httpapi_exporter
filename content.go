@@ -185,7 +185,7 @@ func ConfigHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 	}
 }
 
-// ConfigHandlerFunc is the HTTP handler for the `/config` page. It outputs the configuration marshaled in YAML format.
+// StatusHandlerFunc is the HTTP handler for the `/status` page. It outputs the status of exporter.
 func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 

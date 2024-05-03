@@ -51,11 +51,11 @@ type Target interface {
 
 // target implements Target. It wraps a httpAPI, which is initially nil but never changes once instantianted.
 type target struct {
-	name        string
-	config      *TargetConfig
-	client      *Client
-	collectors  []Collector
-	constLabels prometheus.Labels
+	name       string
+	config     *TargetConfig
+	client     *Client
+	collectors []Collector
+	// constLabels prometheus.Labels
 	// globalConfig       *GlobalConfig
 	httpAPIScript       map[string]*YAMLScript
 	upDesc              MetricDesc
@@ -122,8 +122,7 @@ func Msg2Text(msg int) string {
 func NewTarget(
 	logContext []interface{},
 	tpar *TargetConfig,
-	ccs []*CollectorConfig,
-	constLabels prometheus.Labels,
+	// constLabels prometheus.Labels,
 	gc *GlobalConfig,
 	http_script map[string]*YAMLScript,
 	logger log.Logger) (Target, error) {
@@ -132,8 +131,8 @@ func NewTarget(
 		logContext = append(logContext, "target", tpar.Name)
 	}
 
-	constLabelPairs := make([]*dto.LabelPair, 0, len(constLabels))
-	for n, v := range constLabels {
+	constLabelPairs := make([]*dto.LabelPair, 0, len(tpar.Labels))
+	for n, v := range tpar.Labels {
 		constLabelPairs = append(constLabelPairs, &dto.LabelPair{
 			Name:  proto.String(n),
 			Value: proto.String(v),
@@ -141,8 +140,8 @@ func NewTarget(
 	}
 	sort.Sort(labelPairSorter(constLabelPairs))
 
-	collectors := make([]Collector, 0, len(ccs))
-	for _, cc := range ccs {
+	collectors := make([]Collector, 0, len(tpar.collectors))
+	for _, cc := range tpar.collectors {
 		cscrl := make([]*YAMLScript, len(cc.CollectScripts))
 		i := 0
 		for _, cs := range cc.CollectScripts {
@@ -167,11 +166,10 @@ func NewTarget(
 		"collectorname")
 
 	t := target{
-		name:        tpar.Name,
-		config:      tpar,
-		client:      newClient(tpar, http_script, logger, gc),
-		collectors:  collectors,
-		constLabels: constLabels,
+		name:       tpar.Name,
+		config:     tpar,
+		client:     newClient(tpar, http_script, logger, gc),
+		collectors: collectors,
 		// globalConfig:       gc,
 		httpAPIScript:       http_script,
 		upDesc:              upDesc,

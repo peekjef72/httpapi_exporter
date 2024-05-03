@@ -73,7 +73,7 @@ func NewExporter(configFile string, logger log.Logger, collectorName string) (Ex
 		if len(t.TargetsFiles) > 0 {
 			continue
 		}
-		target, err := NewTarget(logContext, t, t.Collectors(), nil, c.Globals, c.HttpAPIConfig, logger)
+		target, err := NewTarget(logContext, t, c.Globals, c.HttpAPIConfig, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -226,7 +226,7 @@ func (e *exporter) FindTarget(tname string) (Target, error) {
 func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
 	var logContext []interface{}
 
-	target, err := NewTarget(logContext, tg_config, tg_config.Collectors(), nil, e.config.Globals, e.config.HttpAPIConfig, e.logger)
+	target, err := NewTarget(logContext, tg_config, e.config.Globals, e.config.HttpAPIConfig, e.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (e *exporter) ReloadConfig() error {
 		if len(t.TargetsFiles) > 0 {
 			continue
 		}
-		target, err := NewTarget(logContext, t, t.Collectors(), nil, c.Globals, c.HttpAPIConfig, e.logger)
+		target, err := NewTarget(logContext, t, c.Globals, c.HttpAPIConfig, e.logger)
 		if err != nil {
 			return err
 		}

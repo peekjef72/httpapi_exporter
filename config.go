@@ -113,7 +113,9 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 						} else if c.Globals.MetricPrefix != "" {
 							prefix = c.Globals.MetricPrefix
 						}
-						metric.Name = prefix + "_" + metric.Name
+						if !strings.HasPrefix(metric.Name, prefix) {
+							metric.Name = fmt.Sprintf("%s_%s", prefix, metric.Name)
+						}
 					}
 				}
 			}
@@ -428,7 +430,7 @@ type TargetConfig struct {
 	Port       string     `yaml:"port,omitempty"`
 	BaseUrl    string     `yaml:"baseUrl,omitempty"`
 	AuthName   string     `yaml:"auth_name,omitempty"`
-	AuthConfig AuthConfig `yaml:"auth_mode,omitempty"`
+	AuthConfig AuthConfig `yaml:"auth_config,omitempty"`
 	// Username          string             `yaml:"user,omitempty"`
 	// Password          Secret             `yaml:"password,omitempty"` // data source definition to connect to
 	// BasicAuth         ConvertibleBoolean `yaml:"basicAuth"`
@@ -1004,6 +1006,13 @@ func resolveCollectorRefs(
 			pat := regexp.MustCompile(cref[1:])
 			for c_name, c := range collectors {
 				if pat.MatchString(c_name) {
+					resolved = append(resolved, c)
+				}
+			}
+		} else if strings.HasPrefix(cref, "!~") {
+			pat := regexp.MustCompile(cref[2:])
+			for c_name, c := range collectors {
+				if !pat.MatchString(c_name) {
 					resolved = append(resolved, c)
 				}
 			}

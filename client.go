@@ -903,25 +903,25 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	auth_set, _ := GetMapValueBool(symtab, "auth_set")
 	if !auth_set {
 		if auth_mode == "basic" {
+			user := GetMapValueString(symtab, "user")
+			if params.Username != "" {
+				old_values["user"] = user
+				user = params.Username
+				symtab["user"] = user
+			}
+
 			passwd := GetMapValueString(symtab, "password")
 			if params.Password != "" {
 				old_values["password"] = passwd
 				passwd = params.Password
 				symtab["password"] = passwd
 			}
-			if strings.Contains(passwd, "/encrypted/") {
+			if strings.HasPrefix(passwd, "/encrypted/") {
 				ciphertext := passwd[len("/encrypted/"):]
 				level.Debug(c.logger).Log(
 					"collid", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger),
 					"ciphertext", ciphertext)
-
-				user := GetMapValueString(symtab, "user")
-				if params.Username != "" {
-					old_values["user"] = user
-					user = params.Username
-					symtab["user"] = user
-				}
 				auth_key := GetMapValueString(symtab, "auth_key")
 				level.Debug(c.logger).Log(
 					"collid", CollectorId(c.symtab, c.logger),
@@ -939,11 +939,11 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 					// level.Error(c.logger).Log("errmsg", err)
 					return err
 				}
-				c.client.SetBasicAuth(user, passwd)
-				passwd = ""
-				symtab["auth_set"] = true
-				delete(symtab, "auth_key")
 			}
+			c.client.SetBasicAuth(user, passwd)
+			passwd = ""
+			symtab["auth_set"] = true
+			delete(symtab, "auth_key")
 		} else if auth_mode == "token" {
 			auth_token := GetMapValueString(symtab, "auth_token")
 			if params.Token != "" {

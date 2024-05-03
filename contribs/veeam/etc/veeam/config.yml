@@ -1,5 +1,6 @@
 # Global defaults.
 global:
+  # max timeout for the exporter: if prometheus sends a value greater than scrape_timeout, scrape_timeout will be used
   scrape_timeout: 30s
   # Subtracted from Prometheus' scrape_timeout to give us some headroom and prevent Prometheus from timing out first.
   scrape_timeout_offset: 500ms
@@ -9,7 +10,7 @@ global:
   query_retry: 3
   # all metrics will be named "[metric_prefix]_[metric_name]"
   metric_prefix: "veeam_em"
-  # all http codes that will be considered that auth is invalid and must do a Login()
+  # all http codes that will consider the connection has an invalid auth and must do a Login()
   invalid_auth_code: [401,403]
   exporter_name: veeam_exporter
 

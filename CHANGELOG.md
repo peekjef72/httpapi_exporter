@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.3.8 / not-release
+ - fixed minor bug with basic auth, remove unused vars ...
+ - fixed typos.
+ - reorganized contribs dirs
+
 ## 0.3.7 / 2024-04-21
 - added support for env vars in auth_config [#1](https://github.com/peekjef72/httpapi_exporter/issues/1) : included from branch dev_issued_1
 - upgraded to go 1.22.2

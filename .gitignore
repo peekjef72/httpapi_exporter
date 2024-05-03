@@ -8,3 +8,5 @@ config/
 ./passwd_crypt
 httpapi_exporter
 passwd_encrypt
+*.code-workspace
+file_to_*

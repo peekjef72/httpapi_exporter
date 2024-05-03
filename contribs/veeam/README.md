@@ -147,7 +147,7 @@ vm_backup_jobs_sessions_metrics.yml| vm backup jobs runs | last vm backup job ru
 
 ## Extending metrics
 
-Exported metrics, are defined the YAML config file. The value can use Jinja2 templating language. The format of the configuration is inspired from Ansible task representation.
+Exported metrics, are defined the YAML config file. The value can use GOLANG templating language. The format of the configuration is inspired from Ansible task representation.
 So a metric configuration file, consists in a list of action to perform.
 
 There are five possible actions:
