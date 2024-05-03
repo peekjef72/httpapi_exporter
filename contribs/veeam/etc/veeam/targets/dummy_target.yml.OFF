@@ -2,7 +2,7 @@ name: veeamhost
 scheme: https
 host: "1.2.3.4"
 port: 9398
-auth_mode:
+auth_config:
   # mode: basic|token|[anything else:=> user defined login script]
   mode: script
   user: prometheus

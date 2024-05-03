@@ -147,7 +147,7 @@ targets:
     host: set_later
     port: 443
     auth_name: prometheus_encrypted
-    # auth_mode:
+    # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]
     #   mode: script
     #   user: usrNetScalerSupervision

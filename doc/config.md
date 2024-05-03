@@ -188,7 +188,7 @@ targets:
     # either use an auth_name or a statically defined params:
     # auth_name: default
     # or has its own auth paramaters
-    # auth_mode:
+    # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]
     #   mode: <mode>
     #   user: <login>

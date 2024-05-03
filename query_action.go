@@ -23,7 +23,7 @@ type QueryActionConfig struct {
 	Debug      ConvertibleBoolean `yaml:"debug,omitempty"`
 	VarName    string             `yaml:"var_name,omitempty"`
 	OkStatus   any                `yaml:"ok_status,omitempty"`
-	AuthConfig *AuthConfig        `yaml:"auth_mode,omitempty"`
+	AuthConfig *AuthConfig        `yaml:"auth_config,omitempty"`
 	Timeout    int                `yaml:"timeout,omitempty"`
 
 	query    *Field
@@ -408,7 +408,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("invalid template for auth_mode.mode '%s': %v", a.Query.AuthConfig.Mode, err))
+			"msg", fmt.Sprintf("invalid template for auth_config.mode '%s': %v", a.Query.AuthConfig.Mode, err))
 	}
 
 	user, err = a.Query.user.GetValueString(symtab, nil, false)
@@ -417,7 +417,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("invalid template for auth_mode.user '%s': %v", a.Query.AuthConfig.Username, err))
+			"msg", fmt.Sprintf("invalid template for auth_config.user '%s': %v", a.Query.AuthConfig.Username, err))
 	}
 
 	passwd, err = a.Query.passwd.GetValueString(symtab, nil, false)
@@ -426,7 +426,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("invalid template for auth_mode.user '%s': %v", a.Query.AuthConfig.Password, err))
+			"msg", fmt.Sprintf("invalid template for auth_config.user '%s': %v", a.Query.AuthConfig.Password, err))
 	}
 
 	auth_token, err = a.Query.token.GetValueString(symtab, nil, false)
@@ -435,7 +435,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("invalid template for auth_mode.token '%s': %v", a.Query.AuthConfig.Token, err))
+			"msg", fmt.Sprintf("invalid template for auth_config.token '%s': %v", a.Query.AuthConfig.Token, err))
 	}
 
 	// reset special var headers from th symbols table

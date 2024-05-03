@@ -4,9 +4,43 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 ## 0.3.8 / not-release
- - fixed minor bug with basic auth, remove unused vars ...
- - fixed typos.
- - reorganized contribs dirs
+- fixed minor bug with basic auth, remove unused vars ...
+- fixed typos.
+- reorganized contribs dirs
+ ### BREAKING CHANGES
+- rename attribute "**auth_mode**" to **auth_config** in query_action and target definition:
+
+  before:
+  ```yaml
+  targets:
+    # default target is used as a pattern for exporter queries with target name not defined locally.
+    - name: default
+      scheme: https
+      host: set_later
+  =>    auth_mode:
+        # mode: basic|token|[anything else:=> user defined login script]
+        mode: script
+        user: usrNetScalerSupervision
+        password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+      collectors:
+        - ~.*_metrics
+  ```
+  now:
+  ```yaml
+  targets:
+    # default target is used as a pattern for exporter queries with target name not defined locally.
+    - name: default
+      scheme: https
+      host: set_later
+      auth_name: prometheus_encrypted
+      auth_config:
+        # mode: basic|token|[anything else:=> user defined login script]
+        mode: script
+        user: usrNetScalerSupervision
+        password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+      collectors:
+        - ~.*_metrics
+  ```
 
 ## 0.3.7 / 2024-04-21
 - added support for env vars in auth_config [#1](https://github.com/peekjef72/httpapi_exporter/issues/1) : included from branch dev_issued_1

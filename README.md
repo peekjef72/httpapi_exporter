@@ -147,7 +147,7 @@ How it works:
     host: "1.2.3.4"
     port: 8080
     baseUrl: /api/v1
-    auth_mode:
+    auth_config:
       # mode: basic(default)|token|[anything else:=> user defined login script]
       user: <user>
       # password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"

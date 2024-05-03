@@ -120,7 +120,7 @@ targets:
     scheme: https
     host: set_later
     auth_name: prometheus_encrypted
-    # auth_mode:
+    # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]
     #   mode: script
     #   user: usrNetScalerSupervision

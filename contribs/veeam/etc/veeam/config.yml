@@ -81,7 +81,7 @@ httpapi_config:
           query:
             url: /sessionMngr/?v=latest
             method: post
-            auth_mode:
+            auth_config:
               mode: basic
             ok_status: 201
             # don't store the value
@@ -116,7 +116,7 @@ targets:
     host: set_later
     port: 9398
     auth_name: prometheus_encrypted
-    # auth_mode:
+    # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]
     #   mode: script
     #   user: usrVeeam

@@ -3,7 +3,7 @@ scheme: https
 host: "1.2.3.4"
 port: 443
 # baseUrl: /api/v1
-auth_mode:
+auth_config:
   # mode: basic(default)|token|[anything else:=> user defined login script]
   mode: script
   user: prometheus
