@@ -83,29 +83,6 @@ func NewCollector(
 			// }
 		}
 	}
-	// Instantiate metric families.
-	// for _, mc := range cc.Metrics {
-	// 	mf, err := NewMetricFamily(logContext, mc, constLabels, cc.customTemplate)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	mfs, found := queryMFs[mc.Query()]
-	// 	if !found {
-	// 		mfs = make([]*MetricFamily, 0, 2)
-	// 	}
-	// 	queryMFs[mc.Query()] = append(mfs, mf)
-	// }
-
-	// Instantiate queries.
-	// queries := make([]*Query, 0, len(cc.Metrics))
-	// for qc, mfs := range queryMFs {
-	// 	q, err := NewQuery(logContext, logger, qc, mfs...)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	queries = append(queries, q)
-	// }
-
 	c := collector{
 		config: cc,
 		// queries:    queries,
@@ -191,15 +168,6 @@ func (c *collector) SetSetStats(target Target) {
 	}
 }
 
-// type CollectContext struct {
-// 	method func(*CallClientExecuteParams, map[string]any) error
-// 	// ctx context.Context
-// 	metric_ch      chan<- Metric
-// 	metricfamilies []*MetricFamily
-// 	wake_cond      *sync.Cond
-// 	// logcontext []any
-// }
-
 // Collect implements Collector.
 func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_ch chan<- int) {
 	var (
@@ -207,36 +175,10 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		status        int  = CollectorStatusError
 	)
 
-	// var wg sync.WaitGroup
-	// wg.Add(len(c.queries))
-	// for _, q := range c.queries {
-	// 	go func(q *Query) {
-	// 		defer wg.Done()
-	// 		q.Collect(ctx, client, ch)
-	// 	}(q)
-	// }
-	// // Only return once all queries have been processed
-	// wg.Wait()
-	// use a collect context object
-
-	// cctx := &CollectContext{
-	// 	method: c.client.callClientExecute,
-	// 	// ctx:            ctx,
-	// 	metric_ch:      ch,
-	// 	metricfamilies: c.metricFamilies,
-	// 	wake_cond:      wake_cond,
-	// 	// logcontext:    c.logContext,
-	// }
-
 	c.client.symtab["__method"] = c.client.callClientExecute
-	// c.client.symtab["__context"] = ctx
 	c.client.symtab["__metric_channel"] = metric_ch
 	c.client.symtab["__coll_channel"] = coll_ch
-	// c.client.symtab["__metricfamilies"] = c.metricFamilies
-	// c.client.symtab["__wake_cond"] = wake_cond
-	// c.client.symtab["__logcontext"] = c.logContext
 
-	// c.client.symtab["__collect_context"] = cctx
 	cid := GetMapValueString(c.client.symtab, "__collector_id")
 	if cid == "" {
 		c.client.symtab["__collector_id"] = "--"

@@ -13,8 +13,6 @@ import (
 	"strings"
 )
 
-// var base60float = regexp.MustCompile(`^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+(?:\.[0-9_]*)?$`)
-
 type exporterTemplate ttemplate.Template
 
 func (tmpl *exporterTemplate) MarshalText() (text []byte, err error) {
@@ -44,7 +42,6 @@ func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
 				return nil, fmt.Errorf("field template clone for %s is invalid: %s", name, err)
 			}
 		} else {
-			// tmpl = template.New("field").Funcs(sprig.FuncMap())
 			tmpl = ttemplate.New("field").Funcs(mymap())
 		}
 		tmpl, err = tmpl.Parse(name)
@@ -83,7 +80,6 @@ func RawGetValueFloat(curval any) float64 {
 		}
 	default:
 		f_value = 0
-		// value := row[v].(float64)
 	}
 	return f_value
 }
@@ -98,12 +94,6 @@ func RawGetValueString(curval any) string {
 	switch curval := curval.(type) {
 	case string:
 		res = curval
-	// case map[any]any:
-	// 	bytes_res, err := json.MarshalIndent(curval, "", "")
-	// 	if err != nil {
-	// 		fmt.Printf("error: %s\n", string(err.Error()))
-	// 	}
-	// 	res = string(bytes_res)
 	default:
 		res = fmt.Sprintf("%v", curval)
 	}
@@ -287,10 +277,7 @@ func (f *Field) GetValueObject(
 		if json_obj == "<no value>" || json_obj == "" || json_obj == "null" {
 			data = ""
 		} else {
-			// json_obj = strings.ReplaceAll(json_obj, "&#34;", "\"")
 			json_obj = html.UnescapeString(json_obj)
-			// json_obj = strings.TrimSuffix(json_obj, "\n")
-			// fmt.Println(json_obj)
 			err = json.Unmarshal([]byte(json_obj), &data)
 			if err != nil {
 				if _, ok := err.(*json.SyntaxError); ok {
@@ -309,9 +296,7 @@ func (f *Field) GetValueObject(
 					return res_slice, err
 				}
 
-				// if data, ok := symtab[f.raw]; ok {
 				return data, nil
-				// }
 			} else {
 				return nil, nil
 			}
@@ -401,33 +386,7 @@ func (r *ResultElement) GetSlice(field string) ([]any, bool) {
 				found = true
 
 			}
-			// myvart := reflect.ValueOf(myvar).Kind()
-			// if myvart == reflect.Slice {
-			// 	myslice = myvar.([]interface{})
-			// 	// for i, myvar := range myslice {
-			// 	// 	myvart := reflect.ValueOf(myvar).Kind()
-			// 	// 	if myvart == reflect.Map {
-			// 	// 		mymap := make(map[string]interface{})
-			// 	// 		for k, v := range myvar.(map[string]interface{}) {
-			// 	// 			fmt.Printf("k: %s, v %+v\n", k, v)
-			// 	// 		}
-			// 	// 	}
-			// 	// }
-			// } else if myvart == reflect.Map {
-			// 	n_slice := make([]interface{}, 1)
-			// 	n_slice[0] = myvar
-			// 	myslice = n_slice
-			// }
 		}
 	}
 	return myslice, found
 }
-
-// func (r *ResultElement) GetMap(field string) map[string]interface{} {
-// 	var mymap map[string]interface{}
-// 	myvart := reflect.ValueOf(r.raw).Kind()
-// 	if myvart != reflect.Map {
-// 		mymap = nil
-// 	}
-// 	return mymap
-// }

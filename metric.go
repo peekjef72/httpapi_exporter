@@ -27,13 +27,11 @@ type MetricDesc interface {
 
 // MetricFamily implements MetricDesc for SQL metrics, with logic for populating its labels and values from sql.Rows.
 type MetricFamily struct {
-	config      *MetricConfig
-	constLabels []*dto.LabelPair
-	// labels      []string
+	config       *MetricConfig
+	constLabels  []*dto.LabelPair
 	labels       []*Label // raw string or template
 	valueslabels []*Label // raw string or template for key and value
-	// resultsFields []*Field // raw string or template too
-	logContext []interface{}
+	logContext   []interface{}
 }
 
 // NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
@@ -58,9 +56,6 @@ func NewMetricFamily(
 		logContext = append(logContext, "errmsg", "NewMetricFamily(): multiple values but no value label")
 	}
 
-	// labels := make(map[Label]*Label, len(mc.KeyLabels)+1)
-	// valueslabels := make(map[Label]*Label, len(mc.Values)+1)
-
 	// all labels are stored in variable 'labels': size of slice if size of KeyLabels + 1 if size of Values is greater than 1
 	if len(mc.key_labels_map) > 0 {
 		label_len := len(mc.key_labels_map)
@@ -68,8 +63,6 @@ func NewMetricFamily(
 			label_len++
 		}
 		labels = make([]*Label, label_len)
-
-		//	labels = append(labels, mc.KeyLabels...)
 
 		i := 0
 		for key, val := range mc.key_labels_map {
@@ -98,7 +91,6 @@ func NewMetricFamily(
 			return nil, err
 		}
 		i++
-		// valueslabels[*keylabel] = valuelabel
 	}
 
 	// Create a copy of original slice to avoid modifying constLabels
@@ -112,22 +104,12 @@ func NewMetricFamily(
 	}
 	sort.Sort(labelPairSorter(sortedLabels))
 
-	// results := make([]*Field, len(mc.ResultFields))
-	// for i, res_field := range mc.ResultFields {
-	// 	res, err := NewField(res_field, customTemplate)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("NewMetricFamily(): result field invalid metric{name:'%s', result: '%s'}: %s", mc.Name, res_field, err)
-	// 	}
-	// 	results[i] = res
-	// }
-
 	return &MetricFamily{
 		config:       mc,
 		constLabels:  sortedLabels,
 		labels:       labels,
 		valueslabels: valueslabels,
-		// resultsFields: results,
-		logContext: logContext,
+		logContext:   logContext,
 	}, nil
 }
 
@@ -281,11 +263,6 @@ func (mf MetricFamily) ConstLabels() []*dto.LabelPair {
 	return mf.constLabels
 }
 
-// Labels implements MetricDesc.
-// func (mf MetricFamily) Labels() []string {
-// 	return mf.labels
-// }
-
 // LogContext implements MetricDesc.
 func (mf MetricFamily) LogContext() []interface{} {
 	return mf.logContext
@@ -370,9 +347,6 @@ func NewMetric(desc MetricDesc, value float64, labelNames []string, labelValues 
 		val:        value,
 		labelPairs: makeLabelPairs(desc, labelNames, labelValues),
 	}
-	// fmt.Printf("met: %+v\n", tmp)
-	// fmt.Printf("\tmet: %s k[%d]:%v v[%d]: %v\n", tmp.desc.Name(), len(labelNames), labelNames, len(labelValues), labelValues)
-	// return tmp
 }
 
 // constMetric is a metric with one fixed value that cannot be changed.

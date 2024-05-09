@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"bytes"
 	"fmt"
 
 	"github.com/go-kit/log"
@@ -187,55 +186,6 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 
 	return nil
 }
-
-// func (a *SetStatsAction) TargetAction(src_symtab map[string]any, dst_symtab map[string]any, logger log.Logger) error {
-// 	var (
-// 		key_name   string
-// 		err        error
-// 		value_name any
-// 	)
-
-// 	level.Debug(logger).Log(
-// 		"collid", CollectorId(src_symtab, logger),
-// 		"script", ScriptName(src_symtab, logger),
-// 		"msg", fmt.Sprintf("[Type: SetStatsAction] Name: %s", Name(a.Name, src_symtab, logger)))
-
-// 	for _, pair := range a.setStats {
-// 		if pair == nil {
-// 			return fmt.Errorf("set_fact: invalid key value")
-// 		}
-// 		if key, ok := pair[0].(*Field); ok {
-// 			key_name, err = key.GetValueString(src_symtab, nil, false)
-// 			if err == nil {
-// 				if value_name, err = ValorizeValue(src_symtab, pair[1], logger, 0); err != nil {
-// 					return err
-// 				}
-// 				if value_name == nil {
-// 					level.Debug(logger).Log(
-// 						"collid", CollectorId(src_symtab, logger),
-// 						"script", ScriptName(src_symtab, logger),
-// 						"msg", fmt.Sprintf("    remove from symbols table: %s", key_name))
-// 					delete(dst_symtab, key_name)
-// 				} else {
-// 					if key_name != "_" {
-// 						level.Debug(logger).Log(
-// 							"collid", CollectorId(src_symtab, logger),
-// 							"script", ScriptName(src_symtab, logger),
-// 							"msg", fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name))
-// 						dst_symtab[key_name] = value_name
-// 					} else {
-// 						level.Debug(logger).Log(
-// 							"collid", CollectorId(src_symtab, logger),
-// 							"script", ScriptName(src_symtab, logger),
-// 							"msg", "    result discard (key >'_')")
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 func (a *SetStatsAction) AddCustomTemplate(customTemplate *exporterTemplate) error {
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"bytes"
 	"fmt"
 
 	"github.com/go-kit/log"
@@ -126,7 +125,6 @@ func (a *PlayScriptAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 
 // specific behavior for the PlayScriptAction
 func (a *PlayScriptAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
-	// var err error
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),

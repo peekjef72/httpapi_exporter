@@ -42,10 +42,6 @@ type Client struct {
 	symtab            map[string]any
 	invalid_auth_code []int
 
-	// mutex to hold condition for global client to try to login()
-	// wait_mutex sync.Mutex
-	// wake_cond  sync.Cond
-
 	// to protect the data during exchange
 	content_mutex *sync.Mutex
 }
@@ -78,17 +74,6 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger log.Logge
 
 	return cl
 }
-
-// *********************
-// func TimeoutDialer(cTimeout time.Duration) func(net, addr string) (c net.Conn, err error) {
-// 	return func(netw, addr string) (net.Conn, error) {
-// 		conn, err := net.DialTimeout(netw, addr, cTimeout)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		return conn, nil
-// 	}
-// }
 
 // ***********************
 func (c *Client) Clone(target *TargetConfig) *Client {
@@ -175,52 +160,6 @@ func (c *Client) SetUrl(url string) string {
 	return uri
 }
 
-// func (c *Client) Synchronise(src *Client) error {
-// 	c.content_mutex.Lock()
-// 	src.content_mutex.Lock()
-
-// 	defer func(){
-// 		c.content_mutex.Unlock()
-// 		src.content_mutex.Unlock()
-// 	}()
-
-// 	return nil
-// }
-// HTTP GET encapsulation
-// func (c *Client) Get(
-// 	uri string,
-// 	params map[string]string,
-// 	with_retry bool) (
-// 	*resty.Response,
-// 	any,
-// 	error) {
-// 	if c.auth_token == "" {
-// 		err := c.Login()
-// 		if err != nil {
-// 			return nil, nil, err
-// 		}
-// 	}
-// 	return c.Execute("GET", uri, params, nil, with_retry)
-// }
-
-// // Post PowerMax HTTP POST encapsulation
-// func (c *Client) Post(
-// 	uri string,
-// 	body interface{},
-// 	with_retry bool) (
-// 	*resty.Response,
-// 	any,
-// 	error) {
-
-// 	if c.auth_token == "" {
-// 		err := c.Login()
-// 		if err != nil {
-// 			return nil, nil, err
-// 		}
-// 	}
-// 	return c.Execute("POST", uri, nil, body, with_retry)
-// }
-
 // parse a response to a json map[string]interface{}
 func (c *Client) getJSONResponse(resp *resty.Response) any {
 	var err error
@@ -262,10 +201,6 @@ func (c *Client) Execute(
 	var data any
 	var query_retry int
 	var ok bool
-
-	// lock client until current request is performed
-	// c.mutex.Lock()
-	// defer c.mutex.Unlock()
 
 	url := c.SetUrl(uri)
 	level.Debug(c.logger).Log(
@@ -320,50 +255,8 @@ func (c *Client) Execute(
 
 				c.symtab["logged"] = false
 
-				// if r_val, ok := c.symtab["__coll_channel"]; ok {
-				// 	if coll_channel, ok := r_val.(chan<- int); ok {
-				// 		coll_channel <- MsgLogin
-				// 		c.symtab["logged"] = false
-				// 	}
-				// }
-				// if wake_cond, ok := c.symtab["__wake_cond"].(*sync.Cond); !ok {
-				// wake_cond.Signal()
-				// }
-
 				return resp, data, ErrInvalidLogin
 
-				// c.Clear()
-				// // 	c.auth_token = ""
-				// // 	c.client.Header.Del("x-hp3par-wsapi-sessionkey")
-				// status := false
-				// var err error
-				// var tmp any
-				// original_symtab := c.symtab
-				// if tmp, err = copystructure.Copy(c.symtab); err != nil {
-				// 	err = fmt.Errorf("can't clone symbols table for new client: %s", err)
-				// 	return resp, data, err
-				// }
-				// if val, ok := tmp.(map[string]any); ok {
-				// 	c.symtab = val
-				// } else {
-				// 	c.symtab = make(map[string]any)
-				// }
-				// // ** launch a login sequence with temporary symtab
-				// status, err = c.Login()
-
-				// resp = nil
-				// // ** reset original symtab for client
-				// c.symtab = original_symtab
-				// // ping/login is unsuccessfull : leave the loop
-				// if err != nil || !status {
-				// 	i = query_retry + 1
-				// 	if err == nil {
-				// 		err = fmt.Errorf("Ping() is unsuccessful: query stopped")
-				// 		return resp, data, err
-				// 	}
-				// } else {
-				// 	level.Debug(c.logger).Log("msg", fmt.Sprintf("Ping()/Login() successfull: retrying (%d)", i+1))
-				// }
 			} else {
 				data = c.getJSONResponse(resp)
 				i = query_retry + 1
@@ -390,16 +283,6 @@ func (c *Client) Execute(
 	if resp == nil {
 		err = fmt.Errorf("empty response")
 	}
-	// REMOVED: must be call for when collector script is over not only when query is over !!
-	// if r_val, ok := c.symtab["__coll_channel"]; ok {
-	// 	if coll_channel, ok := r_val.(chan<- int); ok {
-	// 		coll_channel <- MsgDone
-	// 		level.Debug(c.logger).Log(
-	// 			"collid", CollectorId(c.symtab, c.logger),
-	// 			"script", ScriptName(c.symtab, c.logger),
-	// 			"msg", "MsgDone sent to channel.")
-	// 	}
-	// }
 	return resp, data, err
 }
 
@@ -834,33 +717,15 @@ type CallClientExecuteParams struct {
 }
 
 func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[string]any) error {
-	// payload := fmt.Sprintf("{ \"user\":\"%s\",\"password\":\"%s\", \"sessionType\": 1}", c.user, c.password)
-
-	// if _, ok := symtab["data"]; !ok {
-	// 	err := fmt.Errorf("http data not found")
-	// 	level.Error(c.logger).Log("errmsg", err)
-	// 	return err
-	// }
 	var (
 		payload any
 	)
-	// payload_raw := symtab["data"].(string)
-	// if payload_raw == "" {
-	// 	payload = nil
-	// } else {
-	// 	payload = payload_raw
-	// }
 	if params.Payload == "" {
 		payload = nil
 	} else {
 		payload = params.Payload
 	}
 
-	// if _, ok := symtab["method"]; !ok {
-	// 	err := fmt.Errorf("http method not found")
-	// 	level.Error(c.logger).Log("errmsg", err)
-	// 	return err
-	// }
 	if params.Method == "" {
 		err := fmt.Errorf("http method not found")
 		level.Error(c.logger).Log(
@@ -871,12 +736,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	}
 	method := strings.ToUpper(params.Method)
 
-	// if _, ok := symtab["url"]; !ok {
-	// 	err := fmt.Errorf("http url not found")
-	// 	level.Error(c.logger).Log("errmsg", err)
-	// 	return err
-	// }
-	// url := symtab["url"].(string)
 	if params.Url == "" {
 		err := fmt.Errorf("http url not found")
 		level.Error(c.logger).Log(
@@ -957,12 +816,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		}
 	}
 
-	// * check if returned status is valid or not: present in valid_status list
-	// if _, ok := symtab["ok_status"]; !ok {
-	// 	err := fmt.Errorf("ok_status not found")
-	// 	level.Error(c.logger).Log("errmsg", err)
-	// 	return err
-	// }
 	if len(params.OkStatus) <= 0 {
 		err := fmt.Errorf("ok_status not found")
 		level.Error(c.logger).Log(
@@ -988,10 +841,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
 	resp, data, err := c.Execute(method, url, nil, payload)
 	if err != nil {
-		// level.Error(c.logger).Log(
-		// 	"collid", CollectorId(c.symtab, c.logger),
-		// 	"script", ScriptName(c.symtab, c.logger),
-		// 	"errmsg", err)
 		return err
 	}
 	if params.Debug {
@@ -1014,9 +863,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			"script", ScriptName(c.symtab, c.logger),
 			"msg", fmt.Sprintf("invalid response status: (%d not in %v)",
 				code, valid_status))
-		// chead, err := json.Marshal(c.client.Header)
-		// cookies, err := json.Marshal(c.client.Cookies)
-		// rhead, err := json.Marshal( resp.Header())
 		level.Debug(c.logger).Log(
 			"collid", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
@@ -1027,7 +873,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	} else {
 		if data == nil {
 			err = fmt.Errorf("fail to decode json results: %v", err)
-			// level.Error(c.logger).Log("errmsg", err)
 			return err
 		} else {
 			if var_name != "" && var_name != "_" {
@@ -1257,13 +1102,6 @@ func (cl *Client) Init(params *ClientInitParams) error {
 		return nil
 	}
 	timeout := time.Duration(cl.symtab["timeout"].(time.Duration))
-	// cl.client.SetTransport(
-	// 	&http.Transport{
-	// 		DialContext: (&net.Dialer{
-	// 			Timeout: timeout,
-	// 		}).DialContext,
-	// 	},
-	// )
 	cl.client.SetTimeout(timeout)
 
 	if err := cl.proceedHeaders(); err != nil {

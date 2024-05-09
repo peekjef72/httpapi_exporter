@@ -103,7 +103,6 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				reslist := a.GetMetrics()
 				for _, res := range reslist {
 					for _, metric := range res.mc {
-						// for _, metric := range coll.Metrics {
 						// add metric prefix  to all metrics name
 
 						if res.maprefix != "" {
@@ -206,10 +205,6 @@ collectors:
 		}
 		tnames[t.Name] = nil
 
-		// if t.ConnectionTimeout == 0 {
-		// 	t.ConnectionTimeout = c.Globals.ConnectionTimeout
-		// }
-
 		if t.ScrapeTimeout == 0 {
 			t.ScrapeTimeout = c.Globals.ScrapeTimeout
 		}
@@ -264,8 +259,7 @@ type dumpConfig struct {
 	CollectorFiles []string               `yaml:"collector_files,omitempty"`
 	Collectors     []*dumpCollectorConfig `yaml:"collectors,omitempty"`
 	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
-	// HttpAPIConfig  map[string]*ActionsList `yaml:"httpapi_config"`
-	HttpAPIConfig map[string]ActionsList `yaml:"httpapi_config"`
+	HttpAPIConfig  map[string]ActionsList `yaml:"httpapi_config"`
 }
 
 // YAML marshals the config into YAML format.
@@ -361,8 +355,7 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
-	MinInterval model.Duration `yaml:"min_interval"` // minimum interval between query executions, default is 0
-	// ConnectionTimeout model.Duration `yaml:"connection_timeout"`    // connection timeout, target
+	MinInterval     model.Duration `yaml:"min_interval"`          // minimum interval between query executions, default is 0
 	ScrapeTimeout   model.Duration `yaml:"scrape_timeout"`        // per-scrape timeout, global
 	TimeoutOffset   model.Duration `yaml:"scrape_timeout_offset"` // offset to subtract from timeout in seconds
 	MetricPrefix    string         `yaml:"metric_prefix"`         // a prefix to ad dto all metric name; may be redefined in collector files
@@ -380,8 +373,6 @@ type GlobalConfig struct {
 func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Default to running the queries on every scrape.
 	g.MinInterval = model.Duration(0)
-	// Default to 2 seconds, to connect to a target.
-	// g.ConnectionTimeout = model.Duration(2 * time.Second)
 	// Default to 10 seconds, since Prometheus has a 10 second scrape timeout default.
 	g.ScrapeTimeout = model.Duration(10 * time.Second)
 	// Default to .5 seconds.
@@ -402,9 +393,6 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if g.TimeoutOffset <= 0 {
 		return fmt.Errorf("global.scrape_timeout_offset must be strictly positive, have %s", g.TimeoutOffset)
 	}
-	// if g.ConnectionTimeout <= 0 {
-	// 	return fmt.Errorf("global.connection_timeout must be strictly positive, have %s", g.ConnectionTimeout)
-	// }
 	if g.ScrapeTimeout <= 0 {
 		return fmt.Errorf("global.connection_timeout must be strictly positive, have %s", g.ScrapeTimeout)
 	}
@@ -424,30 +412,25 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // TargetConfig defines a url and a set of collectors to be executed on it.
 type TargetConfig struct {
-	Name       string     `yaml:"name"` // target name to connect to from prometheus
-	Scheme     string     `yaml:"scheme"`
-	Host       string     `yaml:"host"`
-	Port       string     `yaml:"port,omitempty"`
-	BaseUrl    string     `yaml:"baseUrl,omitempty"`
-	AuthName   string     `yaml:"auth_name,omitempty"`
-	AuthConfig AuthConfig `yaml:"auth_config,omitempty"`
-	// Username          string             `yaml:"user,omitempty"`
-	// Password          Secret             `yaml:"password,omitempty"` // data source definition to connect to
-	// BasicAuth         ConvertibleBoolean `yaml:"basicAuth"`
-	ProxyUrl        string `yaml:"proxy,omitempty"`
-	VerifySSLString string `yaml:"verifySSL,omitempty"`
-	// ConnectionTimeout model.Duration    `yaml:"connection_timeout,omitempty"` // connection timeout, per-target
-	ScrapeTimeout model.Duration    `yaml:"scrape_timeout"`          // per-scrape timeout, global
-	Labels        map[string]string `yaml:"labels,omitempty"`        // labels to apply to all metrics collected from the targets
-	CollectorRefs []string          `yaml:"collectors"`              // names of collectors to execute on the target
-	TargetsFiles  []string          `yaml:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
-	QueryRetry    int               `yaml:"query_retry,omitempty"`   // target specific number of times to retry a query
+	Name            string            `yaml:"name"` // target name to connect to from prometheus
+	Scheme          string            `yaml:"scheme"`
+	Host            string            `yaml:"host"`
+	Port            string            `yaml:"port,omitempty"`
+	BaseUrl         string            `yaml:"baseUrl,omitempty"`
+	AuthName        string            `yaml:"auth_name,omitempty"`
+	AuthConfig      AuthConfig        `yaml:"auth_config,omitempty"`
+	ProxyUrl        string            `yaml:"proxy,omitempty"`
+	VerifySSLString string            `yaml:"verifySSL,omitempty"`
+	ScrapeTimeout   model.Duration    `yaml:"scrape_timeout"`          // per-scrape timeout, global
+	Labels          map[string]string `yaml:"labels,omitempty"`        // labels to apply to all metrics collected from the targets
+	CollectorRefs   []string          `yaml:"collectors"`              // names of collectors to execute on the target
+	TargetsFiles    []string          `yaml:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
+	QueryRetry      int               `yaml:"query_retry,omitempty"`   // target specific number of times to retry a query
 
 	collectors       []*CollectorConfig // resolved collector references
 	fromFile         string             // filepath if loaded from targets_files pattern
 	verifySSLUserSet bool
 	verifySSL        ConvertibleBoolean
-	// basicAuth  bool
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -468,7 +451,6 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain TargetConfig
 	// set default value for target
 	t.QueryRetry = -1
-	// t.VerifySSL = ""
 	// set default value for  VerifySSL
 	t.verifySSL = true
 	// by default value is not set by user; will be overwritten if user set a value
@@ -618,36 +600,16 @@ func (t *TargetConfig) Clone(host_path string, auth_name string) (*TargetConfig,
 // Collectors
 //
 
-// type mapScript map[string]*YAMLScript
-
-// func (m mapScript) MarshalText() (text []byte, err error) {
-// 	var res []byte
-// 	for name, sc := range m {
-// 		b, err := yaml.Marshal(sc)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		res = append(res, []byte(name)...)
-// 		res = append(res, []byte(":\n")...)
-// 		b = bytes.Replace(b, []byte("|\n"), []byte(""), 1)
-// 		res = append(res, b...)
-// 	}
-// 	return res, nil
-// }
-
 // CollectorConfig defines a set of metrics and how they are collected.
 type CollectorConfig struct {
-	Name         string         `yaml:"collector_name"`          // name of this collector
-	MetricPrefix string         `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
-	MinInterval  model.Duration `yaml:"min_interval,omitempty"`  // minimum interval between query executions
-	// Metrics      []*MetricConfig   `yaml:"metrics"`                // metrics/queries defined by this collector
-	Templates      map[string]string      `yaml:"templates,omitempty"` // share custom templates/funcs for results templating
-	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty"`   // map of all independent scripts to collect metrics - each script can run in parallem
-	// CollectScripts mapScript `yaml:"scripts,omitempty"` // map of all independent scripts to collect metrics - each script can run in parallem
-	symtab map[string]any
+	Name           string                 `yaml:"collector_name"`          // name of this collector
+	MetricPrefix   string                 `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
+	MinInterval    model.Duration         `yaml:"min_interval,omitempty"`  // minimum interval between query executions
+	Templates      map[string]string      `yaml:"templates,omitempty"`     // share custom templates/funcs for results templating
+	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty"`       // map of all independent scripts to collect metrics - each script can run in parallem
+	symtab         map[string]any
 
 	customTemplate *exporterTemplate // to store the custom Templates used by this collector
-	// Metrics        []*MetricConfig    // metrics defined by this collector
 	// id to print in log and to follow request action
 	id string
 	// Catches all undefined fields and must be empty after parsing.
@@ -664,10 +626,6 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 	if err := unmarshal((*plain)(c)); err != nil {
 		return err
 	}
-
-	// if len(c.Metrics) == 0 {
-	// 	return fmt.Errorf("no metrics defined for collector %q", c.Name)
-	// }
 
 	// build the default templates/funcs that my be used by all templates
 	if len(c.Templates) > 0 {
@@ -724,78 +682,21 @@ func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
 	return colls
 }
 
-// UnmarshalYAML implements the yaml.Unmarshaler interface for CollectorConfig.
-// func (c *CollectorConfig) MarshalText() (text []byte, err error) {
-// 	var res []byte
-// 	// res = append(res, []byte(name)...)
-// 	// res = append(res, []byte(":\n")...)
-// 	// b = bytes.Replace(b, []byte("|\n"), []byte(""), 1)
-// 	// res = append(res, b...)
-// 	if b, err := yaml.Marshal(c.Name); err != nil {
-// 		return nil, err
-// 	} else {
-// 		res = append(res, []byte("collector_name: ")...)
-// 		res = append(res, b...)
-// 	}
-
-// 	if b, err := yaml.Marshal(c.MetricPrefix); err != nil {
-// 		return nil, err
-// 	} else {
-// 		// res = append(res, []byte(name)...)
-// 		res = append(res, []byte("metric_prefix: ")...)
-// 		res = append(res, b...)
-// 	}
-
-// 	if b, err := yaml.Marshal(c.MinInterval); err != nil {
-// 		return nil, err
-// 	} else {
-// 		// res = append(res, []byte(name)...)
-// 		res = append(res, []byte("min_interval: ")...)
-// 		res = append(res, b...)
-// 	}
-
-// 	if len(c.Templates) > 0 {
-// 		if b, err := yaml.Marshal(c.Templates); err != nil {
-// 			return nil, err
-// 		} else {
-// 			res = append(res, []byte("templates:\n")...)
-// 			res = append(res, b...)
-// 		}
-// 	}
-// 	if b, err := yaml.Marshal(c.CollectScripts); err != nil {
-// 		return nil, err
-// 	} else {
-// 		res = append(res, []byte("scripts:\n")...)
-// 		b = bytes.Replace(b, []byte("|\n"), []byte(""), 1)
-// 		res = append(res, b...)
-// 	}
-// 	return res, nil
-// }
-
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
-	Name       string `yaml:"metric_name"` // the Prometheus metric name
-	TypeString string `yaml:"type"`        // the Prometheus metric type
-	Help       string `yaml:"help"`        // the Prometheus metric help text
-	// KeyLabels  map[string]string `yaml:"key_labels,omitempty"` // expose these atributes as labels from JSON object: format name: value with name and value that should be template
-	KeyLabels any `yaml:"key_labels,omitempty"` // expose these atributes as labels from JSON object: format name: value with name and value that should be template
-	// Labels       string            `yaml:"labels,omitempty"`        // expose these atributes as labels like key_labels but should be a variable template: format name: value with name and value that should be template
+	Name         string            `yaml:"metric_name"`             // the Prometheus metric name
+	TypeString   string            `yaml:"type"`                    // the Prometheus metric type
+	Help         string            `yaml:"help"`                    // the Prometheus metric help text
+	KeyLabels    any               `yaml:"key_labels,omitempty"`    // expose these atributes as labels from JSON object: format name: value with name and value that should be template
 	StaticLabels map[string]string `yaml:"static_labels,omitempty"` // fixed key/value pairs as static labels
 	ValueLabel   string            `yaml:"value_label,omitempty"`   // with multiple value columns, map their names under this label
 	Values       map[string]string `yaml:"values"`                  // expose each of these columns as a value, keyed by column name
-	// ResultFields []string          `yaml:"results,omitempty"`       // field name in JSON where to find a list of results
-	Scope string `yaml:"scope,omitempty"` // var path where to collect data: shortcut for {{ .scope.path.var }}
+	Scope        string            `yaml:"scope,omitempty"`         // var path where to collect data: shortcut for {{ .scope.path.var }}
 
 	valueType      prometheus.ValueType // TypeString converted to prometheus.ValueType
 	key_labels_map map[string]string
 	key_labels     *Field
-	// name *Field
-	// help *Field
-	// metric_type *Field
-	// labels *Field
-	// Catches all undefined fields and must be empty after parsing.
-	// XXX map[string]interface{} `yaml:",inline" json:"-"`
 }
 
 // ValueType returns the metric type, converted to a prometheus.ValueType.
@@ -814,38 +715,10 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if m.Name == "" {
 		return fmt.Errorf("missing name for metric %+v", m)
 	}
-	// if val, err := NewField(m.Name, nil); err == nil {
-	// 	m.name = val
-	// } else {
-	// 	return err
-	// }
 
 	if m.TypeString == "" {
 		return fmt.Errorf("missing type for metric %q", m.Name)
 	}
-	// if val, err := NewField(m.TypeString, nil); err == nil {
-	// 	m.metric_type = val
-	// } else {
-	// 	return err
-	// }
-
-	// help is not mandatory: so empty is valid
-	// if m.Help == "" {
-	// 	return fmt.Errorf("missing help for metric %q", m.Name)
-	// }
-
-	// if val, err := NewField(m.Help, nil); err == nil {
-	// 	m.help = val
-	// } else {
-	// 	return err
-	// }
-	// if m.Labels != "" {
-	// 	if val, err := NewField(m.Help, nil); err == nil {
-	// 		m.help = val
-	// 	} else {
-	// 		return err
-	// 	}
-	// }
 
 	switch strings.ToLower(m.TypeString) {
 	case "counter":
@@ -856,7 +729,6 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("unsupported metric type: %s", m.TypeString)
 	}
 
-	//	m.keyLabels := make(map[Label]*Label,0 len(m.KeyLabels))
 	// Check for duplicate key labels
 	if m.KeyLabels != nil {
 		switch ktype := m.KeyLabels.(type) {
@@ -898,7 +770,6 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		checkLabel(m.ValueLabel, "value_label for metric", m.Name)
 	}
 
-	// return checkOverflow(m.XXX, "metric")
 	return nil
 }
 

@@ -112,13 +112,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 	)
 
 	var wg sync.WaitGroup
-	// wg.Add(len(e.targets))
-	// for _, t := range e.targets {
-	// 	go func(target Target) {
-	// 		defer wg.Done()
-	// 		target.Collect(e.ctx, metricChan)
-	// 	}(t)
-	// }
+
 	// add only cur target
 	wg.Add(1)
 	go func(target Target) {
@@ -153,9 +147,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 	level.Debug(e.logger).Log("msg", fmt.Sprintf("exporter.Gather(): **** Target collect() launch is OVER :'%s' ****", e.cur_target.Name()))
 	// Gather.
 	dtoMetricFamilies := make(map[string]*dto.MetricFamily, 10)
-	// level.Debug(e.logger).Log("msg", "exporter.Gather(): just before for chan")
 	for metric := range metricChan {
-		// level.Debug(e.logger).Log("msg", "exporter.Gather(): in for chan")
 		dtoMetric := &dto.Metric{}
 		if err := metric.Write(dtoMetric); err != nil {
 			errs = append(errs, err)
@@ -287,22 +279,12 @@ func (e *exporter) IncreaseLogLevel() {
 		e.logLevel = "debug"
 		Level = level.Debug
 	}
-	// e.logger =
-	// lvl := &promlog.AllowedLevel{}
-	// lvl.Set(e.logLevel)
-	// fmt := &promlog.AllowedFormat{}
-	// fmt.Set()
-	// logConfig := promlog.Config{
-	// 	Level:  lvl,
-	// 	Format: fmt,
-	// }
 	logConfig.Level.Set(e.logLevel)
 	e.logger = promlog.New(&logConfig)
 	for _, t := range e.targets {
 		t.SetLogger(e.logger)
 	}
 	e.content_mutex.Unlock()
-	// level.Info(e.logger).Log("msg", fmt.Sprintf("set log.level to %s", e.logLevel))
 	Level(e.logger).Log("msg", fmt.Sprintf("set log.level to %s", e.logLevel))
 }
 

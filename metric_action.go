@@ -155,14 +155,12 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 			a.GetName(symtab, logger)))
 	}
 
-	// for _, mf := range mfs {
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger),
 		"msg", fmt.Sprintf("    metric_name: %s", a.metricFamily.Name()))
 	a.metricFamily.Collect(symtab, logger, metric_channel)
-	// }
 
 	return nil
 }

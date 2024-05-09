@@ -163,9 +163,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 
 	var (
 		metric_channel chan<- Metric
-		// mfs            []*MetricFamily
 	)
-	// var logContext []any
 
 	level.Debug(logger).Log(
 		"collid", CollectorId(symtab, logger),
@@ -224,17 +222,11 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	}
 	for _, cur_act := range a.Actions {
 		tmp_symtab["__metric_channel"] = metric_channel
-		// tmp_symtab["__metricfamilies"] = mfs
-		// fmt.Printf("\tadd to symbols table: %s = %v\n", key, val)
 		if err := PlayBaseAction(script, tmp_symtab, logger, cur_act, cur_act.CustomAction); err != nil {
 			return err
 		}
 
 	}
-	// if a.Scope != "" && a.Scope != "none" && tmp_symtab != nil {
-	// 	delete(tmp_symtab, "__name__")
-	// 	delete(tmp_symtab, "__collector_id")
-	// }
 
 	return nil
 }

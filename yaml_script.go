@@ -51,14 +51,10 @@ type GetMetricsRes struct {
 
 type Action interface {
 	BaseAction
-	//	GetName(symtab map[string]any, logger log.Logger) string
 	Type() int
-	// GetBaseAction() *BaseAction
 	setBasicElement(nameField *Field, vars [][]any, with []any, loopVar string, when []*exporterTemplate, until []*exporterTemplate) error
 	PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error
 	CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error
-	// to dump config
-	// String() string
 
 	// only for MetricsAction
 	GetMetrics() []*GetMetricsRes
@@ -284,7 +280,6 @@ func AddCustomTemplate(ba BaseAction, customTemplate *exporterTemplate) error {
 func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_name string, cur_level int) (any, error) {
 	var data any
 	var err error
-	// fmt.Println("item = ", reflect.TypeOf(item))
 	switch curval := item.(type) {
 	case *Field:
 		check_value := false
@@ -305,11 +300,6 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_na
 					data = nil
 				}
 			}
-			// if r_data, ok := data.([]any); ok {
-			// 	if len(r_data) == 0 {
-			// 		check_value = true
-			// 	}
-			// }
 		} else {
 			check_value = true
 		}
@@ -373,10 +363,6 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_na
 	default:
 		// do nothing on value: bool, int64, float64, string
 		data = curval
-		// level.Warn(logger).Log(
-		// 	"collid", CollectorId(symtab, logger),
-		// 	"script", ScriptName(symtab, logger),
-		// 	"msg", fmt.Sprintf("invalid type for with_items: %s", item))
 	}
 	return data, nil
 }
@@ -450,17 +436,14 @@ func preserve_sym_tab(symtab map[string]any, old_values map[string]any, key stri
 		if err := SetSymTab(old_values, key, old_val); err != nil {
 			return err
 		}
-		// old_values[key] = old_val
 	} else {
 		if err := SetSymTab(old_values, key, "_"); err != nil {
 			return err
 		}
-		// old_values[key] = "_"
 	}
 	if err := SetSymTab(symtab, key, val); err != nil {
 		return err
 	}
-	// symtab[key] = val
 	return nil
 }
 
@@ -650,9 +633,6 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 				valid_value := true
 
 				for i, condTpl := range baWhen {
-					// tmp_res := new(strings.Builder)
-
-					// err := ((*template.Template)(condTpl)).Execute(tmp_res, &symtab)
 					cond, err := evalCond(symtab, condTpl)
 					if err != nil {
 						return fmt.Errorf("invalid template value for 'when' %s: %s", baWhen[i].Tree.Root.String(), err)
@@ -688,8 +668,6 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 
 			baUntil := ba.GetUntil()
 			for i, condTpl := range baUntil {
-				// tmp_res := new(strings.Builder)
-				// err := ((*template.Template)(condTpl)).Execute(tmp_res, &symtab)
 				cond, err := evalCond(symtab, condTpl)
 				if err != nil {
 					err := fmt.Errorf("invalid template value for 'until' %s: %s", baUntil[i].Tree.Root.String(), err)

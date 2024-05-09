@@ -114,25 +114,6 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 		}
 	}
 
-	// switch curval := qc.OkStatus.(type) {
-	// case int:
-	// 	qc.ok_status = make([]int, 1)
-	// 	qc.ok_status[0] = curval
-	// case []int:
-	// 	qc.ok_status = curval
-	// case []string:
-	// 	var i_value int64
-	// 	var err error
-	// 	qc.ok_status = make([]int, len(curval))
-	// 	for idx, status := range curval {
-	// 		if i_value, err = strconv.ParseInt(strings.Trim(status, "\r\n "), 10, 0); err != nil {
-	// 			i_value = 0
-	// 		}
-	// 		qc.ok_status[idx] = int(i_value)
-	// 	}
-
-	// }
-
 	return checkOverflow(qc.XXX, "query action")
 }
 
@@ -345,14 +326,8 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger),
 			"msg", fmt.Sprintf("invalid template for query '%s': %v", a.Query.Query, err))
 	}
-	// symtab["url"] = query
 
 	if a.Query.data != nil {
-		// auth_key, ok := symtab["auth_key"]
-		// if ok {
-		// 	level.Debug(logger).Log("authkey", auth_key)
-		// }
-
 		payload, err = a.Query.data.GetValueString(symtab, nil, false)
 		if err != nil {
 			payload = a.Query.Data
@@ -365,7 +340,6 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	} else {
 		payload = ""
 	}
-	// symtab["data"] = payload
 
 	method, err = a.Query.method.GetValueString(symtab, nil, false)
 	if err != nil {
@@ -376,17 +350,6 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger),
 			"msg", fmt.Sprintf("invalid template for method '%s': %v", a.Query.Method, err))
 	}
-	// symtab["method"] = method
-
-	// maybe a good idea to check template var in ok_status too
-	// ok_status, err = a.Query.method.GetValueString(symtab, nil, false)
-	// if err != nil {
-	// 	method = strings.ToUpper(method)
-	// 	level.Warn(logger).Log(
-	// 		"script", a.ScriptName(symtab, logger),
-	// 		"msg", fmt.Sprintf("invalid template for method '%s': %v", method, err))
-	// }
-	// symtab["ok_status"] = a.Query.ok_status
 
 	var_name, err = a.Query.var_name.GetValueString(symtab, nil, false)
 	if err != nil {
@@ -396,11 +359,6 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger),
 			"msg", fmt.Sprintf("invalid template for var_name '%s': %v", a.Query.VarName, err))
 	}
-	// check_invalid_auth, found := GetMapValueBool(symtab, "check_invalid_auth")
-	// if !found {
-	// 	check_invalid_auth = true
-	// }
-	// symtab["var_name"] = var_name
 
 	auth_mode, err = a.Query.auth_mode.GetValueString(symtab, nil, false)
 	if err != nil {
@@ -438,10 +396,6 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"msg", fmt.Sprintf("invalid template for auth_config.token '%s': %v", a.Query.AuthConfig.Token, err))
 	}
 
-	// reset special var headers from th symbols table
-	// removed 2024/03/18: don't know why to remove headers that should be set by user !
-	// delete(symtab, "headers")
-
 	params := &CallClientExecuteParams{
 		Payload:  payload,
 		Method:   method,
@@ -454,7 +408,6 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		Password: passwd,
 		Token:    auth_token,
 		Timeout:  time.Duration(a.Query.Timeout) * time.Second,
-		// Check_invalid_Auth: check_invalid_auth,
 	}
 
 	level.Debug(logger).Log(
@@ -485,12 +438,6 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 				}
 			}
 		}
-		// delete(symtab, "url")
-		// delete(symtab, "data")
-		// delete(symtab, "method")
-		// delete(symtab, "ok_status")
-		// delete(symtab, "var_name")
-
 	} else {
 		level.Warn(logger).Log(
 			"collid", CollectorId(symtab, logger),

@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strconv"
 
-	// "strconv"
 	"strings"
 	ttemplate "text/template"
 
@@ -40,7 +39,6 @@ func convertToBytes(curval any, unit string) (int64, error) {
 		}
 	default:
 		i_value = 0
-		// value := row[v].(float64)
 	}
 	switch unit {
 	case "kilobyte", "Kb":
@@ -110,7 +108,6 @@ func getfloat(val any) (float64, bool) {
 		}
 	default:
 		f_value = 0
-		// value := row[v].(float64)
 	}
 	return f_value, false
 }
@@ -130,21 +127,9 @@ func checkOp(op uint, val1 any, val2 any) bool {
 	f2, isnil2 := getfloat(val2)
 
 	if isnil1 || isnil2 {
-		// if op == opLE || op == opLT {
-		// 	t:= isnil1
-		// 	isnil1 = isnil2
-		// 	isnil2 = t
-		// 	if op == opLE {
-		// 		op = opGE
-		// 	} else {
-		// 		op = opGT
-		// 	}
-		// }
 		switch op {
 		case opEqual:
 			res = (isnil1 == isnil2)
-		// case opNE:
-		// 	res = (isnil1 != isnil2)
 		case opGT:
 			if isnil1 || !isnil2 {
 				res = true
@@ -155,21 +140,9 @@ func checkOp(op uint, val1 any, val2 any) bool {
 			}
 		}
 	} else {
-		// if op == opLE || op == opLT {
-		// 	t:= f1
-		// 	f1 = f2
-		// 	f2 = t
-		// 	if op == opLE {
-		// 		op = opGE
-		// 	} else {
-		// 		op = opGT
-		// 	}
-		// }
 		switch op {
 		case opEqual:
 			res = (f1 == f2)
-		// case opNE:
-		// 	res = (f1 != f2)
 		case opGT:
 			if f1 > f2 {
 				res = true
@@ -197,9 +170,13 @@ func exporterGE(val1 any, val2 any) bool {
 func exporterGT(val1 any, val2 any) bool {
 	return checkOp(opGT, val1, val2)
 }
+
+// less equal than (val1 <= val2) <=> val2 >= val1: reverse ope to greater equal than
 func exporterLE(val1 any, val2 any) bool {
 	return checkOp(opGE, val2, val1)
 }
+
+// less than (val1 < val2) <=> val2 > val1: reverse ope to greater than
 func exporterLT(val1 any, val2 any) bool {
 	return checkOp(opGT, val2, val1)
 }
@@ -382,13 +359,11 @@ func exporterDecryptPass(passwd string, auth_key string) (string, error) {
 		cipher, err := encrypt.NewAESCipher(auth_key)
 		if err != nil {
 			err := fmt.Errorf("can't obtain cipher to decrypt: %s", err)
-			// level.Error(c.logger).Log("errmsg", err)
 			return passwd, err
 		}
 		passwd, err = cipher.Decrypt(ciphertext, true)
 		if err != nil {
 			err := fmt.Errorf("invalid key provided to decrypt: %s", err)
-			// level.Error(c.logger).Log("errmsg", err)
 			return passwd, err
 		}
 	}
@@ -411,11 +386,6 @@ func exportLookupAddr(ip string) (string, error) {
 
 func mymap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
-	// my_map := make(map[string]interface{}, len(sprig_map)+1)
-	// for k, v := range sprig_map {
-	// 	my_map[k] = v
-	// }
-	// my_map["convertToBytes"] = convertToBytes
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["getHeader"] = getHeader
 	sprig_map["getCookie"] = getCookie

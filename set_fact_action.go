@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"bytes"
 	"fmt"
 
 	"github.com/go-kit/log"
@@ -191,7 +190,6 @@ func (a *SetFactAction) AddCustomTemplate(customTemplate *exporterTemplate) erro
 	}
 
 	for _, pair := range a.setFact {
-		// tmp_map := map[string]any{}
 		if pair == nil {
 			return fmt.Errorf("set_fact: invalid key value")
 		}
@@ -211,62 +209,5 @@ func (a *SetFactAction) AddCustomTemplate(customTemplate *exporterTemplate) erro
 
 	return nil
 }
-
-// ***************************************************************************************
-// ***************************************************************************************
-
-// func getMapValue(symtab map[string]any, raw_maps map[any]any) (map[any]any, error) {
-// 	var err error
-// 	final_res := make(map[any]any)
-// 	for raw_key, raw_value := range raw_maps {
-// 		key, err := getValue(symtab, raw_key)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("invalid template for var key %s: %s", raw_key, err)
-// 		}
-// 		value, err := getValue(symtab, raw_value)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("invalid template for var value %s: %s", raw_value, err)
-// 		}
-// 		final_res[key] = value
-// 	}
-// 	return final_res, err
-// }
-
-// func getSliceValue(symtab map[string]any, raw_slice []any) (any, error) {
-// 	var err error
-// 	final_res := make([]any, len(raw_slice))
-// 	for idx, r_value := range raw_slice {
-// 		res, err := getValue(symtab, r_value)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("invalid template for var key %q: %s", res, err)
-// 		}
-// 		final_res[idx] = res
-
-// 	}
-// 	return final_res, err
-// }
-
-// func getValue(symtab map[string]any, raw_value any) (value_name any, err error) {
-// 	switch value := raw_value.(type) {
-// 	case *Field:
-// 		if value_name, err = value.GetValueString(symtab, nil, false); err != nil {
-// 			return nil, err
-// 		}
-// 	case []any:
-// 		if value_name, err = getSliceValue(symtab, value); err != nil {
-// 			return nil, err
-// 		}
-// 	case map[any]any:
-// 		if value_name, err = getMapValue(symtab, value); err != nil {
-// 			return nil, err
-// 		}
-// 	default:
-// 		// need to call a func to obtain a value from any type but with all content valorized
-// 		// => list: try to valorize each element
-// 		// => map: try to valorize key and value
-// 		value_name = value
-// 	}
-// 	return value_name, err
-// }
 
 // ***************************************************************************************

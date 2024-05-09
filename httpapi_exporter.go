@@ -79,11 +79,6 @@ func BuildHandler(exporter Exporter) http.Handler {
 
 		// pprof handle
 		newRoute(OpMatch, "/debug/.+", http.DefaultServeMux.ServeHTTP),
-		// newRoute("/debug/pprof/cmdline", pprof.Cmdline),
-		// newRoute("/debug/pprof/profile", pprof.Profile),
-		// newRoute("/debug/pprof/symbol", pprof.Symbol),
-		// newRoute("/debug/pprof/trace", pprof.Trace),
-		// newRoute("default", func(w http.ResponseWriter, r *http.Request) { http.Handler() .ServeHTTP(w, r) }),
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -110,7 +105,6 @@ func BuildHandler(exporter Exporter) http.Handler {
 		HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
 		// }
 	})
-
 }
 
 func main() {
@@ -231,22 +225,6 @@ func main() {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
-
-		http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) })
-		http.HandleFunc("/", HomeHandlerFunc(*metricsPath, exporter))
-		http.HandleFunc("/config", ConfigHandlerFunc(*metricsPath, exporter))
-		http.HandleFunc("/status", StatusHandlerFunc(*metricsPath, exporter))
-		http.HandleFunc("/targets", TargetsHandlerFunc(*metricsPath, exporter))
-		http.Handle(*metricsPath, ExporterHandlerFor(exporter))
-		// Expose exporter metrics separately, for debugging purposes.
-		http.Handle("/httpapi_exporter_metrics", promhttp.Handler())
-
-		// alternativ when newer prometheus modules are not accessible from GOPROXY
-		// level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
-		// if err := http.ListenAndServe(*listenAddress, BuildHandler(exporter)); err != nil {
-		// 	level.Error(logger).Log("msg", "Error starting HTTP server", "errmsg", err)
-		// 	os.Exit(1)
-		// }
 	}()
 
 	for {
