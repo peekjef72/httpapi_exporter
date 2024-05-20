@@ -56,6 +56,7 @@ templates:
         "jobtype"         $item.JobType
         "state"           $item.current_state
         "starttimestamp"  $item_start
+        "progress"        $item.Progress
         "endtimestamp"    $cur_endtimestamp
         "uid"             (( mustRegexSplit ":" $item.UID -1 ) | last )
         "retries"         0
@@ -71,6 +72,7 @@ templates:
           "state"           $item.current_state
           "starttimestamp"  $item_start
           "endtimestamp"    $cur_endtimestamp
+          "progress"        $item.Progress
           "uid"             (( mustRegexSplit ":" $item.UID -1 ) | last )
           "retries"         $retries
         -}}
@@ -152,6 +154,13 @@ scripts:
               key_labels: $root.key_labels
               values: 
                 _: $state
+
+            - metric_name: progress
+              help: "progress of the job"
+              type: gauge
+              key_labels: $root.key_labels
+              values:
+                _: $progress
 
             - metric_name: duration
               help: 'operation duration in second'
