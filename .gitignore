@@ -5,7 +5,7 @@
 .vscode/
 config/
 httpapi_exporter
-passwd_crypt
+passwd_encrypt
 *.exe
 *.code-workspace
 file_to_*
