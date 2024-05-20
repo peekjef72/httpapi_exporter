@@ -66,16 +66,18 @@ func newRoute(op int, path string, handler http.HandlerFunc) *route {
 	}
 
 }
-func BuildHandler(exporter Exporter) http.Handler {
+func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 	var routes = []*route{
-		newRoute(OpEgals, "/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) }),
 		newRoute(OpEgals, "/", HomeHandlerFunc(*metricsPath, exporter)),
-		newRoute(OpEgals, "/status", StatusHandlerFunc(*metricsPath, exporter)),
 		newRoute(OpEgals, "/config", ConfigHandlerFunc(*metricsPath, exporter)),
+		newRoute(OpEgals, "/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) }),
+		newRoute(OpEgals, "/httpapi_exporter_metrics", func(w http.ResponseWriter, r *http.Request) { promhttp.Handler().ServeHTTP(w, r) }),
+		newRoute(OpEgals, "/reload", ReloadHandlerFunc(*metricsPath, exporter, actionCh)),
+		newRoute(OpEgals, "/loglevel", LogLevelHandlerFunc(*metricsPath, exporter, actionCh)),
+		newRoute(OpEgals, "/status", StatusHandlerFunc(*metricsPath, exporter)),
 		newRoute(OpEgals, "/targets", TargetsHandlerFunc(*metricsPath, exporter)),
 		newRoute(OpEgals, *metricsPath, func(w http.ResponseWriter, r *http.Request) { ExporterHandlerFor(exporter).ServeHTTP(w, r) }),
 		// Expose exporter metrics separately, for debugging purposes.
-		newRoute(OpEgals, "/httpapi_exporter_metrics", func(w http.ResponseWriter, r *http.Request) { promhttp.Handler().ServeHTTP(w, r) }),
 
 		// pprof handle
 		newRoute(OpMatch, "/debug/.+", http.DefaultServeMux.ServeHTTP),
@@ -96,15 +98,62 @@ func BuildHandler(exporter Exporter) http.Handler {
 				return
 			}
 		}
-		// http.DefaultServeMux.ServeHTTP(w, req)
-		// h, _ := http.DefaultServeMux.Handler(req)
-		// if h != nil {
-		// 			h.ServeHTTP(w, req)
-		// } else {
 		err := fmt.Errorf("not found")
 		HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
-		// }
 	})
+}
+
+type actionMsg struct {
+	actiontype int
+	retCh      chan error
+}
+
+const (
+	ACTION_RELOAD   = iota
+	ACTION_LOGLEVEL = iota
+)
+
+// ReloadHandlerFunc is the HTTP handler for the POST reload entry point (`/reload`).
+func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			level.Info(exporter.Logger()).Log("msg", "received invalid method on /reload", "client", r.RemoteAddr)
+			HandleError(http.StatusMethodNotAllowed, fmt.Errorf("this endpoint requires a POST request"), metricsPath, exporter, w, r)
+			return
+		}
+		level.Info(exporter.Logger()).Log("msg", "received /reload from %s", "client", r.RemoteAddr)
+		msg := actionMsg{
+			actiontype: ACTION_RELOAD,
+			retCh:      make(chan error),
+		}
+		reloadCh <- msg
+		if err := <-msg.retCh; err != nil {
+			HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
+		}
+		http.Error(w, "OK reload asked.", http.StatusOK)
+	}
+}
+
+// LogLevelHandlerFunc is the HTTP handler for the POST loglevel entry point (`/loglevel`).
+func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			level.Info(exporter.Logger()).Log("msg", "received invalid method on /loglevel", "client", r.RemoteAddr)
+			HandleError(http.StatusMethodNotAllowed, fmt.Errorf("this endpoint requires a POST request"), metricsPath, exporter, w, r)
+			return
+		}
+		level.Info(exporter.Logger()).Log("msg", "received /loglevel from %s", "client", r.RemoteAddr)
+		msg := actionMsg{
+			actiontype: ACTION_LOGLEVEL,
+			retCh:      make(chan error),
+		}
+		reloadCh <- msg
+		if err := <-msg.retCh; err != nil {
+			http.Error(w, fmt.Sprintf("OK loglevel set to %s", err), http.StatusOK)
+		} else {
+			HandleError(http.StatusInternalServerError, fmt.Errorf("KO something wrong with increase loglevel"), metricsPath, exporter, w, r)
+		}
+	}
 }
 
 func main() {
@@ -193,9 +242,10 @@ func main() {
 	exporter.SetReloadTime(time.Now())
 
 	user2 := make(chan os.Signal, 1)
-	signal.Notify(user2, syscall.SIGUSR2)
+	init_sigusr2(user2)
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
+	actionCh := make(chan actionMsg)
 	go func() {
 		for {
 			select {
@@ -208,6 +258,22 @@ func main() {
 				} else {
 					level.Info(logger).Log("msg", "file reloaded.")
 				}
+			case action := <-actionCh:
+				switch action.actiontype {
+				case ACTION_RELOAD:
+					level.Info(logger).Log("msg", "file reloading received.")
+					if err := exporter.ReloadConfig(); err != nil {
+						level.Error(logger).Log("msg", fmt.Sprintf("reload err: %s.", err))
+						action.retCh <- err
+					} else {
+						level.Info(logger).Log("msg", "file reloaded.")
+						action.retCh <- nil
+					}
+				case ACTION_LOGLEVEL:
+					level.Info(logger).Log("msg", "increase loglevel received.")
+					exporter.IncreaseLogLevel()
+					action.retCh <- fmt.Errorf(exporter.GetLogLevel())
+				}
 			}
 		}
 	}()
@@ -219,7 +285,7 @@ func main() {
 	go func() {
 		// Setup and start webserver.
 		server := &http.Server{
-			Handler: BuildHandler(exporter),
+			Handler: BuildHandler(exporter, actionCh),
 		}
 		if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
 			level.Error(logger).Log("err", err)
