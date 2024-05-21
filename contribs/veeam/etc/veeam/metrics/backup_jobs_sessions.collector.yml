@@ -21,6 +21,8 @@ templates:
       {{- $item.Result -}}
     {{- end -}}'
 
+  # Possible Result value: Success / Warning / Failed
+  # Possible State value: Starting / Stopping / Working / Pausing / Resuming / Stopped  
   jobStatus: '
     {{- $jobStatusDef := dict
           "Unknown"   "0"
@@ -29,6 +31,11 @@ templates:
           "Failed"    "3"
           "Idle"      "4"
           "Working"   "5"
+          "Starting"  "6"
+          "Stoping"   "7"
+          "Pausing"   "8"
+          "Resuming"  "9"
+          "Stopped"   "10"
     -}}
     {{- pluck . $jobStatusDef | first | default "0" -}}'
 
@@ -156,7 +163,7 @@ scripts:
                 _: $state
 
             - metric_name: progress
-              help: "progress of the job"
+              help: "progress percent of the job"
               type: gauge
               key_labels: $root.key_labels
               values:
