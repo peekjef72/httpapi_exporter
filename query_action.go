@@ -419,7 +419,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	if raw_func, ok := symtab["__method"]; ok {
 		if Func, ok := raw_func.(func(*CallClientExecuteParams, map[string]any) error); ok {
 			if err = Func(params, symtab); err != nil {
-				if err != ErrInvalidLogin {
+				if err != ErrInvalidLogin || err == ErrInvalidLoginNoCipher || err == ErrInvalidLoginInvalidCipher {
 					switch err {
 					case ErrContextDeadLineExceeded:
 						level.Warn(logger).Log(

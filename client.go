@@ -24,8 +24,10 @@ import (
 )
 
 var (
-	ErrInvalidLogin       = fmt.Errorf("invalid_login")
-	ErrInvalidQueryResult = fmt.Errorf("invalid_result_code")
+	ErrInvalidLogin              = fmt.Errorf("invalid_login")
+	ErrInvalidLoginNoCipher      = fmt.Errorf("can't obtain cipher to decrypt")
+	ErrInvalidLoginInvalidCipher = fmt.Errorf("invalid key provided to decrypt")
+	ErrInvalidQueryResult        = fmt.Errorf("invalid_result_code")
 	// context deadline exceeded
 	ErrContextDeadLineExceeded = fmt.Errorf("global_scraping_timeout")
 )
@@ -788,13 +790,13 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 					"auth_key", auth_key)
 				cipher, err := encrypt.NewAESCipher(auth_key)
 				if err != nil {
-					err := fmt.Errorf("can't obtain cipher to decrypt")
+					err := ErrInvalidLoginNoCipher
 					// level.Error(c.logger).Log("errmsg", err)
 					return err
 				}
 				passwd, err = cipher.Decrypt(ciphertext, true)
 				if err != nil {
-					err := fmt.Errorf("invalid key provided to decrypt")
+					err := ErrInvalidLoginInvalidCipher
 					// level.Error(c.logger).Log("errmsg", err)
 					return err
 				}

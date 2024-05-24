@@ -435,7 +435,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 
 					if status, err := t.client.Login(); err != nil {
 						collectChan <- MsgQuit
-						if err == ErrInvalidLogin {
+						if err == ErrInvalidLogin || err == ErrInvalidLoginNoCipher || err == ErrInvalidLoginInvalidCipher {
 							for _, c := range t.collectors {
 								c.SetStatus(CollectorStatusInvalidLogin)
 							}
