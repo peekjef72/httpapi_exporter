@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.3.9 / not release
+
+- add out format for passwd_encrypt that can be cut/pasted into config file.
+- add InvalidLogin error cases: no cipher (auth_key not provided) or (invalid auth_key). For those cases if target is up, metrics for collectors status will return code 2; invalid_login
+
 ## 0.3.8 / 2024-05-20
 
 - fixed minor bug with basic auth, remove unused vars ...
