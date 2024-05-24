@@ -53,6 +53,7 @@ func main() {
 		msg := []byte(passwd)
 		ciphertext := cipher.Encrypt(msg, !*hexa)
 		fmt.Printf("Encrypted message hex: %s\n", ciphertext)
+		fmt.Printf("Encrypted message config: 'encrypted/%s'\n", ciphertext)
 	} else {
 		passwd := credentials("enter encrypted password: ")
 
