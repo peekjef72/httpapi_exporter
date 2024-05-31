@@ -39,7 +39,7 @@ type Exporter interface {
 
 	SetLogLevel(level string)
 	GetLogLevel() string
-	IncreaseLogLevel()
+	IncreaseLogLevel(string)
 
 	ReloadConfig() error
 }
@@ -262,29 +262,51 @@ func (e *exporter) GetLogLevel() string {
 	return e.logLevel
 }
 
-func (e *exporter) IncreaseLogLevel() {
+func (e *exporter) IncreaseLogLevel(new_lvl string) {
 	var Level func(log.Logger) log.Logger
 	e.content_mutex.Lock()
-	switch e.logLevel {
-	case "debug":
-		e.logLevel = "info"
-		Level = level.Info
-	case "info":
-		e.logLevel = "warn"
-		Level = level.Warn
-	case "warn":
-		e.logLevel = "error"
-		Level = level.Error
-	case "error":
-		e.logLevel = "debug"
-		Level = level.Debug
+	defer e.content_mutex.Unlock()
+
+	if new_lvl == "" {
+		switch e.logLevel {
+		case "debug":
+			e.logLevel = "info"
+			Level = level.Info
+		case "info":
+			e.logLevel = "warn"
+			Level = level.Warn
+		case "warn":
+			e.logLevel = "error"
+			Level = level.Error
+		case "error":
+			e.logLevel = "debug"
+			Level = level.Debug
+		}
+	} else {
+		switch new_lvl {
+		case "debug":
+			Level = level.Debug
+		case "info":
+			Level = level.Info
+		case "warn":
+			Level = level.Warn
+		case "error":
+			Level = level.Error
+		default:
+			level.Error(e.logger).Log("msg", fmt.Sprintf("invalid log.level specified %s", new_lvl))
+			return
+		}
+		if e.logLevel == new_lvl {
+			Level(e.logger).Log("msg", "set log.level unchanged")
+			return
+		}
+		e.logLevel = new_lvl
 	}
 	logConfig.Level.Set(e.logLevel)
 	e.logger = promlog.New(&logConfig)
 	for _, t := range e.targets {
 		t.SetLogger(e.logger)
 	}
-	e.content_mutex.Unlock()
 	Level(e.logger).Log("msg", fmt.Sprintf("set log.level to %s", e.logLevel))
 }
 

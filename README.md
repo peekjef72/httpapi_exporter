@@ -77,6 +77,8 @@ the exporter http server has a default landing page that permit to access
 * "/httpapi_exporter_metrics": exporter internal prometheus metrics
 * "/help: help on github.
 * "/metrics": expose target's metrics.
+* "/loglevel": GET exposes exporter current log level. POST /loglevel increases by one the current level (cycling). POST /loglevel/[level] set the new [level].
+* "/reload": method POST only: tells the exporter to reload the configuration.
 
 ## exporter metrics access
 

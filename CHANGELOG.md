@@ -6,8 +6,12 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
  <!--next-version-placeholder-->
 ## 0.3.9 / not release
 
-- add out format for passwd_encrypt that can be cut/pasted into config file.
-- add InvalidLogin error cases: no cipher (auth_key not provided) or (invalid auth_key). For those cases if target is up, metrics for collectors status will return code 2; invalid_login
+- added out format for passwd_encrypt that can be cut/pasted into config file.
+- added InvalidLogin error cases: no cipher (auth_key not provided) or (invalid auth_key). For those cases if target is up, metrics for collectors status will return code 2; invalid_login
+- added GET /loglevel to retrieve current level, add POST /loglevel[/level] to set loglevel to level directly 
+- added debug message for basic auth (auth_config.mode=basic) and bearer (auth_config.mode=token)
+- loglevel link in landing page
+- fixed typos
 
 ## 0.3.8 / 2024-05-20
 

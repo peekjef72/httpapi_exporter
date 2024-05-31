@@ -770,7 +770,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 				user = params.Username
 				symtab["user"] = user
 			}
-
 			passwd := GetMapValueString(symtab, "password")
 			if params.Password != "" {
 				old_values["password"] = passwd
@@ -804,6 +803,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			c.client.SetBasicAuth(user, passwd)
 			passwd = ""
 			symtab["auth_set"] = true
+			level.Debug(c.logger).Log(
+				"collid", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger),
+				"msg", "basicauth Header set for request")
 			delete(symtab, "auth_key")
 		} else if auth_mode == "token" {
 			auth_token := GetMapValueString(symtab, "auth_token")
@@ -814,6 +817,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			}
 			if auth_token != "" {
 				c.client.SetAuthToken(auth_token)
+				level.Debug(c.logger).Log(
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger),
+					"msg", "token Hearder set for request")
 			}
 		}
 	}

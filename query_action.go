@@ -384,7 +384,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("invalid template for auth_config.user '%s': %v", a.Query.AuthConfig.Password, err))
+			"msg", fmt.Sprintf("invalid template for auth_config.password '%s': %v", a.Query.AuthConfig.Password, err))
 	}
 
 	auth_token, err = a.Query.token.GetValueString(symtab, nil, false)

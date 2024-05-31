@@ -44,6 +44,7 @@ const (
           <div><a href="{{ .MetricsPath }}">Metrics</a></div>
           <div><a href="/config">Configuration</a></div>
           <div><a href="/targets">Targets</a></div>
+          <div><a href="/loglevel">loglevel</a></div>
           <div><a href="/status">Status</a></div>
           <div><a href="/debug/pprof">Profiling</a></div>
           <div><a href="/httpapi_exporter_metrics">Exporter Metrics</a></div>
