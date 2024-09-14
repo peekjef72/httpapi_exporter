@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -166,7 +167,7 @@ func NewTarget(
 		content_mutex:       &sync.Mutex{},
 	}
 	if t.client == nil {
-		return nil, fmt.Errorf("internal http client undefined")
+		return nil, errors.New("internal http client undefined")
 	}
 	// shared content mutex between target and client
 	t.client.content_mutex = t.content_mutex
@@ -491,7 +492,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 							if r := recover(); r != nil {
 								err, ok := r.(error)
 								if !ok {
-									err = fmt.Errorf("undefined error")
+									err = errors.New("undefined error")
 								}
 								level.Debug(logger).Log(
 									"collid", t.name,

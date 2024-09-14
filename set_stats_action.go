@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/go-kit/log"
@@ -135,7 +136,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 	dst_symtab := make(map[string]any)
 	for _, pair := range a.setStats {
 		if pair == nil {
-			return fmt.Errorf("set_fact: invalid key value")
+			return errors.New("set_fact: invalid key value")
 		}
 		if key, ok := pair[0].(*Field); ok {
 			key_name, err = key.GetValueString(symtab, nil, false)
@@ -196,7 +197,7 @@ func (a *SetStatsAction) AddCustomTemplate(customTemplate *exporterTemplate) err
 	for _, pair := range a.setStats {
 		// tmp_map := map[string]any{}
 		if pair == nil {
-			return fmt.Errorf("set_fact: invalid key value")
+			return errors.New("set_fact: invalid key value")
 		}
 		if key, ok := pair[0].(*Field); ok {
 			if key != nil {

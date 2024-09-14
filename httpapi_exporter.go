@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -39,6 +40,7 @@ var (
 	dry_run = kingpin.Flag("dry-run", "Only check exporter configuration file and exit.").Short('n').Default("false").Bool()
 	// alsologtostderr = kingpin.Flag("alsologtostderr", "log to standard error as well as files.").Default("true").Bool()
 	target_name    = kingpin.Flag("target", "In dry-run mode specify the target name, else ignored.").Short('t').String()
+	model_name     = kingpin.Flag("model", "In dry-run mode specify the model name to build the dynamic target, else ignored.").Default("default").Short('m').String()
 	auth_key       = kingpin.Flag("auth.key", "In dry-run mode specify the auth_key to use, else ignored.").Short('a').String()
 	collector_name = kingpin.Flag("collector", "Specify the collector name restriction to collect, replace the collector_names set for each target.").Short('o').String()
 	toolkitFlags   = kingpinflag.AddFlags(kingpin.CommandLine, metricsPublishingPort)
@@ -77,7 +79,7 @@ func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 	var routes = []*route{
 		newRoute(OpEgals, "/", HomeHandlerFunc(*metricsPath, exporter)),
 		newRoute(OpEgals, "/config", ConfigHandlerFunc(*metricsPath, exporter)),
-		newRoute(OpEgals, "/healthz", func(w http.ResponseWriter, r *http.Request) { http.Error(w, "OK", http.StatusOK) }),
+		newRoute(OpEgals, "/health", HealthHandlerfunc(*metricsPath, exporter)),
 		newRoute(OpEgals, "/httpapi_exporter_metrics", func(w http.ResponseWriter, r *http.Request) { promhttp.Handler().ServeHTTP(w, r) }),
 		newRoute(OpEgals, "/reload", ReloadHandlerFunc(*metricsPath, exporter, actionCh)),
 		newRoute(OpMatch, "/loglevel(?:/(.*))?", LogLevelHandlerFunc(*metricsPath, exporter, actionCh, "")),
@@ -115,7 +117,7 @@ func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 				return
 			}
 		}
-		err := fmt.Errorf("not found")
+		err := errors.New("not found")
 		HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
 	})
 }
@@ -136,7 +138,7 @@ func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- ac
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			level.Info(exporter.Logger()).Log("msg", "received invalid method on /reload", "client", r.RemoteAddr)
-			HandleError(http.StatusMethodNotAllowed, fmt.Errorf("this endpoint requires a POST request"), metricsPath, exporter, w, r)
+			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a POST request"), metricsPath, exporter, w, r)
 			return
 		}
 		level.Info(exporter.Logger()).Log("msg", "received /reload from %s", "client", r.RemoteAddr)
@@ -165,7 +167,7 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 		case "POST":
 			ctxval, ok := r.Context().Value(ctxKey{}).(*ctxValue)
 			if !ok {
-				err := fmt.Errorf("invalid context received")
+				err := errors.New("invalid context received")
 				HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
 				return
 
@@ -179,11 +181,11 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 			if err := <-msg.retCh; err != nil {
 				http.Error(w, fmt.Sprintf("OK loglevel set to %s", err), http.StatusOK)
 			} else {
-				HandleError(http.StatusInternalServerError, fmt.Errorf("KO something wrong with increase loglevel"), metricsPath, exporter, w, r)
+				HandleError(http.StatusInternalServerError, errors.New("KO something wrong with increase loglevel"), metricsPath, exporter, w, r)
 			}
 		default:
 			level.Info(exporter.Logger()).Log("msg", "received invalid method on /loglevel", "client", r.RemoteAddr)
-			HandleError(http.StatusMethodNotAllowed, fmt.Errorf("this endpoint requires a GET or POST request"), metricsPath, exporter, w, r)
+			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a GET or POST request"), metricsPath, exporter, w, r)
 			return
 		}
 	}
@@ -210,10 +212,41 @@ func main() {
 	if *dry_run {
 		level.Info(logger).Log("msg", "configuration OK.")
 		// get the target if defined
-		var t Target
-		var err error
+		var (
+			err   error
+			t     Target
+			tmp_t *TargetConfig
+		)
 		if *target_name != "" {
+			*target_name = strings.TrimSpace(*target_name)
 			t, err = exporter.FindTarget(*target_name)
+			if err == ErrTargetNotFound {
+				err = nil
+				if *model_name != "" {
+					*model_name = strings.TrimSpace(*model_name)
+					t_def, err := exporter.FindTarget(*model_name)
+					if err != nil {
+						err := fmt.Errorf("Target model '%s' not found: %s", *model_name, err)
+						level.Error(logger).Log("errmsg", err)
+						os.Exit(1)
+					}
+					if tmp_t, err = t_def.Config().Clone(*target_name, ""); err != nil {
+						err := fmt.Errorf("invalid url set for remote_target '%s' %s", *target_name, err)
+						level.Error(logger).Log("errmsg", err)
+						os.Exit(1)
+					}
+					t, err = exporter.AddTarget(tmp_t)
+					if err != nil {
+						err := fmt.Errorf("unable to create temporary target %s", err)
+						level.Error(logger).Log("errmsg", err)
+						os.Exit(1)
+					}
+					exporter.Config().Targets = append(exporter.Config().Targets, tmp_t)
+				}
+			}
+			if err == ErrTargetNotFound {
+				t, err = exporter.GetFirstTarget()
+			}
 		} else {
 			t, err = exporter.GetFirstTarget()
 		}
@@ -310,7 +343,7 @@ func main() {
 						level.Info(logger).Log("msg", "set loglevel received.")
 					}
 					exporter.IncreaseLogLevel(action.logLevel)
-					action.retCh <- fmt.Errorf(exporter.GetLogLevel())
+					action.retCh <- errors.New(exporter.GetLogLevel())
 				}
 			}
 		}

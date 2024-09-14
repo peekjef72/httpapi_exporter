@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +23,10 @@ const (
 	contentLengthHeader   = "Content-Length"
 	contentEncodingHeader = "Content-Encoding"
 	acceptEncodingHeader  = "Accept-Encoding"
+	acceptHeader          = "Accept"
+	applicationJSON       = "application/json"
+	textHTML              = "text/html"
+	textPLAIN             = "text/plain"
 )
 
 // ExporterHandlerFor returns an http.Handler for the provided Exporter.
@@ -36,13 +41,15 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 
 		tname := params.Get("target")
 		if tname == "" {
-			err := fmt.Errorf("Target parameter is missing")
+			err := errors.New("Target parameter is missing")
 			HandleError(http.StatusBadRequest, err, *metricsPath, exporter, w, req)
 			return
 		}
+		tname = strings.TrimSpace(tname)
 		target, err = exporter.FindTarget(tname)
 		if err == ErrTargetNotFound {
 			model := params.Get("model")
+			model = strings.TrimSpace(model)
 			if model == "" {
 				model = "default"
 			}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"sync"
@@ -68,7 +69,7 @@ func NewCollector(
 				if act.Type() == metric_action {
 					mc := act.GetMetric()
 					if mc == nil {
-						return nil, fmt.Errorf("MetricAction nil received")
+						return nil, errors.New("MetricAction nil received")
 					}
 					mf, err := NewMetricFamily(logContext, mc, constLabels, cc.customTemplate)
 					if err != nil {

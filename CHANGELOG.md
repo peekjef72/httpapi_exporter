@@ -5,11 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 ## 0.3.9 / not release
-
+- renamed entrypoint /healthz to /health : response format depends on "accept" header (application/json, text/plain, text/html default)
+- updated entrypoint /status : response format depends on "accept" header (application/json, text/html default)
+- added cmd line --model_name to perform test with model and uri in dry-run mode
 - added out format for passwd_encrypt that can be cut/pasted into config file.
 - added InvalidLogin error cases: no cipher (auth_key not provided) or (invalid auth_key). For those cases if target is up, metrics for collectors status will return code 2; invalid_login
 - added GET /loglevel to retrieve current level, add POST /loglevel[/level] to set loglevel to level directly 
-- added debug message for basic auth (auth_config.mode=basic) and bearer (auth_config.mode=token)
+- added debug message for ba:qsic auth (auth_config.mode=basic) and bearer (auth_config.mode=token)
 - loglevel link in landing page
 - fixed typos
 

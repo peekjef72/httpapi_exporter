@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ import (
 )
 
 var (
-	ErrTargetNotFound = fmt.Errorf("target not found")
+	ErrTargetNotFound = errors.New("target not found")
 )
 
 // Exporter is a prometheus.Gatherer that gathers SQL metrics from targets and merges them with the default registry.
@@ -120,7 +121,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 			if r := recover(); r != nil {
 				err, ok := r.(error)
 				if !ok {
-					err = fmt.Errorf("undefined error")
+					err = errors.New("undefined error")
 				}
 				level.Debug(e.logger).Log(
 					"collid", target.Name(),
@@ -231,7 +232,7 @@ func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
 func (e *exporter) GetFirstTarget() (Target, error) {
 	var t_found Target
 	if len(e.targets) == 0 {
-		return t_found, fmt.Errorf("no target found")
+		return t_found, errors.New("no target found")
 	} else {
 		t_found = e.targets[0]
 	}

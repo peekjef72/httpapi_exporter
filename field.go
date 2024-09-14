@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 
@@ -121,7 +122,7 @@ func (f *Field) GetValueString(
 			ok := false
 			if r := recover(); r != nil {
 				if err, ok = r.(error); !ok {
-					err = fmt.Errorf("panic in GetValueString template with undefined error")
+					err = errors.New("panic in GetValueString template with undefined error")
 				}
 				res = ""
 			}
@@ -181,7 +182,7 @@ func (f *Field) GetValueFloat(
 			ok := false
 			if r := recover(); r != nil {
 				if err, ok = r.(error); !ok {
-					err = fmt.Errorf("panic in GetValueFloat template with undefined error")
+					err = errors.New("panic in GetValueFloat template with undefined error")
 				}
 				res = 0
 			}
@@ -262,7 +263,7 @@ func (f *Field) GetValueObject(
 			ok := false
 			if r := recover(); r != nil {
 				if err, ok = r.(error); !ok {
-					err = fmt.Errorf("panic in GetValueObject template with undefined error")
+					err = errors.New("panic in GetValueObject template with undefined error")
 				}
 				res = res_slice
 			}

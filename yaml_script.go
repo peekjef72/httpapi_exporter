@@ -2,6 +2,7 @@ package main
 
 import (
 	//"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -457,7 +458,7 @@ func evalCond(symtab map[string]any, condTpl *exporterTemplate) (cond bool, err 
 		ok := false
 		if r := recover(); r != nil {
 			if err, ok = r.(error); !ok {
-				err = fmt.Errorf("panic in evalCond template with undefined error")
+				err = errors.New("panic in evalCond template with undefined error")
 			}
 		}
 	}()

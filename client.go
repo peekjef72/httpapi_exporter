@@ -171,7 +171,7 @@ func (c *Client) getJSONResponse(resp *resty.Response) any {
 
 	body := resp.Body()
 	if len(body) > 0 {
-		content_type := resp.Header().Get("content-type")
+		content_type := resp.Header().Get(contentTypeHeader)
 		if strings.Contains(content_type, "application/json") {
 			// tmp := make([]byte, len(body))
 			// copy(tmp, body)

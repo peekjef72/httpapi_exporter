@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"runtime"
+	"strings"
 
 	"github.com/prometheus/common/version"
 	"gopkg.in/yaml.v3"
@@ -58,6 +60,10 @@ const (
     {{ define "content.home" -}}
       <p>This is a <a href="{{ .DocsUrl }}">Prometheus {{ .ExporterName }}</a> instance.
         You are probably looking for its <a href="{{ .MetricsPath }}">metrics</a> handler.</p>
+    {{- end }}
+
+	{{ define "content.health" -}}
+      <H2>OK</H2>
     {{- end }}
 
     {{ define "content.config" -}}
@@ -118,14 +124,14 @@ const (
 )
 
 type versionInfo struct {
-	Version    string
-	Revision   string
-	Branch     string
-	BuildUser  string
-	BuildDate  string
-	GoVersion  string
-	StartTime  string
-	ReloadTime string
+	Version    string `json:"version"`
+	Revision   string `json:"revision"`
+	Branch     string `json:"branch"`
+	BuildUser  string `json:"build_user"`
+	BuildDate  string `json:"build_date"`
+	GoVersion  string `json:"go_version"`
+	StartTime  string `json:"start_time"`
+	ReloadTime string `json:"reload_time"`
 }
 type tdata struct {
 	ExporterName string
@@ -146,6 +152,7 @@ type tdata struct {
 
 var (
 	allTemplates    = template.Must(template.New("").Parse(templates))
+	healthTemplate  = pageTemplate("health")
 	homeTemplate    = pageTemplate("home")
 	configTemplate  = pageTemplate("config")
 	targetsTemplate = pageTemplate("targets")
@@ -166,6 +173,29 @@ func HomeHandlerFunc(metricsPath string, exporter Exporter) func(http.ResponseWr
 			MetricsPath:  metricsPath,
 			DocsUrl:      docsUrl,
 		})
+	}
+}
+func HealthHandlerfunc(metricsPath string, exporter Exporter) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var status []byte
+		content_type := r.Header.Get(acceptHeader)
+		if strings.Contains(content_type, applicationJSON) {
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			status = []byte("{\"status\"=\"ok\"}")
+			w.Header().Set(contentLengthHeader, fmt.Sprint(len(status)))
+		} else if strings.Contains(content_type, textPLAIN) {
+			w.Header().Set(contentTypeHeader, textPLAIN)
+			status = []byte("OK")
+		} else {
+			w.Header().Set(contentTypeHeader, textHTML)
+			healthTemplate.Execute(w, &tdata{
+				ExporterName: exporter.Config().Globals.ExporterName,
+				MetricsPath:  metricsPath,
+				DocsUrl:      docsUrl,
+			})
+			return
+		}
+		w.Write(status)
 	}
 }
 
@@ -200,13 +230,26 @@ func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 			StartTime:  exporter.GetStartTime(),
 			ReloadTime: exporter.GetReloadTime(),
 		}
-
-		statusTemplate.Execute(w, &tdata{
-			ExporterName: exporter.Config().Globals.ExporterName,
-			MetricsPath:  metricsPath,
-			DocsUrl:      docsUrl,
-			Version:      vinfos,
-		})
+		content_type := r.Header.Get(acceptHeader)
+		if strings.Contains(content_type, applicationJSON) {
+			res, err := json.Marshal(vinfos)
+			if err != nil {
+				HandleError(http.StatusBadRequest, err, metricsPath, exporter, w, r)
+				return
+			}
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			w.Header().Set(contentLengthHeader, fmt.Sprint(len(res)))
+			w.WriteHeader(http.StatusOK)
+			w.Write(res)
+		} else {
+			w.Header().Set(contentTypeHeader, textHTML)
+			statusTemplate.Execute(w, &tdata{
+				ExporterName: exporter.Config().Globals.ExporterName,
+				MetricsPath:  metricsPath,
+				DocsUrl:      docsUrl,
+				Version:      vinfos,
+			})
+		}
 	}
 }
 
