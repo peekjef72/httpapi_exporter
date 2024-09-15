@@ -3,9 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
 )
 
 // ***************************************************************************************
@@ -15,14 +13,14 @@ import (
 // ***************************************************************************************
 
 type SetStatsAction struct {
-	Name    *Field              `yaml:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    [][]any             `yaml:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty"`
+	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    [][]any             `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
 
-	SetStats map[string]any `yaml:"set_stats"`
+	SetStats map[string]any `yaml:"set_stats" json:"set_stats"`
 
 	setStats [][]any
 	vars     [][]any
@@ -32,13 +30,13 @@ func (a *SetStatsAction) Type() int {
 	return set_fact_action
 }
 
-func (a *SetStatsAction) GetName(symtab map[string]any, logger log.Logger) string {
+func (a *SetStatsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid action name: %v", err),
 			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-			"msg", fmt.Sprintf("invalid action name: %v", err))
+			"script", ScriptName(symtab, logger))
 		return ""
 	}
 	return str
@@ -96,7 +94,7 @@ func (a *SetStatsAction) setBasicElement(
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
-func (a *SetStatsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *SetStatsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 
 	return PlayBaseAction(script, symtab, logger, a, a.CustomAction)
 }
@@ -119,7 +117,7 @@ func (a *SetStatsAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 }
 
 // specific behavior for the SetStatsAction
-func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 
 	var (
 		key_name   string
@@ -127,11 +125,11 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 		value_name any
 	)
 
-	level.Debug(logger).Log(
+	logger.Debug(
+		"[Type: SetStatsAction]",
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", "[Type: SetStatsAction]")
+		"name", a.GetName(symtab, logger))
 
 	dst_symtab := make(map[string]any)
 	for _, pair := range a.setStats {
@@ -145,36 +143,37 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 					return err
 				}
 				if value_name == nil {
-					level.Debug(logger).Log(
+					logger.Debug(
+						fmt.Sprintf("    %s is nil: not set into set_stats", key_name),
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
-						"name", a.GetName(symtab, logger),
-						"msg", fmt.Sprintf("    %s is nil: not set into set_stats", key_name))
+						"name", a.GetName(symtab, logger))
 				} else {
 					if value_name == "_" {
 						// null op key_name :
 					} else {
 						if key_name != "_" {
-							level.Debug(logger).Log(
+							logger.Debug(
+								fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name),
 								"collid", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
-								"name", a.GetName(symtab, logger),
-								"msg", fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name))
+								"name", a.GetName(symtab, logger))
 							if err := SetSymTab(dst_symtab, key_name, value_name); err != nil {
-								level.Warn(logger).Log(
+								logger.Warn(
+									fmt.Sprintf("error setting map value for key '%s'", key_name),
+									"errmsg", err,
 									"collid", CollectorId(symtab, logger),
 									"script", ScriptName(symtab, logger),
-									"name", a.GetName(symtab, logger),
-									"msg", fmt.Sprintf("error setting map value for key '%s'", key_name), "errmsg", err)
+									"name", a.GetName(symtab, logger))
 								continue
 
 							}
 						} else {
-							level.Debug(logger).Log(
+							logger.Debug(
+								"    result discard (key >'_')",
 								"collid", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
-								"name", a.GetName(symtab, logger),
-								"msg", "    result discard (key >'_')")
+								"name", a.GetName(symtab, logger))
 						}
 					}
 				}

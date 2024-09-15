@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 )
@@ -103,7 +102,8 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, target)}
 		mfs, err := gatherer.Gather()
 		if err != nil {
-			level.Error(exporter.Logger()).Log("msg", fmt.Sprintf("Error gathering metrics for '%s': %s", tname, err))
+			exporter.Logger().Error(
+				fmt.Sprintf("Error gathering metrics for '%s': %s", tname, err))
 			if len(mfs) == 0 {
 				http.Error(w, "No metrics gathered, "+err.Error(), http.StatusInternalServerError)
 				return
@@ -119,7 +119,8 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 		for _, mf := range mfs {
 			if err := enc.Encode(mf); err != nil {
 				errs = append(errs, err)
-				level.Info(exporter.Logger()).Log("msg", fmt.Sprintf("Error encoding metric family %q: %s", mf.GetName(), err))
+				exporter.Logger().Info(
+					fmt.Sprintf("Error encoding metric family %q: %s", mf.GetName(), err))
 			}
 		}
 		if closer, ok := writer.(io.Closer); ok {
@@ -147,15 +148,17 @@ func contextFor(req *http.Request, exporter Exporter, target Target) (context.Co
 	if v := req.Header.Get("X-Prometheus-Scrape-Timeout-Seconds"); v != "" {
 		timeoutSeconds, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			level.Error(exporter.Logger()).Log("msg", fmt.Sprintf("Failed to parse timeout (`%s`) from Prometheus header: %s", v, err))
+			exporter.Logger().Error(
+				fmt.Sprintf("Failed to parse timeout (`%s`) from Prometheus header: %s", v, err))
 		} else {
 			timeout = time.Duration(timeoutSeconds * float64(time.Second))
 
 			// Subtract the timeout offset, unless the result would be negative or zero.
 			timeoutOffset := time.Duration(exporter.Config().Globals.TimeoutOffset)
 			if timeoutOffset > timeout {
-				level.Error(exporter.Logger()).Log("msg", fmt.Sprintf("global.scrape_timeout_offset (`%s`) is greater than Prometheus' scraping timeout (`%s`), ignoring",
-					timeoutOffset, timeout))
+				exporter.Logger().Error(
+					fmt.Sprintf("global.scrape_timeout_offset (`%s`) is greater than Prometheus' scraping timeout (`%s`), ignoring",
+						timeoutOffset, timeout))
 			} else {
 				timeout -= timeoutOffset
 			}
@@ -171,7 +174,8 @@ func contextFor(req *http.Request, exporter Exporter, target Target) (context.Co
 		target.SetDeadline(time.Time{})
 		return context.Background(), func() {}
 	}
-	level.Debug(exporter.Logger()).Log("msg", fmt.Sprintf("launching exporter.Gather() with timeout `%s`", timeout))
+	exporter.Logger().Debug(
+		fmt.Sprintf("launching exporter.Gather() with timeout `%s`", timeout))
 	target.SetDeadline(time.Now().Add(timeout))
 
 	return context.WithDeadline(context.Background(), target.GetDeadline())

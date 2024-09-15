@@ -3,9 +3,7 @@ package main
 import (
 	//"bytes"
 	"fmt"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
 )
 
 // ***************************************************************************************
@@ -17,7 +15,7 @@ import (
 // ****************************
 
 type DebugActionConfig struct {
-	MsgVal string `yaml:"msg"`
+	MsgVal string `yaml:"msg" json:"msg"`
 
 	msg *Field
 
@@ -58,13 +56,13 @@ func (a *DebugAction) Type() int {
 	return debug_action
 }
 
-func (a *DebugAction) GetName(symtab map[string]any, logger log.Logger) string {
+func (a *DebugAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid action name: %v", err),
 			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-			"msg", fmt.Sprintf("invalid action name: %v", err))
+			"script", ScriptName(symtab, logger))
 		return ""
 	}
 	return str
@@ -127,7 +125,7 @@ func (a *DebugAction) setBasicElement(
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
-func (a *DebugAction) PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *DebugAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	return PlayBaseAction(script, symtab, logger, a, a.CustomAction)
 }
 
@@ -149,28 +147,28 @@ func (a *DebugAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 }
 
 // specific behavior for the DebugAction
-func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
-	level.Debug(logger).Log(
+func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
+	logger.Debug(
+		"[Type: DebugAction]",
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", "[Type: DebugAction]")
+		"name", a.GetName(symtab, logger))
 
 	str, err := a.Debug.msg.GetValueString(symtab, nil, false)
 	if err != nil {
 		str = a.Debug.MsgVal
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid template for debug message '%s': %v", str, err),
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
-			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("invalid template for debug message '%s': %v", str, err))
+			"name", a.GetName(symtab, logger))
 	}
 
-	level.Debug(logger).Log(
+	logger.Debug(
+		fmt.Sprintf("    message: %s", str),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", fmt.Sprintf("    message: %s", str))
+		"name", a.GetName(symtab, logger))
 
 	return nil
 }

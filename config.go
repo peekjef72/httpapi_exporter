@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"regexp"
 
@@ -14,16 +16,16 @@ import (
 	"time"
 
 	// "github.com/Masterminds/sprig/v3"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	// "github.com/go-kit/log"
+	// "github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
 )
 
 // Load attempts to parse the given config file and return a Config object.
-func LoadConfig(configFile string, logger log.Logger, collectorName string) (*Config, error) {
-	level.Info(logger).Log("msg", fmt.Sprintf("Loading configuration from %s", configFile))
+func LoadConfig(configFile string, logger *slog.Logger, collectorName string) (*Config, error) {
+	logger.Info(fmt.Sprintf("Loading configuration from %s", configFile))
 	buf, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, err
@@ -57,7 +59,7 @@ type Config struct {
 	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
 
 	configFile string
-	logger     log.Logger
+	logger     *slog.Logger
 	// collectorName is a restriction: collectors set for a target are replaced by this only one.
 	collectorName string
 
@@ -130,7 +132,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				return err
 			}
 		} else {
-			level.Info(c.logger).Log("msg", fmt.Sprintf("static target '%s' found", t.Name))
+			c.logger.Info(fmt.Sprintf("static target '%s' found", t.Name))
 		}
 	}
 	targets := c.Targets
@@ -165,7 +167,7 @@ collectors:
 			return err
 		}
 		c.Targets = append(c.Targets, t)
-		level.Info(c.logger).Log("msg", fmt.Sprintf("target '%s' added", t.Name))
+		c.logger.Info(fmt.Sprintf("target '%s' added", t.Name))
 	}
 
 	for _, t := range c.Targets {
@@ -255,11 +257,11 @@ func GetScriptsDef(map_src map[string]*YAMLScript) map[string]ActionsList {
 }
 
 type dumpConfig struct {
-	Globals        *GlobalConfig          `yaml:"global"`
-	CollectorFiles []string               `yaml:"collector_files,omitempty"`
-	Collectors     []*dumpCollectorConfig `yaml:"collectors,omitempty"`
-	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
-	HttpAPIConfig  map[string]ActionsList `yaml:"httpapi_config"`
+	Globals        *GlobalConfig          `yaml:"global" json:"global"`
+	CollectorFiles []string               `yaml:"collector_files,omitempty" json:"collector_files,omitempty"`
+	Collectors     []*dumpCollectorConfig `yaml:"collectors,omitempty" json:"collectors,omitempty"`
+	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty" json:"auth_configs,omitempty"`
+	HttpAPIConfig  map[string]ActionsList `yaml:"httpapi_config" json:"httpapi_config"`
 }
 
 // YAML marshals the config into YAML format.
@@ -274,6 +276,23 @@ func (c *Config) YAML() ([]byte, error) {
 	return yaml.Marshal(dc)
 }
 
+// YAML marshals the config into YAML format.
+func (c *Config) JSON() ([]byte, error) {
+	type fullConf struct {
+		Config *dumpConfig `json:"config"`
+	}
+	fc := &fullConf{
+		Config: &dumpConfig{
+			Globals:        c.Globals,
+			AuthConfigs:    c.AuthConfigs,
+			CollectorFiles: c.CollectorFiles,
+			Collectors:     GetCollectorsDef(c.Collectors),
+			HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
+		},
+	}
+	return json.Marshal(fc)
+}
+
 // loadCollectorFiles resolves all collector file globs to files and loads the collectors they define.
 func (c *Config) loadCollectorFiles() error {
 	baseDir := filepath.Dir(c.configFile)
@@ -285,7 +304,7 @@ func (c *Config) loadCollectorFiles() error {
 
 		// Resolve the glob to actual filenames.
 		cfs, err := filepath.Glob(cfglob)
-		level.Debug(c.logger).Log("msg", fmt.Sprintf("Checking collectors from %s", cfglob))
+		c.logger.Debug(fmt.Sprintf("Checking collectors from %s", cfglob))
 		if err != nil {
 			// The only error can be a bad pattern.
 			return fmt.Errorf("error parsing collector files for %s: %s", cfglob, err)
@@ -293,7 +312,7 @@ func (c *Config) loadCollectorFiles() error {
 
 		// And load the CollectorConfig defined in each file.
 		for _, cf := range cfs {
-			level.Debug(c.logger).Log("msg", fmt.Sprintf("Loading collectors from %s", cf))
+			c.logger.Debug(fmt.Sprintf("Loading collectors from %s", cf))
 			buf, err := os.ReadFile(cf)
 			if err != nil {
 				return fmt.Errorf("reading collectors file %s: %s", cf, err)
@@ -307,7 +326,7 @@ func (c *Config) loadCollectorFiles() error {
 				return fmt.Errorf("reading %s: %s", cf, err)
 			}
 			c.Collectors = append(c.Collectors, &cc)
-			level.Info(c.logger).Log("msg", fmt.Sprintf("Loaded collector %s from %s", cc.Name, cf))
+			c.logger.Info(fmt.Sprintf("Loaded collector %s from %s", cc.Name, cf))
 		}
 	}
 
@@ -325,7 +344,7 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 
 		// Resolve the glob to actual filenames.
 		tfs, err := filepath.Glob(tfglob)
-		level.Debug(c.logger).Log("msg", fmt.Sprintf("Checking targets from %s", tfglob))
+		c.logger.Debug(fmt.Sprintf("Checking targets from %s", tfglob))
 		if err != nil {
 			// The only error can be a bad pattern.
 			return fmt.Errorf("error resolving targets_files files for %s: %s", tfglob, err)
@@ -333,7 +352,7 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 
 		// And load the CollectorConfig defined in each file.
 		for _, tf := range tfs {
-			level.Debug(c.logger).Log("msg", fmt.Sprintf("Loading targets from %s", tf))
+			c.logger.Debug(fmt.Sprintf("Loading targets from %s", tf))
 			buf, err := os.ReadFile(tf)
 			if err != nil {
 				return fmt.Errorf("reading targets_files for %s: %s", tf, err)
@@ -346,7 +365,7 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 			}
 			target.setFromFile(tf)
 			c.Targets = append(c.Targets, &target)
-			level.Info(c.logger).Log("msg", fmt.Sprintf("Loaded target '%q' from %s", target.Name, tf))
+			c.logger.Info(fmt.Sprintf("Loaded target '%q' from %s", target.Name, tf))
 		}
 	}
 
@@ -355,13 +374,13 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
-	MinInterval     model.Duration `yaml:"min_interval"`          // minimum interval between query executions, default is 0
-	ScrapeTimeout   model.Duration `yaml:"scrape_timeout"`        // per-scrape timeout, global
-	TimeoutOffset   model.Duration `yaml:"scrape_timeout_offset"` // offset to subtract from timeout in seconds
-	MetricPrefix    string         `yaml:"metric_prefix"`         // a prefix to ad dto all metric name; may be redefined in collector files
-	QueryRetry      int            `yaml:"query_retry,omitempty"` // target specific number of times to retry a query
-	InvalidHttpCode any            `yaml:"invalid_auth_code,omitempty"`
-	ExporterName    string         `yaml:"exporter_name,omitempty"`
+	MinInterval     model.Duration `yaml:"min_interval" json:"min_interval"`                   // minimum interval between query executions, default is 0
+	ScrapeTimeout   model.Duration `yaml:"scrape_timeout" json:"scrape_timeout"`               // per-scrape timeout, global
+	TimeoutOffset   model.Duration `yaml:"scrape_timeout_offset" json:"scrape_timeout_offset"` // offset to subtract from timeout in seconds
+	MetricPrefix    string         `yaml:"metric_prefix" json:"metric_prefix"`                 // a prefix to ad dto all metric name; may be redefined in collector files
+	QueryRetry      int            `yaml:"query_retry,omitempty" json:"query_retry,omitempty"` // target specific number of times to retry a query
+	InvalidHttpCode any            `yaml:"invalid_auth_code,omitempty" json:"invalid_auth_code,omitempty"`
+	ExporterName    string         `yaml:"exporter_name,omitempty" json:"exporter_name,omitempty"`
 
 	invalid_auth_code []int
 	// query_retry int
@@ -412,20 +431,20 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // TargetConfig defines a url and a set of collectors to be executed on it.
 type TargetConfig struct {
-	Name            string            `yaml:"name"` // target name to connect to from prometheus
-	Scheme          string            `yaml:"scheme"`
-	Host            string            `yaml:"host"`
-	Port            string            `yaml:"port,omitempty"`
-	BaseUrl         string            `yaml:"baseUrl,omitempty"`
-	AuthName        string            `yaml:"auth_name,omitempty"`
-	AuthConfig      AuthConfig        `yaml:"auth_config,omitempty"`
-	ProxyUrl        string            `yaml:"proxy,omitempty"`
-	VerifySSLString string            `yaml:"verifySSL,omitempty"`
-	ScrapeTimeout   model.Duration    `yaml:"scrape_timeout"`          // per-scrape timeout, global
-	Labels          map[string]string `yaml:"labels,omitempty"`        // labels to apply to all metrics collected from the targets
-	CollectorRefs   []string          `yaml:"collectors"`              // names of collectors to execute on the target
-	TargetsFiles    []string          `yaml:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
-	QueryRetry      int               `yaml:"query_retry,omitempty"`   // target specific number of times to retry a query
+	Name            string            `yaml:"name" json:"name"` // target name to connect to from prometheus
+	Scheme          string            `yaml:"scheme" json:"scheme"`
+	Host            string            `yaml:"host" json:"host"`
+	Port            string            `yaml:"port,omitempty" json:"port,omitempty"`
+	BaseUrl         string            `yaml:"baseUrl,omitempty" json:"baseUrl,omitempty"`
+	AuthName        string            `yaml:"auth_name,omitempty" json:"auth_name,omitempty"`
+	AuthConfig      AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
+	ProxyUrl        string            `yaml:"proxy,omitempty" json:"proxy,omitempty"`
+	VerifySSLString string            `yaml:"verifySSL,omitempty" json:"verifySSL,omitempty"`
+	ScrapeTimeout   model.Duration    `yaml:"scrape_timeout" json:"scrape_timeout"`                   // per-scrape timeout, global
+	Labels          map[string]string `yaml:"labels,omitempty" json:"labels,omitempty"`               // labels to apply to all metrics collected from the targets
+	CollectorRefs   []string          `yaml:"collectors" json:"collectors"`                           // names of collectors to execute on the target
+	TargetsFiles    []string          `yaml:"targets_files,omitempty" json:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
+	QueryRetry      int               `yaml:"query_retry,omitempty" json:"query_retry,omitempty"`     // target specific number of times to retry a query
 
 	collectors       []*CollectorConfig // resolved collector references
 	fromFile         string             // filepath if loaded from targets_files pattern
@@ -603,11 +622,11 @@ func (t *TargetConfig) Clone(host_path string, auth_name string) (*TargetConfig,
 
 // CollectorConfig defines a set of metrics and how they are collected.
 type CollectorConfig struct {
-	Name           string                 `yaml:"collector_name"`          // name of this collector
-	MetricPrefix   string                 `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
-	MinInterval    model.Duration         `yaml:"min_interval,omitempty"`  // minimum interval between query executions
-	Templates      map[string]string      `yaml:"templates,omitempty"`     // share custom templates/funcs for results templating
-	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty"`       // map of all independent scripts to collect metrics - each script can run in parallem
+	Name           string                 `yaml:"collector_name" json:"collector_name"`                   // name of this collector
+	MetricPrefix   string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
+	MinInterval    model.Duration         `yaml:"min_interval,omitempty" json:"min_interval,omitempty"`   // minimum interval between query executions
+	Templates      map[string]string      `yaml:"templates,omitempty" json:"templates,omitempty"`         // share custom templates/funcs for results templating
+	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallem
 	symtab         map[string]any
 
 	customTemplate *exporterTemplate // to store the custom Templates used by this collector
@@ -662,11 +681,11 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 type dumpCollectorConfig struct {
-	Name           string                 `yaml:"collector_name"`          // name of this collector
-	MetricPrefix   string                 `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
-	MinInterval    model.Duration         `yaml:"min_interval,omitempty"`  // minimum interval between query executions
-	Templates      map[string]string      `yaml:"templates,omitempty"`     // share custom templates/funcs for results templating
-	CollectScripts map[string]ActionsList `yaml:"scripts,omitempty"`       // map of all independent scripts to collect metrics - each script can run in parallem
+	Name           string                 `yaml:"collector_name" json:"collector_name"`                   // name of this collector
+	MetricPrefix   string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
+	MinInterval    model.Duration         `yaml:"min_interval,omitempty" json:"min_interval,omitempty"`   // minimum interval between query executions
+	Templates      map[string]string      `yaml:"templates,omitempty" json:"templates,omitempty"`         // share custom templates/funcs for results templating
+	CollectScripts map[string]ActionsList `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallem
 }
 
 func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
@@ -686,14 +705,14 @@ func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
-	Name         string            `yaml:"metric_name"`             // the Prometheus metric name
-	TypeString   string            `yaml:"type"`                    // the Prometheus metric type
-	Help         string            `yaml:"help"`                    // the Prometheus metric help text
-	KeyLabels    any               `yaml:"key_labels,omitempty"`    // expose these atributes as labels from JSON object: format name: value with name and value that should be template
-	StaticLabels map[string]string `yaml:"static_labels,omitempty"` // fixed key/value pairs as static labels
-	ValueLabel   string            `yaml:"value_label,omitempty"`   // with multiple value columns, map their names under this label
-	Values       map[string]string `yaml:"values"`                  // expose each of these columns as a value, keyed by column name
-	Scope        string            `yaml:"scope,omitempty"`         // var path where to collect data: shortcut for {{ .scope.path.var }}
+	Name         string            `yaml:"metric_name" json:"metric_name"`                         // the Prometheus metric name
+	TypeString   string            `yaml:"type" json:"type"`                                       // the Prometheus metric type
+	Help         string            `yaml:"help" json:"help"`                                       // the Prometheus metric help text
+	KeyLabels    any               `yaml:"key_labels,omitempty" json:"key_labels,omitempty"`       // expose these atributes as labels from JSON object: format name: value with name and value that should be template
+	StaticLabels map[string]string `yaml:"static_labels,omitempty" json:"static_labels,omitempty"` // fixed key/value pairs as static labels
+	ValueLabel   string            `yaml:"value_label,omitempty" json:"value_label,omitempty"`     // with multiple value columns, map their names under this label
+	Values       map[string]string `yaml:"values" json:"values"`                                   // expose each of these columns as a value, keyed by column name
+	Scope        string            `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
 
 	valueType      prometheus.ValueType // TypeString converted to prometheus.ValueType
 	key_labels_map map[string]string
@@ -807,10 +826,10 @@ func (bit *ConvertibleBoolean) UnmarshalJSON(data []byte) error {
 }
 
 type AuthConfig struct {
-	Mode     string `yaml:"mode,omitempty"` // basic, encrypted, bearer
-	Username string `yaml:"user,omitempty"`
-	Password Secret `yaml:"password,omitempty"`
-	Token    Secret `yaml:"token,omitempty"`
+	Mode     string `yaml:"mode,omitempty" json:"mode,omitempty"` // basic, encrypted, bearer
+	Username string `yaml:"user,omitempty" json:"user,omitempty"`
+	Password Secret `yaml:"password,omitempty" json:"password,omitempty"`
+	Token    Secret `yaml:"token,omitempty" json:"token,omitempty"`
 	authKey  string
 }
 

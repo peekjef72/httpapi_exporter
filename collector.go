@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	dto "github.com/prometheus/client_model/go"
 )
 
@@ -24,7 +23,7 @@ type Collector interface {
 	GetId() (id string)
 	GetStatus() int
 	SetStatus(status int)
-	SetLogger(log.Logger)
+	SetLogger(*slog.Logger)
 	SetSetStats(Target)
 }
 
@@ -40,7 +39,7 @@ type collector struct {
 
 	// to protect the data during exchange
 	content_mutex *sync.Mutex
-	logger        log.Logger
+	logger        *slog.Logger
 }
 
 const (
@@ -54,7 +53,7 @@ const (
 // the provided const labels applied.
 func NewCollector(
 	logContext []interface{},
-	logger log.Logger,
+	logger *slog.Logger,
 	cc *CollectorConfig,
 	constLabels []*dto.LabelPair,
 	collect_script []*YAMLScript) (Collector, error) {
@@ -99,7 +98,7 @@ func NewCollector(
 
 		logCtx = append(logCtx, logContext...)
 		logCtx = append(logCtx, "msg", fmt.Sprintf("NewCollector(): Non-zero min_interval (%s), using cached collector.", c.config.MinInterval))
-		level.Debug(logger).Log(logCtx...)
+		logger.Debug("multilevel...", logCtx...)
 		return newCachingCollector(&c), nil
 	}
 	return &c, nil
@@ -141,7 +140,7 @@ func (c *collector) SetStatus(status int) {
 	c.status = status
 }
 
-func (c *collector) SetLogger(logger log.Logger) {
+func (c *collector) SetLogger(logger *slog.Logger) {
 	c.content_mutex.Lock()
 	c.logger = logger
 	// c.client.logger = logger
@@ -189,9 +188,9 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 	c.status = CollectorStatusError
 	status = CollectorStatusOk
 	for _, scr := range c.collect_script {
-		level.Debug(c.logger).Log(
-			"collid", CollectorId(c.client.symtab, c.logger),
-			"msg", fmt.Sprintf("starting script '%s/%s'", c.config.Name, scr.name))
+		c.logger.Debug(
+			fmt.Sprintf("starting script '%s/%s'", c.config.Name, scr.name),
+			"collid", CollectorId(c.client.symtab, c.logger))
 		if err := scr.Play(c.client.symtab, false, c.logger); err != nil {
 			switch err {
 			case ErrInvalidLogin:
@@ -201,10 +200,10 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 				status = CollectorStatusTimeout
 				coll_ch <- MsgTimeout
 			default:
-				level.Warn(c.logger).Log(
+				c.logger.Warn(
+					err.Error(),
 					"collid", CollectorId(c.client.symtab, c.logger),
-					"script", ScriptName(c.client.symtab, c.logger),
-					"errmsg", err)
+					"script", ScriptName(c.client.symtab, c.logger))
 				coll_ch <- MsgQuit
 				status = CollectorStatusError
 			}
@@ -218,16 +217,16 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 	// tell calling target that this collector is over.
 	if status != CollectorStatusError {
 		coll_ch <- MsgDone
-		level.Debug(c.logger).Log(
+		c.logger.Debug(
+			"MsgDone sent to channel.",
 			"collid", CollectorId(c.client.symtab, c.logger),
-			"script", ScriptName(c.client.symtab, c.logger),
-			"msg", "MsgDone sent to channel.")
+			"script", ScriptName(c.client.symtab, c.logger))
 	}
 
 	// clean up
-	level.Debug(c.logger).Log(
-		"collid", CollectorId(c.client.symtab, c.logger),
-		"msg", fmt.Sprintf("removing metric channel for '%s'", c.config.Name))
+	c.logger.Debug(
+		fmt.Sprintf("removing metric channel for '%s'", c.config.Name),
+		"collid", CollectorId(c.client.symtab, c.logger))
 
 	delete(c.client.symtab, "__metric_channel")
 	delete(c.client.symtab, "__coll_channel")
@@ -293,7 +292,7 @@ func (cc *cachingCollector) SetStatus(status int) {
 	cc.rawColl.status = status
 }
 
-func (cc *cachingCollector) SetLogger(logger log.Logger) {
+func (cc *cachingCollector) SetLogger(logger *slog.Logger) {
 	cc.rawColl.SetLogger(logger)
 }
 
@@ -319,7 +318,7 @@ func (cc *cachingCollector) Collect(ctx context.Context, ch chan<- Metric, coll_
 			logCtx = append(logCtx, cc.rawColl.logContext...)
 			logCtx = append(logCtx, "msg", fmt.Sprintf("Collecting fresh metrics: min_interval=%.3fs cache_age=%.3fs",
 				cc.minInterval.Seconds(), age.Seconds()))
-			level.Debug(cc.rawColl.logger).Log(logCtx...)
+			cc.rawColl.logger.Debug("multilevel", logCtx...)
 			cacheChan := make(chan Metric, capMetricChan)
 			cc.cache = make([]Metric, 0, len(cc.cache))
 			go func() {
@@ -337,7 +336,7 @@ func (cc *cachingCollector) Collect(ctx context.Context, ch chan<- Metric, coll_
 			logCtx = append(logCtx, cc.rawColl.logContext...)
 			logCtx = append(logCtx, "msg", fmt.Sprintf("Returning cached metrics: min_interval=%.3fs cache_age=%.3fs",
 				cc.minInterval.Seconds(), age.Seconds()))
-			level.Debug(cc.rawColl.logger).Log(logCtx...)
+			cc.rawColl.logger.Debug("multilevel", logCtx...)
 			for _, metric := range cc.cache {
 				ch <- metric
 			}

@@ -4,19 +4,18 @@ import (
 	//"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 	"text/template"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v3"
 )
 
 type YAMLScript struct {
 	// name           string `yaml:"name"`
-	Actions    ActionsList `yaml:"actions"`
-	UntilLimit int         `yaml:"until_limit"`
+	Actions    ActionsList `yaml:"actions" json:"actions,omitempty"`
+	UntilLimit int         `yaml:"until_limit" json:"until_limit,omitempty"`
 
 	name            string
 	customTemplate  *template.Template
@@ -24,10 +23,10 @@ type YAMLScript struct {
 	setStatsActions []*SetStatsAction
 }
 
-type DumpYAMLScript struct {
-	Actions    ActionsList `yaml:"actions"`
-	UntilLimit int         `yaml:"until_limit"`
-}
+// type DumpYAMLScript struct {
+// 	Actions    ActionsList `yaml:"actions" json:"actions,omitempty"`
+// 	UntilLimit int         `yaml:"until_limit,omitempty" json:"until_limit,omitempty"`
+// }
 
 //******************************************************************
 //**
@@ -54,8 +53,8 @@ type Action interface {
 	BaseAction
 	Type() int
 	setBasicElement(nameField *Field, vars [][]any, with []any, loopVar string, when []*exporterTemplate, until []*exporterTemplate) error
-	PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error
-	CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error
+	PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
+	CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
 
 	// only for MetricsAction
 	GetMetrics() []*GetMetricsRes
@@ -69,7 +68,7 @@ type Action interface {
 
 type ActionsList []Action
 
-func (sc *YAMLScript) Play(symtab map[string]any, ignore_errors bool, logger log.Logger) error {
+func (sc *YAMLScript) Play(symtab map[string]any, ignore_errors bool, logger *slog.Logger) error {
 	symtab["__name__"] = sc.name
 	for _, ac := range sc.Actions {
 		err := ac.PlayAction(sc, symtab, logger)
@@ -89,47 +88,47 @@ func (sc *YAMLScript) AddCustomTemplate(customTemplate *exporterTemplate) error 
 	}
 	return nil
 }
-func CollectorId(symtab map[string]any, logger log.Logger) string {
+func CollectorId(symtab map[string]any, logger *slog.Logger) string {
 	raw_id, ok := symtab["__collector_id"]
 	if !ok {
-		level.Warn(logger).Log("msg", "invalid collector id")
+		logger.Warn("invalid collector id")
 		return ""
 	}
 	str, ok := raw_id.(string)
 	if !ok {
-		level.Warn(logger).Log("msg", "invalid collector id")
+		logger.Warn("invalid collector id")
 		return ""
 
 	}
 	return str
 }
 
-func ScriptName(symtab map[string]any, logger log.Logger) string {
+func ScriptName(symtab map[string]any, logger *slog.Logger) string {
 	raw_name, ok := symtab["__name__"]
 	if !ok {
-		level.Warn(logger).Log("msg", "invalid script name")
+		logger.Warn("invalid script name")
 		return ""
 	}
 	str, ok := raw_name.(string)
 	if !ok {
-		level.Warn(logger).Log("msg", "invalid script name type")
+		logger.Warn("invalid script name type")
 		return ""
 
 	}
 	return str
 }
 
-func Name(name *Field, symtab map[string]any, logger log.Logger) string {
+func Name(name *Field, symtab map[string]any, logger *slog.Logger) string {
 	str, err := name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log("msg", fmt.Sprintf("invalid action name: %v", err))
+		logger.Warn(fmt.Sprintf("invalid action name: %v", err))
 		return ""
 	}
 	return str
 }
 
 type BaseAction interface {
-	GetName(symtab map[string]any, logger log.Logger) string
+	GetName(symtab map[string]any, logger *slog.Logger) string
 
 	GetNameField() *Field
 	SetNameField(*Field)
@@ -278,7 +277,7 @@ func AddCustomTemplate(ba BaseAction, customTemplate *exporterTemplate) error {
 }
 
 // ********************************************************************************
-func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_name string, cur_level int) (any, error) {
+func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_name string, cur_level int) (any, error) {
 	var data any
 	var err error
 	switch curval := item.(type) {
@@ -314,11 +313,12 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_na
 		for r_key, r_value := range curval {
 			key, err := ValorizeValue(symtab, r_key, logger, action_name, cur_level+1)
 			if err != nil {
-				level.Warn(logger).Log(
+				logger.Warn(
+					fmt.Sprintf("error building map key: %v", r_key),
+					"errmsg", err,
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", action_name,
-					"msg", fmt.Sprintf("error building map key: %v", r_key), "errmsg", err)
+					"name", action_name)
 				continue
 			}
 			key_val := ""
@@ -329,19 +329,21 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_na
 			}
 			value, err := ValorizeValue(symtab, r_value, logger, action_name, cur_level+1)
 			if err != nil {
-				level.Warn(logger).Log(
+				logger.Warn(
+					fmt.Sprintf("error building map value for key '%s'", key_val),
+					"errmsg", err,
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", action_name,
-					"msg", fmt.Sprintf("error building map value for key '%s'", key_val), "errmsg", err)
+					"name", action_name)
 				continue
 			}
 			if err := SetSymTab(ldata, key_val, value); err != nil {
-				level.Warn(logger).Log(
+				logger.Warn(
+					fmt.Sprintf("error setting map value for key '%s'", key_val),
+					"errmsg", err,
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", action_name,
-					"msg", fmt.Sprintf("error setting map value for key '%s'", key_val), "errmsg", err)
+					"name", action_name)
 				continue
 			}
 		}
@@ -351,11 +353,12 @@ func ValorizeValue(symtab map[string]any, item any, logger log.Logger, action_na
 		for idx, r_value := range curval {
 			values, err := ValorizeValue(symtab, r_value, logger, action_name, cur_level+1)
 			if err != nil {
-				level.Warn(logger).Log(
+				logger.Warn(
+					fmt.Sprintf("error building list value for index: %d", idx),
+					"errmsg", err,
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", action_name,
-					"msg", fmt.Sprintf("error building list value for index: %d", idx), "errmsg", err)
+					"name", action_name)
 				continue
 			}
 			ldata[idx] = values
@@ -475,7 +478,7 @@ func evalCond(symtab map[string]any, condTpl *exporterTemplate) (cond bool, err 
 	return cond, nil
 }
 
-func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger, ba Action, customAction func(*YAMLScript, map[string]any, log.Logger) error) error {
+func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger, ba Action, customAction func(*YAMLScript, map[string]any, *slog.Logger) error) error {
 
 	// to preverse values from symtab
 	old_values := make(map[string]any)
@@ -495,11 +498,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 	if len(baVars) > 0 {
 		for _, pair := range baVars {
 			if pair == nil {
-				level.Warn(logger).Log(
+				logger.Warn(
+					"invalid key value pair for vars",
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", ba.GetName(symtab, logger),
-					"msg", "invalid key value pair for vars")
+					"name", ba.GetName(symtab, logger))
 				continue
 			}
 			if key, ok := pair[0].(*Field); ok {
@@ -512,44 +515,44 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 							if s_value, ok := value.(string); ok {
 								if s_value == "_" {
 									DeleteSymtab(symtab, key_name)
-									level.Debug(logger).Log(
+									logger.Debug(
+										fmt.Sprintf("vars(%s) has '_' value (removed)", key_name),
 										"collid", CollectorId(symtab, logger),
 										"script", ScriptName(symtab, logger),
-										"name", ba.GetName(symtab, logger),
-										"msg", fmt.Sprintf("vars(%s) has '_' value (removed)", key_name))
+										"name", ba.GetName(symtab, logger))
 									add_symbol = false
 								}
 							}
 							if add_symbol {
 								if err := preserve_sym_tab(symtab, old_values, key_name, value); err != nil {
-									level.Warn(logger).Log(
+									logger.Warn(
+										fmt.Sprintf("error preserve symtab (%s): %s", key_name, err),
 										"collid", CollectorId(symtab, logger),
 										"script", ScriptName(symtab, logger),
-										"name", ba.GetName(symtab, logger),
-										"msg", fmt.Sprintf("error preserve symtab (%s): %s", key_name, err))
+										"name", ba.GetName(symtab, logger))
 								}
 							}
 						} else {
 							DeleteSymtab(symtab, key_name)
-							level.Debug(logger).Log(
+							logger.Debug(
+								fmt.Sprintf("vars(%s) has nil value (removed)", key_name),
 								"collid", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
-								"name", ba.GetName(symtab, logger),
-								"msg", fmt.Sprintf("vars(%s) has nil value (removed)", key_name))
+								"name", ba.GetName(symtab, logger))
 						}
 					} else {
-						level.Warn(logger).Log(
+						logger.Warn(
+							fmt.Sprintf("no data found for vars(%s): %s", key, err),
 							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
-							"name", ba.GetName(symtab, logger),
-							"msg", fmt.Sprintf("no data found for vars(%s): %s", key, err))
+							"name", ba.GetName(symtab, logger))
 					}
 				} else {
-					level.Warn(logger).Log(
+					logger.Warn(
+						fmt.Sprintf("no data found for vars: %s", err),
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
-						"name", ba.GetName(symtab, logger),
-						"msg", fmt.Sprintf("no data found for vars: %s", err))
+						"name", ba.GetName(symtab, logger))
 				}
 			}
 		}
@@ -573,11 +576,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 						if len(l_data) > 0 {
 							final_items = append(final_items, l_data...)
 						} else {
-							level.Warn(logger).Log(
+							logger.Warn(
+								"with_items list empty.",
 								"collid", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
-								"name", ba.GetName(symtab, logger),
-								"msg", "with_items list empty.")
+								"name", ba.GetName(symtab, logger))
 						}
 					} else {
 						if s_data, ok := data.(string); ok {
@@ -590,11 +593,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 					}
 				}
 			} else {
-				level.Warn(logger).Log(
+				logger.Warn(
+					fmt.Sprintf("no data found for with_items: %s", err),
 					"collid", CollectorId(symtab, logger),
 					"script", ScriptName(symtab, logger),
-					"name", ba.GetName(symtab, logger),
-					"msg", fmt.Sprintf("no data found for with_items: %s", err))
+					"name", ba.GetName(symtab, logger))
 			}
 		}
 		items = final_items
@@ -617,11 +620,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 		for idx, item := range items {
 			if set_loops_var {
 				if err := preserve_sym_tab(symtab, old_values, loop_var, item); err != nil {
-					level.Warn(logger).Log(
+					logger.Warn(
+						fmt.Sprintf("error preserve symtab (%s): %s", loop_var, err),
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
-						"name", ba.GetName(symtab, logger),
-						"msg", fmt.Sprintf("error preserve symtab (%s): %s", loop_var, err))
+						"name", ba.GetName(symtab, logger))
 				}
 				preserve_sym_tab(symtab, old_values, "loop_var_idx", idx)
 				preserve_sym_tab(symtab, old_values, "loop_var", loop_var)
@@ -639,11 +642,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 						return fmt.Errorf("invalid template value for 'when' %s: %s", baWhen[i].Tree.Root.String(), err)
 					}
 					if !cond {
-						level.Debug(logger).Log(
+						logger.Debug(
+							fmt.Sprintf("skipped: when condition false: '%s'", baWhen[i].Tree.Root.String()),
 							"collid", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
-							"name", ba.GetName(symtab, logger),
-							"msg", fmt.Sprintf("skipped: when condition false: '%s'", baWhen[i].Tree.Root.String()))
+							"name", ba.GetName(symtab, logger))
 
 						valid_value = false
 						break
@@ -672,19 +675,19 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 				cond, err := evalCond(symtab, condTpl)
 				if err != nil {
 					err := fmt.Errorf("invalid template value for 'until' %s: %s", baUntil[i].Tree.Root.String(), err)
-					level.Warn(logger).Log(
+					logger.Warn(
+						err.Error(),
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
-						"name", ba.GetName(symtab, logger),
-						"msg", err)
+						"name", ba.GetName(symtab, logger))
 					return err
 				}
 				if !cond {
-					level.Debug(logger).Log(
+					logger.Debug(
+						fmt.Sprintf("Name: '%s' until limit cond reached : '%s'", ba.GetName(symtab, logger), baUntil[i].Tree.Root.String()),
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
-						"name", ba.GetName(symtab, logger),
-						"msg", fmt.Sprintf("Name: '%s' until limit cond reached : '%s'", ba.GetName(symtab, logger), baUntil[i].Tree.Root.String()))
+						"name", ba.GetName(symtab, logger))
 
 					valid_value = false
 					break
@@ -692,11 +695,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger log.Logger
 			}
 			if !valid_value || idx >= script.UntilLimit {
 				if idx >= script.UntilLimit {
-					level.Warn(logger).Log(
+					logger.Warn(
+						fmt.Sprintf("max iteration reached for until action (%d)", script.UntilLimit),
 						"collid", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
-						"name", ba.GetName(symtab, logger),
-						"msg", fmt.Sprintf("max iteration reached for until action (%d)", script.UntilLimit))
+						"name", ba.GetName(symtab, logger))
 				}
 				break
 			}

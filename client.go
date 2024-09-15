@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	// "net"
 	"strconv"
@@ -14,8 +15,6 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/go-resty/resty/v2"
 	"github.com/imdario/mergo"
 	"github.com/mitchellh/copystructure"
@@ -37,7 +36,7 @@ type Client struct {
 	client *resty.Client
 
 	// logContext []interface{}
-	logger log.Logger
+	logger *slog.Logger
 	sc     map[string]*YAMLScript
 
 	// maybe better to use target symtab with a mutex.lock
@@ -48,7 +47,7 @@ type Client struct {
 	content_mutex *sync.Mutex
 }
 
-func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger log.Logger, gc *GlobalConfig) *Client {
+func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Logger, gc *GlobalConfig) *Client {
 
 	cl := &Client{
 		// logContext:        []interface{}{},
@@ -94,10 +93,10 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 
 	tmp = c.symtab
 	if tmp, err = copystructure.Copy(c.symtab); err != nil {
-		level.Error(c.logger).Log(
+		c.logger.Error(
+			"can't clone symbols table for new client",
 			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"msg", "can't clone symbols table for new client")
+			"script", ScriptName(c.symtab, c.logger))
 		return nil
 	}
 	if val, ok := tmp.(map[string]any); ok {
@@ -144,10 +143,10 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 func (c *Client) SetUrl(url string) string {
 	if _, ok := c.symtab["APIEndPoint"]; !ok {
 		err := fmt.Errorf("http base uri not found")
-		level.Error(c.logger).Log(
+		c.logger.Error(
+			err.Error(),
 			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"errmsg", err)
+			"script", ScriptName(c.symtab, c.logger))
 		return ""
 	}
 	base := c.symtab["APIEndPoint"].(string)
@@ -155,10 +154,11 @@ func (c *Client) SetUrl(url string) string {
 	uri := fmt.Sprintf("%s/%s", base, strings.TrimPrefix(url, "/"))
 	c.symtab["uri"] = uri
 
-	level.Debug(c.logger).Log(
+	c.logger.Debug(
+		"uri set",
+		"uri", uri,
 		"collid", CollectorId(c.symtab, c.logger),
-		"script", ScriptName(c.symtab, c.logger),
-		"uri", uri)
+		"script", ScriptName(c.symtab, c.logger))
 	return uri
 }
 
@@ -177,10 +177,10 @@ func (c *Client) getJSONResponse(resp *resty.Response) any {
 			// copy(tmp, body)
 			err = json.Unmarshal(body, &data)
 			if err != nil {
-				level.Error(c.logger).Log(
+				c.logger.Error(
+					fmt.Sprintf("Fail to decode json results %v", err),
 					"collid", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger),
-					"errmsg", fmt.Sprintf("Fail to decode json results %v", err))
+					"script", ScriptName(c.symtab, c.logger))
 			}
 		}
 	} else {
@@ -205,26 +205,26 @@ func (c *Client) Execute(
 	var ok bool
 
 	url := c.SetUrl(uri)
-	level.Debug(c.logger).Log(
+	c.logger.Debug(
+		"querying httpapi",
 		"collid", CollectorId(c.symtab, c.logger),
 		"script", ScriptName(c.symtab, c.logger),
-		"msg", "querying httpapi",
 		"method", method,
 		"url", url)
 	if body != nil {
-		level.Debug(c.logger).Log(
+		c.logger.Debug(
+			"querying httpapi",
 			"collid", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
-			"msg", "querying httpapi",
 			"method", method,
 			"url", url,
 			"body", fmt.Sprintf("%+v", body))
 	}
 	if len(params) > 0 {
-		level.Debug(c.logger).Log(
+		c.logger.Debug(
+			"querying httpapi",
 			"collid", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
-			"msg", "querying httpapi",
 			"method", method,
 			"url", url,
 			"params", params)
@@ -250,10 +250,10 @@ func (c *Client) Execute(
 			code := resp.StatusCode()
 			// if (i+1 < query_retry) && check_invalid_auth && slices.Contains(c.invalid_auth_code, code) {
 			if (i+1 < query_retry) && slices.Contains(c.invalid_auth_code, code) {
-				level.Debug(c.logger).Log(
+				c.logger.Debug(
+					"received invalid auth. start Ping()/Login()",
 					"collid", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger),
-					"msg", "received invalid auth. start Ping()/Login()")
+					"script", ScriptName(c.symtab, c.logger))
 
 				c.symtab["logged"] = false
 
@@ -266,10 +266,10 @@ func (c *Client) Execute(
 			c.symtab["response_headers"] = resp.Header()
 			c.symtab["response_cookies"] = resp.Cookies()
 		} else {
-			level.Debug(c.logger).Log(
+			c.logger.Debug(
+				fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
 				"collid", CollectorId(c.symtab, c.logger),
 				"script", ScriptName(c.symtab, c.logger),
-				"msg", fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
 				"errmsg", err)
 			code := resp.StatusCode()
 			if code == 599 || strings.Contains(err.Error(), "context deadline exceeded") {
@@ -730,20 +730,20 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 
 	if params.Method == "" {
 		err := fmt.Errorf("http method not found")
-		level.Error(c.logger).Log(
+		c.logger.Error(
+			err.Error(),
 			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"errmsg", err)
+			"script", ScriptName(c.symtab, c.logger))
 		return err
 	}
 	method := strings.ToUpper(params.Method)
 
 	if params.Url == "" {
 		err := fmt.Errorf("http url not found")
-		level.Error(c.logger).Log(
+		c.logger.Error(
+			err.Error(),
 			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"errmsg", err)
+			"script", ScriptName(c.symtab, c.logger))
 		return err
 	}
 	url := params.Url
@@ -778,12 +778,14 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			}
 			if strings.HasPrefix(passwd, "/encrypted/") {
 				ciphertext := passwd[len("/encrypted/"):]
-				level.Debug(c.logger).Log(
+				c.logger.Debug(
+					"encrypted password detected",
 					"collid", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger),
 					"ciphertext", ciphertext)
 				auth_key := GetMapValueString(symtab, "auth_key")
-				level.Debug(c.logger).Log(
+				c.logger.Debug(
+					"auth_key detected",
 					"collid", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger),
 					"auth_key", auth_key)
@@ -803,10 +805,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			c.client.SetBasicAuth(user, passwd)
 			passwd = ""
 			symtab["auth_set"] = true
-			level.Debug(c.logger).Log(
+			c.logger.Debug(
+				"basicauth Header set for request",
 				"collid", CollectorId(c.symtab, c.logger),
-				"script", ScriptName(c.symtab, c.logger),
-				"msg", "basicauth Header set for request")
+				"script", ScriptName(c.symtab, c.logger))
 			delete(symtab, "auth_key")
 		} else if auth_mode == "token" {
 			auth_token := GetMapValueString(symtab, "auth_token")
@@ -817,20 +819,20 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			}
 			if auth_token != "" {
 				c.client.SetAuthToken(auth_token)
-				level.Debug(c.logger).Log(
+				c.logger.Debug(
+					"token Hearder set for request",
 					"collid", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger),
-					"msg", "token Hearder set for request")
+					"script", ScriptName(c.symtab, c.logger))
 			}
 		}
 	}
 
 	if len(params.OkStatus) <= 0 {
 		err := fmt.Errorf("ok_status not found")
-		level.Error(c.logger).Log(
+		c.logger.Error(
+			err.Error(),
 			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"errmsg", err)
+			"script", ScriptName(c.symtab, c.logger))
 		return err
 	}
 	valid_status := params.OkStatus
@@ -853,10 +855,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		return err
 	}
 	if params.Debug {
-		level.Debug(c.logger).Log(
+		c.logger.Debug(
+			"launch query debug",
 			"collid", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
-			"msg", "launch query debug",
 			"url", symtab["uri"].(string),
 			"results", string(resp.Body()))
 	}
@@ -867,16 +869,17 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 
 	if !slices.Contains(valid_status, code) {
 		symtab["query_status"] = false
-		level.Info(c.logger).Log(
+		c.logger.Info(
+			fmt.Sprintf("invalid response status: (%d not in %v)",
+				code, valid_status),
+			"collid", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger))
+		c.logger.Debug(
+			fmt.Sprintf("invalid req headers: (%v) req cookies %v- response headers: (%v)",
+				c.client.Header, c.client.Cookies, resp.Header()),
 			"collid", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
-			"msg", fmt.Sprintf("invalid response status: (%d not in %v)",
-				code, valid_status))
-		level.Debug(c.logger).Log(
-			"collid", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"msg", fmt.Sprintf("invalid req headers: (%v) req cookies %v- response headers: (%v)",
-				c.client.Header, c.client.Cookies, resp.Header()))
+		)
 
 		err = ErrInvalidQueryResult
 	} else {
@@ -889,10 +892,10 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			} else if var_name == "_root" {
 				opts := mergo.WithOverride
 				if err := mergo.Merge(&symtab, data, opts); err != nil {
-					level.Error(c.logger).Log(
+					c.logger.Error(
+						"merging results into symbols table",
 						"collid", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger),
-						"msg", "merging results into symbols table",
 						"errmsg", err)
 					return err
 				}
@@ -1096,18 +1099,18 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	cl.symtab["queryRetry"] = query_retry
 
 	if scheme == "https" {
-		level.Debug(cl.logger).Log(
+		cl.logger.Debug(
+			fmt.Sprintf("verify certificate set to %v", verifySSL),
 			"collid", CollectorId(cl.symtab, cl.logger),
-			"script", ScriptName(cl.symtab, cl.logger),
-			"msg", fmt.Sprintf("verify certificate set to %v", verifySSL))
+			"script", ScriptName(cl.symtab, cl.logger))
 		cl.client = resty.New().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: !verifySSL})
 	} else if scheme == "http" {
 		cl.client = resty.New()
 	} else {
-		level.Error(cl.logger).Log(
+		cl.logger.Error(
+			fmt.Sprintf("invalid scheme for url '%s'", scheme),
 			"collid", CollectorId(cl.symtab, cl.logger),
-			"script", ScriptName(cl.symtab, cl.logger),
-			"msg", fmt.Sprintf("invalid scheme for url '%s'", scheme))
+			"script", ScriptName(cl.symtab, cl.logger))
 		return nil
 	}
 	timeout := time.Duration(cl.symtab["timeout"].(time.Duration))
@@ -1253,10 +1256,10 @@ func (cl *Client) Ping() (bool, error) {
 
 	// ** get the ping script definition from config if one is defined
 	if script, ok := cl.sc["ping"]; ok && script != nil {
-		level.Debug(logger).Log(
+		logger.Debug(
+			fmt.Sprintf("starting script '%s'", script.name),
 			"collid", CollectorId(cl.symtab, logger),
-			"script", ScriptName(cl.symtab, logger),
-			"msg", fmt.Sprintf("starting script '%s'", script.name))
+			"script", ScriptName(cl.symtab, logger))
 		// cl.symtab["__client"] = cl.client
 
 		cl.symtab["__method"] = cl.callClientExecute
@@ -1270,10 +1273,10 @@ func (cl *Client) Ping() (bool, error) {
 		}
 	} else {
 		err := fmt.Errorf("no ping script found... can't connect")
-		level.Error(logger).Log(
+		logger.Error(
+			err.Error(),
 			"collid", CollectorId(cl.symtab, logger),
-			"script", ScriptName(cl.symtab, logger),
-			"msg", err)
+			"script", ScriptName(cl.symtab, logger))
 		return false, err
 	}
 

@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
 )
 
 // ***************************************************************************************
@@ -14,13 +12,13 @@ import (
 // ***************************************************************************************
 
 type PlayScriptAction struct {
-	Name                 *Field              `yaml:"name,omitempty"`
-	With                 []any               `yaml:"with,omitempty"`
-	When                 []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar              string              `yaml:"loop_var,omitempty"`
-	Vars                 [][]any             `yaml:"vars,omitempty"`
-	Until                []*exporterTemplate `yaml:"until,omitempty"`
-	PlayScriptActionName string              `yaml:"play_script"`
+	Name                 *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With                 []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When                 []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar              string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars                 [][]any             `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until                []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	PlayScriptActionName string              `yaml:"play_script" json:"play_script"`
 
 	playScriptAction *YAMLScript
 	vars             [][]any
@@ -33,13 +31,13 @@ func (a *PlayScriptAction) Type() int {
 	return play_script_action
 }
 
-func (a *PlayScriptAction) GetName(symtab map[string]any, logger log.Logger) string {
+func (a *PlayScriptAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid action name: %v", err),
 			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-			"msg", fmt.Sprintf("invalid action name: %v", err))
+			"script", ScriptName(symtab, logger))
 		return ""
 	}
 	return str
@@ -98,7 +96,7 @@ func (a *PlayScriptAction) setBasicElement(
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
-func (a *PlayScriptAction) PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *PlayScriptAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	return PlayBaseAction(script, symtab, logger, a, a.CustomAction)
 }
 
@@ -124,12 +122,12 @@ func (a *PlayScriptAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 }
 
 // specific behavior for the PlayScriptAction
-func (a *PlayScriptAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
-	level.Debug(logger).Log(
+func (a *PlayScriptAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
+	logger.Debug(
+		fmt.Sprintf("[Type: PlayScriptAction] Name: %s", a.GetName(symtab, logger)),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: PlayScriptAction] Name: %s", a.GetName(symtab, logger)))
+		"name", a.GetName(symtab, logger))
 
 	return a.playScriptAction.Play(symtab, false, logger)
 }

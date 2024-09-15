@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promslog"
 )
 
 var (
@@ -29,7 +28,7 @@ type Exporter interface {
 	// Config returns the Exporter's underlying Config object.
 	Config() *Config
 	Targets() []Target
-	Logger() log.Logger
+	Logger() *slog.Logger
 	AddTarget(*TargetConfig) (Target, error)
 	FindTarget(string) (Target, error)
 	GetFirstTarget() (Target, error)
@@ -51,7 +50,7 @@ type exporter struct {
 
 	cur_target    Target
 	ctx           context.Context
-	logger        log.Logger
+	logger        *slog.Logger
 	start_time    string
 	reload_time   string
 	logLevel      string
@@ -59,7 +58,7 @@ type exporter struct {
 }
 
 // NewExporter returns a new Exporter with the provided config.
-func NewExporter(configFile string, logger log.Logger, collectorName string) (Exporter, error) {
+func NewExporter(configFile string, logger *slog.Logger, collectorName string) (Exporter, error) {
 	c, err := LoadConfig(configFile, logger, collectorName)
 	if err != nil {
 		return nil, err
@@ -123,9 +122,10 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 				if !ok {
 					err = errors.New("undefined error")
 				}
-				level.Debug(e.logger).Log(
+				e.logger.Debug(
+					fmt.Sprintf("target has panic-ed: %s", err.Error()),
 					"collid", target.Name(),
-					"msg", fmt.Sprintf("target has panic-ed: %s", err.Error()))
+				)
 			}
 		}()
 		defer wg.Done()
@@ -135,7 +135,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 	// Wait for all collectors to complete, then close the channel.
 	go func() {
 		wg.Wait()
-		level.Debug(e.logger).Log("msg", "exporter.Gather(): closing metric channel")
+		e.logger.Debug("exporter.Gather(): closing metric channel")
 		close(metricChan)
 	}()
 
@@ -145,7 +145,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 		}
 	}()
 
-	level.Debug(e.logger).Log("msg", fmt.Sprintf("exporter.Gather(): **** Target collect() launch is OVER :'%s' ****", e.cur_target.Name()))
+	e.logger.Debug(fmt.Sprintf("exporter.Gather(): **** Target collect() launch is OVER :'%s' ****", e.cur_target.Name()))
 	// Gather.
 	dtoMetricFamilies := make(map[string]*dto.MetricFamily, 10)
 	for metric := range metricChan {
@@ -173,7 +173,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 		}
 		dtoMetricFamily.Metric = append(dtoMetricFamily.Metric, dtoMetric)
 	}
-	level.Debug(e.logger).Log("msg", "exporter.Gather(): **** Target channel analysis is OVER ****")
+	e.logger.Debug("exporter.Gather(): **** Target channel analysis is OVER ****")
 
 	// No need to sort metric families, prometheus.Gatherers will do that for us when merging.
 	result := make([]*dto.MetricFamily, 0, len(dtoMetricFamilies))
@@ -194,7 +194,7 @@ func (e *exporter) Targets() []Target {
 }
 
 // Logger implements Exporter.
-func (e *exporter) Logger() log.Logger {
+func (e *exporter) Logger() *slog.Logger {
 	return e.logger
 }
 
@@ -264,7 +264,8 @@ func (e *exporter) GetLogLevel() string {
 }
 
 func (e *exporter) IncreaseLogLevel(new_lvl string) {
-	var Level func(log.Logger) log.Logger
+	// var Level slog.Level
+	var log func(msg string, args ...any)
 	e.content_mutex.Lock()
 	defer e.content_mutex.Unlock()
 
@@ -272,43 +273,58 @@ func (e *exporter) IncreaseLogLevel(new_lvl string) {
 		switch e.logLevel {
 		case "debug":
 			e.logLevel = "info"
-			Level = level.Info
+			// Level = slog.LevelInfo
 		case "info":
 			e.logLevel = "warn"
-			Level = level.Warn
+			// Level = slog.LevelWarn
 		case "warn":
 			e.logLevel = "error"
-			Level = level.Error
+			// Level = slog.LevelError
 		case "error":
 			e.logLevel = "debug"
-			Level = level.Debug
+			// Level = slog.LevelDebug
 		}
 	} else {
 		switch new_lvl {
 		case "debug":
-			Level = level.Debug
+			// Level = slog.LevelDebug
+			log = e.logger.Debug
 		case "info":
-			Level = level.Info
+			// Level = slog.LevelInfo
+			log = e.logger.Info
 		case "warn":
-			Level = level.Warn
+			// Level = slog.LevelWarn
+			log = e.logger.Warn
 		case "error":
-			Level = level.Error
+			// Level = slog.LevelError
+			log = e.logger.Error
 		default:
-			level.Error(e.logger).Log("msg", fmt.Sprintf("invalid log.level specified %s", new_lvl))
+			e.logger.Error(fmt.Sprintf("invalid log.level specified %s", new_lvl))
 			return
 		}
 		if e.logLevel == new_lvl {
-			Level(e.logger).Log("msg", "set log.level unchanged")
+
+			log("msg", "set log.level unchanged")
 			return
 		}
 		e.logLevel = new_lvl
 	}
 	logConfig.Level.Set(e.logLevel)
-	e.logger = promlog.New(&logConfig)
+	e.logger = promslog.New(&logConfig)
 	for _, t := range e.targets {
 		t.SetLogger(e.logger)
 	}
-	Level(e.logger).Log("msg", fmt.Sprintf("set log.level to %s", e.logLevel))
+	switch e.logLevel {
+	case "debug":
+		log = e.logger.Debug
+	case "info":
+		log = e.logger.Info
+	case "warn":
+		log = e.logger.Warn
+	case "error":
+		log = e.logger.Error
+	}
+	log(fmt.Sprintf("set log.level to %s", e.logLevel))
 }
 
 func (e *exporter) ReloadConfig() error {

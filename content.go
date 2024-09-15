@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -63,7 +64,7 @@ const (
     {{- end }}
 
 	{{ define "content.health" -}}
-      <H2>OK</H2>
+      <H2>{{ .Message }}</H2>
     {{- end }}
 
     {{ define "content.config" -}}
@@ -146,6 +147,8 @@ type tdata struct {
 
 	// status
 	Version versionInfo
+	// health - loglevel
+	Message string
 	// `/error` only
 	Err error
 }
@@ -178,12 +181,12 @@ func HomeHandlerFunc(metricsPath string, exporter Exporter) func(http.ResponseWr
 func HealthHandlerfunc(metricsPath string, exporter Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var status []byte
-		content_type := r.Header.Get(acceptHeader)
-		if strings.Contains(content_type, applicationJSON) {
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
 			w.Header().Set(contentTypeHeader, applicationJSON)
 			status = []byte("{\"status\"=\"ok\"}")
 			w.Header().Set(contentLengthHeader, fmt.Sprint(len(status)))
-		} else if strings.Contains(content_type, textPLAIN) {
+		} else if strings.Contains(accept_type, textPLAIN) {
 			w.Header().Set(contentTypeHeader, textPLAIN)
 			status = []byte("OK")
 		} else {
@@ -192,6 +195,7 @@ func HealthHandlerfunc(metricsPath string, exporter Exporter) func(http.Response
 				ExporterName: exporter.Config().Globals.ExporterName,
 				MetricsPath:  metricsPath,
 				DocsUrl:      docsUrl,
+				Message:      "OK",
 			})
 			return
 		}
@@ -202,18 +206,119 @@ func HealthHandlerfunc(metricsPath string, exporter Exporter) func(http.Response
 // ConfigHandlerFunc is the HTTP handler for the `/config` page. It outputs the configuration marshaled in YAML format.
 func ConfigHandlerFunc(metricsPath string, exporter Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		config, err := exporter.Config().YAML()
-		if err != nil {
-			HandleError(0, err, metricsPath, exporter, w, r)
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
+			conf, err := exporter.Config().JSON()
+			if err != nil {
+				HandleError(0, err, metricsPath, exporter, w, r)
+				return
+			}
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			w.Header().Set(contentLengthHeader, fmt.Sprint(len(conf)))
+			w.Write(conf)
+		} else {
+			config, err := exporter.Config().YAML()
+			if err != nil {
+				HandleError(0, err, metricsPath, exporter, w, r)
+				return
+			}
+			configTemplate.Execute(w, &tdata{
+				ExporterName: exporter.Config().Globals.ExporterName,
+				MetricsPath:  metricsPath,
+				DocsUrl:      docsUrl,
+				Config:       string(config),
+			})
+		}
+	}
+}
+
+// LogLevelHandlerFunc is the HTTP handler for the POST loglevel entry point (`/loglevel`).
+func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg, path string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var result []byte
+
+		exporter.Logger().Info(
+			"received /loglevel", "client", r.RemoteAddr)
+
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
+			accept_type = applicationJSON
+		} else if strings.Contains(accept_type, textPLAIN) {
+			accept_type = textPLAIN
+		} else {
+			accept_type = textHTML
+		}
+
+		switch r.Method {
+		case "GET":
+			switch accept_type {
+			case textPLAIN:
+				w.Header().Set(contentTypeHeader, textPLAIN)
+				result = []byte(
+					fmt.Sprintf("loglevel is currently set to %s", exporter.GetLogLevel()))
+			case applicationJSON:
+				w.Header().Set(contentTypeHeader, applicationJSON)
+				result = []byte(
+					fmt.Sprintf("{\"loglevel\"=\"%s\"}", exporter.GetLogLevel()))
+				w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
+			default:
+				w.Header().Set(contentTypeHeader, textHTML)
+				healthTemplate.Execute(w, &tdata{
+					ExporterName: exporter.Config().Globals.ExporterName,
+					MetricsPath:  metricsPath,
+					DocsUrl:      docsUrl,
+					Message:      fmt.Sprintf("loglevel is currently set to %s", exporter.GetLogLevel()),
+				})
+				return
+			}
+			w.Write(result)
+		case "POST":
+			ctxval, ok := r.Context().Value(ctxKey{}).(*ctxValue)
+			if !ok {
+				err := errors.New("invalid context received")
+				HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
+				return
+
+			}
+			msg := actionMsg{
+				actiontype: ACTION_LOGLEVEL,
+				logLevel:   strings.ToLower(ctxval.path),
+				retCh:      make(chan error),
+			}
+			reloadCh <- msg
+			if err := <-msg.retCh; err != nil {
+				switch accept_type {
+				case textPLAIN:
+					w.Header().Set(contentTypeHeader, textPLAIN)
+					result = []byte(
+						fmt.Sprintf("OK loglevel set to %s", err.Error()))
+				case applicationJSON:
+					w.Header().Set(contentTypeHeader, applicationJSON)
+					result = []byte(
+						fmt.Sprintf("{\"loglevel\"=\"%s\"}", err.Error()))
+					w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
+				default:
+					w.Header().Set(contentTypeHeader, textHTML)
+					healthTemplate.Execute(w, &tdata{
+						ExporterName: exporter.Config().Globals.ExporterName,
+						MetricsPath:  metricsPath,
+						DocsUrl:      docsUrl,
+						Message:      fmt.Sprintf("OK loglevel set to %s", err),
+					})
+					return
+				}
+				w.Write(result)
+			} else {
+				HandleError(http.StatusInternalServerError, errors.New("KO something wrong with increase loglevel"), metricsPath, exporter, w, r)
+			}
+		default:
+			exporter.Logger().Info(
+				"received invalid method on /loglevel", "client", r.RemoteAddr)
+			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a GET or POST request"), metricsPath, exporter, w, r)
 			return
 		}
-		configTemplate.Execute(w, &tdata{
-			ExporterName: exporter.Config().Globals.ExporterName,
-			MetricsPath:  metricsPath,
-			DocsUrl:      docsUrl,
-			Config:       string(config),
-		})
 	}
+
 }
 
 // StatusHandlerFunc is the HTTP handler for the `/status` page. It outputs the status of exporter.
@@ -230,8 +335,8 @@ func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 			StartTime:  exporter.GetStartTime(),
 			ReloadTime: exporter.GetReloadTime(),
 		}
-		content_type := r.Header.Get(acceptHeader)
-		if strings.Contains(content_type, applicationJSON) {
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
 			res, err := json.Marshal(vinfos)
 			if err != nil {
 				HandleError(http.StatusBadRequest, err, metricsPath, exporter, w, r)
@@ -260,20 +365,41 @@ func TargetsHandlerFunc(metricsPath string, exporter Exporter) func(http.Respons
 		var err error
 		c := exporter.Config()
 		// for _, t := range c.Targets {
-		targets_cfg, err = yaml.Marshal(c.Targets)
-		if err != nil {
-			// content = nil
-			HandleError(0, err, metricsPath, exporter, w, r)
-			return
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
+			type targets struct {
+				Tgs []*TargetConfig `json:"targets"`
+			}
+			tgs := &targets{
+				Tgs: c.Targets,
+			}
+			targets_cfg, err = json.Marshal(tgs)
+			if err != nil {
+				// content = nil
+				HandleError(0, err, metricsPath, exporter, w, r)
+				return
+			}
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			w.Header().Set(contentLengthHeader, fmt.Sprint(len(targets_cfg)))
+			w.WriteHeader(http.StatusOK)
+			w.Write(targets_cfg)
+		} else {
+			targets_cfg, err = yaml.Marshal(c.Targets)
+			if err != nil {
+				// content = nil
+				HandleError(0, err, metricsPath, exporter, w, r)
+				return
+			}
+			// targets_cfg = append(targets_cfg, content...)
+			// }
+			w.Header().Set(contentTypeHeader, textHTML)
+			targetsTemplate.Execute(w, &tdata{
+				ExporterName: exporter.Config().Globals.ExporterName,
+				MetricsPath:  metricsPath,
+				DocsUrl:      docsUrl,
+				Targets:      string(targets_cfg),
+			})
 		}
-		// targets_cfg = append(targets_cfg, content...)
-		// }
-		targetsTemplate.Execute(w, &tdata{
-			ExporterName: exporter.Config().Globals.ExporterName,
-			MetricsPath:  metricsPath,
-			DocsUrl:      docsUrl,
-			Targets:      string(targets_cfg),
-		})
 	}
 }
 

@@ -15,12 +15,11 @@ import (
 	_ "net/http/pprof"
 
 	kingpin "github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/expfmt"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
@@ -44,7 +43,7 @@ var (
 	auth_key       = kingpin.Flag("auth.key", "In dry-run mode specify the auth_key to use, else ignored.").Short('a').String()
 	collector_name = kingpin.Flag("collector", "Specify the collector name restriction to collect, replace the collector_names set for each target.").Short('o').String()
 	toolkitFlags   = kingpinflag.AddFlags(kingpin.CommandLine, metricsPublishingPort)
-	logConfig      = promlog.Config{}
+	logConfig      = promslog.Config{Style: promslog.GoKitStyle}
 )
 
 const (
@@ -137,11 +136,13 @@ const (
 func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			level.Info(exporter.Logger()).Log("msg", "received invalid method on /reload", "client", r.RemoteAddr)
+			exporter.Logger().Info(
+				"received invalid method on /reload", "client", r.RemoteAddr)
 			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a POST request"), metricsPath, exporter, w, r)
 			return
 		}
-		level.Info(exporter.Logger()).Log("msg", "received /reload from %s", "client", r.RemoteAddr)
+		exporter.Logger().Info(
+			"received /reload from %s", "client", r.RemoteAddr)
 		msg := actionMsg{
 			actiontype: ACTION_RELOAD,
 			retCh:      make(chan error),
@@ -154,44 +155,6 @@ func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- ac
 	}
 }
 
-// LogLevelHandlerFunc is the HTTP handler for the POST loglevel entry point (`/loglevel`).
-func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg, path string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		level.Info(exporter.Logger()).Log("msg", "received /loglevel", "client", r.RemoteAddr)
-
-		switch r.Method {
-		case "GET":
-			http.Error(w, fmt.Sprintf("loglevel is currently set to %s", exporter.GetLogLevel()), http.StatusOK)
-			return
-		case "POST":
-			ctxval, ok := r.Context().Value(ctxKey{}).(*ctxValue)
-			if !ok {
-				err := errors.New("invalid context received")
-				HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
-				return
-
-			}
-			msg := actionMsg{
-				actiontype: ACTION_LOGLEVEL,
-				logLevel:   strings.ToLower(ctxval.path),
-				retCh:      make(chan error),
-			}
-			reloadCh <- msg
-			if err := <-msg.retCh; err != nil {
-				http.Error(w, fmt.Sprintf("OK loglevel set to %s", err), http.StatusOK)
-			} else {
-				HandleError(http.StatusInternalServerError, errors.New("KO something wrong with increase loglevel"), metricsPath, exporter, w, r)
-			}
-		default:
-			level.Info(exporter.Logger()).Log("msg", "received invalid method on /loglevel", "client", r.RemoteAddr)
-			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a GET or POST request"), metricsPath, exporter, w, r)
-			return
-		}
-	}
-
-}
-
 func main() {
 
 	flag.AddFlags(kingpin.CommandLine, &logConfig)
@@ -199,18 +162,18 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	logger := promlog.New(&logConfig)
-	level.Info(logger).Log("msg", fmt.Sprintf("Starting %s", exporter_name), "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	logger := promslog.New(&logConfig)
+	logger.Info(fmt.Sprintf("Starting %s", exporter_name), "version", version.Info())
+	logger.Info("Build context", "build_context", version.BuildContext())
 
 	exporter, err := NewExporter(*configFile, logger, *collector_name)
 	if err != nil {
-		level.Error(logger).Log("msg", fmt.Sprintf("Error creating exporter: %s", err))
+		logger.Error(fmt.Sprintf("Error creating exporter: %s", err))
 		os.Exit(1)
 	}
 	exporter.SetLogLevel(logConfig.Level.String())
 	if *dry_run {
-		level.Info(logger).Log("msg", "configuration OK.")
+		logger.Info("configuration OK.")
 		// get the target if defined
 		var (
 			err   error
@@ -227,18 +190,18 @@ func main() {
 					t_def, err := exporter.FindTarget(*model_name)
 					if err != nil {
 						err := fmt.Errorf("Target model '%s' not found: %s", *model_name, err)
-						level.Error(logger).Log("errmsg", err)
+						logger.Error(err.Error())
 						os.Exit(1)
 					}
 					if tmp_t, err = t_def.Config().Clone(*target_name, ""); err != nil {
 						err := fmt.Errorf("invalid url set for remote_target '%s' %s", *target_name, err)
-						level.Error(logger).Log("errmsg", err)
+						logger.Error(err.Error())
 						os.Exit(1)
 					}
 					t, err = exporter.AddTarget(tmp_t)
 					if err != nil {
 						err := fmt.Errorf("unable to create temporary target %s", err)
-						level.Error(logger).Log("errmsg", err)
+						logger.Error(err.Error())
 						os.Exit(1)
 					}
 					exporter.Config().Targets = append(exporter.Config().Targets, tmp_t)
@@ -251,14 +214,14 @@ func main() {
 			t, err = exporter.GetFirstTarget()
 		}
 		if err != nil {
-			level.Error(logger).Log("errmsg", err)
+			logger.Error(err.Error())
 			os.Exit(1)
 		}
 		if *auth_key != "" {
 			t.SetSymbol("auth_key", *auth_key)
 		}
 
-		level.Info(logger).Log("msg", fmt.Sprintf("try to collect target %s.", t.Name()))
+		logger.Info(fmt.Sprintf("try to collect target %s.", t.Name()))
 		timeout := time.Duration(0)
 		configTimeout := time.Duration(exporter.Config().Globals.ScrapeTimeout)
 
@@ -279,12 +242,12 @@ func main() {
 		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t)}
 		mfs, err := gatherer.Gather()
 		if err != nil {
-			level.Error(logger).Log("errmsg", fmt.Sprintf("Error gathering metrics: %v", err))
+			logger.Error(fmt.Sprintf("Error gathering metrics: %v", err))
 			if len(mfs) == 0 {
 				os.Exit(1)
 			}
 		} else {
-			level.Info(logger).Log("msg", "collect is OK. Dumping result to stdout.")
+			logger.Info("collect is OK. Dumping result to stdout.")
 		}
 
 		//dump metric to stdout
@@ -293,7 +256,7 @@ func main() {
 		for _, mf := range mfs {
 			err := enc.Encode(mf)
 			if err != nil {
-				level.Error(logger).Log("Errmsg", err)
+				logger.Error(err.Error())
 				break
 			}
 		}
@@ -301,7 +264,7 @@ func main() {
 			// This in particular takes care of the final "# EOF\n" line for OpenMetrics.
 			closer.Close()
 		}
-		level.Info(logger).Log("msg", "dry-run is over. Exiting.")
+		logger.Info("dry-run is over. Exiting.")
 		os.Exit(0)
 	}
 
@@ -319,28 +282,28 @@ func main() {
 			case <-user2:
 				exporter.IncreaseLogLevel("")
 			case <-hup:
-				level.Info(logger).Log("msg", "file reloading.")
+				logger.Info("file reloading.")
 				if err := exporter.ReloadConfig(); err != nil {
-					level.Error(logger).Log("msg", fmt.Sprintf("reload err: %s.", err))
+					logger.Error(fmt.Sprintf("reload err: %s.", err))
 				} else {
-					level.Info(logger).Log("msg", "file reloaded.")
+					logger.Info("file reloaded.")
 				}
 			case action := <-actionCh:
 				switch action.actiontype {
 				case ACTION_RELOAD:
-					level.Info(logger).Log("msg", "file reloading received.")
+					logger.Info("file reloading received.")
 					if err := exporter.ReloadConfig(); err != nil {
-						level.Error(logger).Log("msg", fmt.Sprintf("reload err: %s.", err))
+						logger.Error(fmt.Sprintf("reload err: %s.", err))
 						action.retCh <- err
 					} else {
-						level.Info(logger).Log("msg", "file reloaded.")
+						logger.Info("file reloaded.")
 						action.retCh <- nil
 					}
 				case ACTION_LOGLEVEL:
 					if action.logLevel == "" {
-						level.Info(logger).Log("msg", "increase loglevel received.")
+						logger.Info("increase loglevel received.")
 					} else {
-						level.Info(logger).Log("msg", "set loglevel received.")
+						logger.Info("set loglevel received.")
 					}
 					exporter.IncreaseLogLevel(action.logLevel)
 					action.retCh <- errors.New(exporter.GetLogLevel())
@@ -359,7 +322,7 @@ func main() {
 			Handler: BuildHandler(exporter, actionCh),
 		}
 		if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
-			level.Error(logger).Log("err", err)
+			logger.Error(err.Error())
 			os.Exit(1)
 		}
 	}()
@@ -367,7 +330,7 @@ func main() {
 	for {
 		select {
 		case <-term:
-			level.Info(logger).Log("msg", "Received SIGTERM, exiting gracefully...")
+			logger.Info("Received SIGTERM, exiting gracefully...")
 			os.Exit(0)
 		case <-srvc:
 			os.Exit(1)

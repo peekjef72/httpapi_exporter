@@ -3,10 +3,8 @@ package main
 import (
 	//"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 // ***************************************************************************************
@@ -17,16 +15,16 @@ import (
 
 type MetricsAction struct {
 	// BaseAction
-	Name    *Field              `yaml:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty"`
+	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
 
-	Metrics      []*MetricConfig `yaml:"metrics"`                 // metrics defined by this collector
-	Scope        string          `yaml:"scope,omitempty"`         // var path where to collect data: shortcut for {{ .scope.path.var }}
-	MetricPrefix string          `yaml:"metric_prefix,omitempty"` // var to alert metric name
+	Metrics      []*MetricConfig `yaml:"metrics" json:"metrics"`                                 // metrics defined by this collector
+	Scope        string          `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
+	MetricPrefix string          `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // var to alert metric name
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX     map[string]interface{} `yaml:",inline" json:"-"`
@@ -39,13 +37,13 @@ func (a *MetricsAction) Type() int {
 	return metrics_action
 }
 
-func (a *MetricsAction) GetName(symtab map[string]any, logger log.Logger) string {
+func (a *MetricsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid action name: %v", err),
 			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-			"msg", fmt.Sprintf("invalid action name: %v", err))
+			"script", ScriptName(symtab, logger))
 		return ""
 	}
 	return str
@@ -104,7 +102,7 @@ func (a *MetricsAction) setBasicElement(
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
-func (a *MetricsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *MetricsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	return PlayBaseAction(script, symtab, logger, a, a.CustomAction)
 }
 
@@ -159,27 +157,27 @@ func SetScope(scope string, symtab map[string]any) (map[string]any, error) {
 }
 
 // ***************************************************************************************
-func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 
 	var (
 		metric_channel chan<- Metric
 	)
 
-	level.Debug(logger).Log(
+	logger.Debug(
+		fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)))
+		"name", a.GetName(symtab, logger))
 
 	// this can't arrive because previous c.Collect() / c.client.Execute() has returned ErrInvalidQueryResult
 	// so collect() stops and don't play metrics_actions.
 	query_status, ok := GetMapValueBool(symtab, "query_status")
 	if !ok || (ok && !query_status) {
-		level.Debug(logger).Log(
+		logger.Debug(
+			fmt.Sprintf("[Type: MetricsAction] Name: %s - previous query has invalid status skipping", a.GetName(symtab, logger)),
 			"collid", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
-			"name", a.GetName(symtab, logger),
-			"msg", fmt.Sprintf("[Type: MetricsAction] Name: %s - previous query has invalid status skipping", a.GetName(symtab, logger)))
+			"name", a.GetName(symtab, logger))
 		return ErrInvalidQueryResult
 	}
 
@@ -204,11 +202,11 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		var err error
 		tmp_symtab, err = SetScope(a.Scope, tmp_symtab)
 		if err != nil {
-			level.Warn(logger).Log(
+			logger.Warn(
+				err.Error(),
 				"collid", CollectorId(symtab, logger),
 				"script", ScriptName(symtab, logger),
-				"name", a.GetName(symtab, logger),
-				"errmsg", err)
+				"name", a.GetName(symtab, logger))
 		}
 
 		tmp_symtab["__collector_id"] = symtab["__collector_id"]

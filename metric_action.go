@@ -3,9 +3,7 @@ package main
 import (
 	//"bytes"
 	"fmt"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
 )
 
 // ***************************************************************************************
@@ -15,12 +13,12 @@ import (
 // ***************************************************************************************
 
 type MetricAction struct {
-	Name    *Field              `yaml:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty"`
+	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
 
 	mc           *MetricConfig
 	metricFamily *MetricFamily
@@ -34,13 +32,13 @@ func (a *MetricAction) Type() int {
 	return metric_action
 }
 
-func (a *MetricAction) GetName(symtab map[string]any, logger log.Logger) string {
+func (a *MetricAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid action name: %v", err),
 			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-			"msg", fmt.Sprintf("invalid action name: %v", err))
+			"script", ScriptName(symtab, logger))
 		return ""
 	}
 	return str
@@ -99,7 +97,7 @@ func (a *MetricAction) setBasicElement(
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
-func (a *MetricAction) PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *MetricAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	return PlayBaseAction(script, symtab, logger, a, a.CustomAction)
 }
 
@@ -124,7 +122,7 @@ func (a *MetricAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 
 // specific behavior for the MetricAction
 
-func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	var (
 		metric_channel chan<- Metric
 		// mfs            []*MetricFamily
@@ -135,11 +133,11 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 			loop_var_idx = fmt.Sprintf(" %d", raw_loop_var_idx)
 		}
 	}
-	level.Debug(logger).Log(
+	logger.Debug(
+		fmt.Sprintf("[Type: MetricAction] %s", loop_var_idx),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: MetricAction] %s", loop_var_idx))
+		"name", a.GetName(symtab, logger))
 
 	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
@@ -155,11 +153,11 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 			a.GetName(symtab, logger)))
 	}
 
-	level.Debug(logger).Log(
+	logger.Debug(
+		fmt.Sprintf("    metric_name: %s", a.metricFamily.Name()),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", fmt.Sprintf("    metric_name: %s", a.metricFamily.Name()))
+		"name", a.GetName(symtab, logger))
 	a.metricFamily.Collect(symtab, logger, metric_channel)
 
 	return nil

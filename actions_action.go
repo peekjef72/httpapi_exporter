@@ -3,9 +3,7 @@ package main
 import (
 	//"bytes"
 	"fmt"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
 )
 
 // ***************************************************************************************
@@ -15,12 +13,12 @@ import (
 // ***************************************************************************************
 
 type ActionsAction struct {
-	Name    *Field              `yaml:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty"`
+	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
 
 	Actions []Action `yaml:"actions"`
 	vars    [][]any
@@ -33,13 +31,13 @@ func (a *ActionsAction) Type() int {
 	return actions_action
 }
 
-func (a *ActionsAction) GetName(symtab map[string]any, logger log.Logger) string {
+func (a *ActionsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, nil, false)
 	if err != nil {
-		level.Warn(logger).Log(
+		logger.Warn(
+			fmt.Sprintf("invalid action name: %v", err),
 			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-			"msg", fmt.Sprintf("invalid action name: %v", err))
+			"script", ScriptName(symtab, logger))
 		return ""
 	}
 	return str
@@ -102,7 +100,7 @@ func (a *ActionsAction) setBasicElement(
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
-func (a *ActionsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
+func (a *ActionsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	return PlayBaseAction(script, symtab, logger, a, a.CustomAction)
 }
 
@@ -140,12 +138,12 @@ func (a *ActionsAction) SetPlayAction(script map[string]*YAMLScript) error {
 }
 
 // specific behavior for the ActionsAction
-func (a *ActionsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger log.Logger) error {
-	level.Debug(logger).Log(
+func (a *ActionsAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
+	logger.Debug(
+		fmt.Sprintf("[Type: ActionsAction] - %d Actions to play", len(a.Actions)),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger),
-		"msg", fmt.Sprintf("[Type: ActionsAction] - %d Actions to play", len(a.Actions)))
+		"name", a.GetName(symtab, logger))
 	for _, cur_act := range a.Actions {
 		// fmt.Printf("\tadd to symbols table: %s = %v\n", key, val)
 		if err := PlayBaseAction(script, symtab, logger, cur_act, cur_act.CustomAction); err != nil {

@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"google.golang.org/protobuf/proto"
@@ -114,7 +113,7 @@ func NewMetricFamily(
 }
 
 // Collect is the equivalent of prometheus.Collector.Collect() but takes a Query output map to populate values from.
-func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric) {
+func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metric) {
 	var set_root bool = false
 	// reset logcontxt for MetricFamily: remove previous errors if any
 	mf.logContext = make([]any, 2)
@@ -164,7 +163,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 					if val, ok := val_raw.(string); ok {
 						mf.labels[i], err = NewLabel(key, val, mf.config.Name, "key_label", nil)
 						if err != nil {
-							level.Warn(logger).Log("errmsg", fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
+							logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
 							continue
 						}
 					}
@@ -174,13 +173,13 @@ func (mf MetricFamily) Collect(rawdatas any, logger log.Logger, ch chan<- Metric
 				if len(mf.config.Values) > 1 {
 					mf.labels[i], _ = NewLabel(mf.config.ValueLabel, "", mf.config.Name, "value_label", nil)
 					if err != nil {
-						level.Warn(logger).Log("errmsg", fmt.Sprintf("invalid templatefor value_label for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
+						logger.Warn(fmt.Sprintf("invalid templatefor value_label for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
 						// 	return nil, err
 					}
 				}
 			}
 		} else {
-			level.Warn(logger).Log("errmsg", fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
+			logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
 		}
 	}
 
