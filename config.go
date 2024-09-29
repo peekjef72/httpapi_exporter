@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"regexp"
 
-	// "html/template"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,9 +14,6 @@ import (
 	"text/template"
 	"time"
 
-	// "github.com/Masterminds/sprig/v3"
-	// "github.com/go-kit/log"
-	// "github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
@@ -276,7 +272,7 @@ func (c *Config) YAML() ([]byte, error) {
 	return yaml.Marshal(dc)
 }
 
-// YAML marshals the config into YAML format.
+// JSON marshals the config into JSON format.
 func (c *Config) JSON() ([]byte, error) {
 	type fullConf struct {
 		Config *dumpConfig `json:"config"`

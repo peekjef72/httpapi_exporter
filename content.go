@@ -43,7 +43,7 @@ const (
       <body>
         <div class="navbar">
           <div class="navbar-header"><a href="/">Prometheus {{ .ExporterName }}</a></div>
-          <div><a href="/healthz">Health</a></div>
+          <div><a href="/health">Health</a></div>
           <div><a href="{{ .MetricsPath }}">Metrics</a></div>
           <div><a href="/config">Configuration</a></div>
           <div><a href="/targets">Targets</a></div>
@@ -178,6 +178,7 @@ func HomeHandlerFunc(metricsPath string, exporter Exporter) func(http.ResponseWr
 		})
 	}
 }
+
 func HealthHandlerfunc(metricsPath string, exporter Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var status []byte
@@ -318,7 +319,6 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 			return
 		}
 	}
-
 }
 
 // StatusHandlerFunc is the HTTP handler for the `/status` page. It outputs the status of exporter.
@@ -335,6 +335,7 @@ func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 			StartTime:  exporter.GetStartTime(),
 			ReloadTime: exporter.GetReloadTime(),
 		}
+
 		accept_type := r.Header.Get(acceptHeader)
 		if strings.Contains(accept_type, applicationJSON) {
 			res, err := json.Marshal(vinfos)

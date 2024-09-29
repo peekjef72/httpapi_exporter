@@ -36,19 +36,18 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 			target Target
 			tmp_t  *TargetConfig
 		)
-		params := req.URL.Query()
 
-		tname := params.Get("target")
-		if tname == "" {
+		params := req.URL.Query()
+		tname := strings.TrimSpace(params.Get("target"))
+		if tname == "" || tname == "template" {
 			err := errors.New("Target parameter is missing")
 			HandleError(http.StatusBadRequest, err, *metricsPath, exporter, w, req)
 			return
 		}
-		tname = strings.TrimSpace(tname)
+
 		target, err = exporter.FindTarget(tname)
 		if err == ErrTargetNotFound {
-			model := params.Get("model")
-			model = strings.TrimSpace(model)
+			model := strings.TrimSpace(params.Get("model"))
 			if model == "" {
 				model = "default"
 			}
@@ -120,7 +119,7 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 			if err := enc.Encode(mf); err != nil {
 				errs = append(errs, err)
 				exporter.Logger().Info(
-					fmt.Sprintf("Error encoding metric family %q: %s", mf.GetName(), err))
+					fmt.Sprintf("Error encoding metric family %q: %s", mf.GetName(), err.Error()))
 			}
 		}
 		if closer, ok := writer.(io.Closer); ok {
@@ -149,7 +148,7 @@ func contextFor(req *http.Request, exporter Exporter, target Target) (context.Co
 		timeoutSeconds, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			exporter.Logger().Error(
-				fmt.Sprintf("Failed to parse timeout (`%s`) from Prometheus header: %s", v, err))
+				fmt.Sprintf("Failed to parse timeout (`%s`) from Prometheus header: %s", v, err.Error()))
 		} else {
 			timeout = time.Duration(timeoutSeconds * float64(time.Second))
 
