@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 ## 0.3.9 / not release
+- removed passwd_encrypt tool source code from httpapi_exporter: created a new stand-alone package [passwd_encrypt](https://github.com/peekjef72/passwd_encrypt). Passwd_encrypt is still installed when building and added to the released archiv.
 - updated prometheus/exporter-toolkit to 0.13.0 (log => log/slog)
 - renamed entrypoint /healthz to /health : response format depends on "accept" header (application/json, text/plain, text/html default)
 - updated entrypoint /status, /loglevel /targets /config: response format depends on "accept" header (application/json, text/plain, text/html default)
@@ -12,7 +13,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 - added out format for passwd_encrypt that can be cut/pasted into config file.
 - added InvalidLogin error cases: no cipher (auth_key not provided) or (invalid auth_key). For those cases if target is up, metrics for collectors status will return code 2; invalid_login
 - added GET /loglevel to retrieve current level, add POST /loglevel[/level] to set loglevel to level directly 
-- added debug message for ba:qsic auth (auth_config.mode=basic) and bearer (auth_config.mode=token)
+- added debug message for basic auth (auth_config.mode=basic) and bearer (auth_config.mode=token)
 - loglevel link in landing page
 - fixed typos
 

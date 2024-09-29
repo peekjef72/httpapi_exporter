@@ -18,7 +18,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/imdario/mergo"
 	"github.com/mitchellh/copystructure"
-	"github.com/peekjef72/httpapi_exporter/encrypt"
+	"github.com/peekjef72/passwd_encrypt/encrypt"
 	"golang.org/x/exp/slices"
 )
 

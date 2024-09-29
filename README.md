@@ -18,10 +18,17 @@ As examples 4 configurations for exporters are provided (see contribs):
 
 ```shell
 go install github.com/prometheus/promu@latest
+go install github.com/peekjef72/passwd_encrypt@latest
 
 $GOBIN/promu build
-
 ```
+
+or simply make.
+
+```shell
+make
+```
+
 this will build the exporter and a tool to crypt/decrypt ciphertext with a shared passphrase.
 
 ## Usage
@@ -55,6 +62,15 @@ You can change the log.level online by sending a signal USR2 to the process. It 
 kill -USR2 pid
 ```
 Usefull if something is wrong and you want to have detailled log only for a small interval.
+
+You can also set the loglevel using API endpoint /loglevel
+* GET /loglevel : to retrieve the current level
+* POST /loglevel : to cycle and increase the current loglevel
+* POST /loglevel/\<level\> : to set level to \<level\>
+
+## Reload
+
+You can tell the exporter to reload its configuration by sending a signal HUP to the process or send a POST request to /reload endpoint.
 
 ## Exporter configuration
 

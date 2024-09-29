@@ -14,6 +14,7 @@
 GO     := go
 GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
 PROMU  := $(GOPATH)/bin/promu
+PASSWD_ENCRYPT := $(GOPATH)/bin/passwd_encrypt
 pkgs    = $(shell $(GO) list ./... | grep -v /vendor/)
 
 PREFIX              ?= $(shell pwd)
@@ -40,13 +41,15 @@ vet:
 	@echo ">> vetting code"
 	@$(GO) vet $(pkgs)
 
-build: promu
+build: promu passwd_encrypt
 	@echo ">> building binaries"
 	@$(PROMU) build --prefix $(PREFIX)
 
-tarball: promu
+tarball: promu passwd_encrypt
 	@echo ">> building release tarball"
+	@cp $(PASSWD_ENCRYPT) $(BIN_DIR)
 	@$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
+	@rm $(BIN_DIR)/passwd_encrypt
 
 docker:
 	@echo ">> building docker image"
@@ -55,5 +58,7 @@ docker:
 promu:
 	$(GO) install github.com/prometheus/promu@latest
 
+passwd_encrypt:
+	$(GO) install github.com/peekjef72/passwd_encrypt@latest
 
 .PHONY: all style format build test vet tarball docker promu

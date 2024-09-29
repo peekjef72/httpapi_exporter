@@ -13,7 +13,7 @@ import (
 	ttemplate "text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/peekjef72/httpapi_exporter/encrypt"
+	"github.com/peekjef72/passwd_encrypt/encrypt"
 )
 
 func convertToBytes(curval any, unit string) (int64, error) {

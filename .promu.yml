@@ -5,9 +5,6 @@ repository:
 build:
     binaries:
         - name: httpapi_exporter
-          # path: httpapi_exporter
-        - name: passwd_encrypt
-          path: ./cmd/passwd_crypt
     flags: -a -tags netgo,static
     ldflags: |
       -X github.com/prometheus/common/version.Version={{.Version}}
@@ -20,3 +17,4 @@ tarball:
     files:
       - LICENSE
       - README.md
+      - passwd_encrypt
