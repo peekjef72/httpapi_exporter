@@ -23,6 +23,7 @@ type QueryActionConfig struct {
 	OkStatus   any                `yaml:"ok_status,omitempty" json:"ok_status,omitempty"`
 	AuthConfig *AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
 	Timeout    int                `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+	Parser     string             `yaml:"parser,omitempty" json:"parser,omitempty"`
 
 	query    *Field
 	method   *Field
@@ -111,7 +112,17 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 			}
 		}
 	}
-
+	if qc.Parser == "" {
+		qc.Parser = "json"
+	} else {
+		qc.Parser = strings.ToLower(qc.Parser)
+		switch qc.Parser {
+		case "json":
+		case "xml":
+		default:
+			return fmt.Errorf("invalid value for parser: '%s': should be ('json','xml','openmetrics')", qc.Parser)
+		}
+	}
 	return checkOverflow(qc.XXX, "query action")
 }
 
@@ -406,6 +417,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		Password: passwd,
 		Token:    auth_token,
 		Timeout:  time.Duration(a.Query.Timeout) * time.Second,
+		Parser:   a.Query.Parser,
 	}
 
 	logger.Debug(

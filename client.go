@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"log/slog"
 
@@ -30,6 +32,20 @@ var (
 	// context deadline exceeded
 	ErrContextDeadLineExceeded = fmt.Errorf("global_scraping_timeout")
 )
+
+// type to unmarshal xml stream
+const (
+	content_node  = iota
+	content_value = iota
+)
+
+type Content struct {
+	Type  int
+	Name  string
+	Attrs map[string]any
+}
+
+//
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
 type Client struct {
@@ -164,9 +180,6 @@ func (c *Client) SetUrl(url string) string {
 
 // parse a response to a json map[string]interface{}
 func (c *Client) getJSONResponse(resp *resty.Response) any {
-	var err error
-	// var data map[string]interface{}
-	// var data_map map[string]interface{}
 	var data any
 
 	body := resp.Body()
@@ -175,8 +188,7 @@ func (c *Client) getJSONResponse(resp *resty.Response) any {
 		if strings.Contains(content_type, "application/json") {
 			// tmp := make([]byte, len(body))
 			// copy(tmp, body)
-			err = json.Unmarshal(body, &data)
-			if err != nil {
+			if err := json.Unmarshal(body, &data); err != nil {
 				c.logger.Error(
 					fmt.Sprintf("Fail to decode json results %v", err),
 					"collid", CollectorId(c.symtab, c.logger),
@@ -189,11 +201,116 @@ func (c *Client) getJSONResponse(resp *resty.Response) any {
 	return data
 }
 
+// unmarshall a default content in xml... I hope so
+func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	// var s string
+	content := &Content{
+		Type: content_node,
+	}
+	// node := make(map[string]any)
+	attrs := make(map[string]any)
+	for _, attr := range start.Attr {
+		attrs[attr.Name.Local] = attr.Value
+	}
+	// node[start.Name.Local] = attrs
+	content.Name = start.Name.Local
+	content.Attrs = attrs
+	*res = *content
+
+	for {
+		t, err := d.Token()
+		if err != nil {
+			return err
+		}
+		switch tt := t.(type) {
+		case xml.StartElement:
+			var (
+				sub_obj      *Content
+				sub_obj_list []any
+			)
+			if err := d.DecodeElement(&sub_obj, &tt); err != nil {
+				return err
+			}
+			if sub_obj.Type == content_value {
+			}
+
+			if sub_obj.Type == content_value {
+				// check if we have already the same attribute set for the parent objet
+				// if true: must transform attribute to list of value
+				if raw_sl, ok := attrs[sub_obj.Name]; ok {
+					if sl, ok := raw_sl.([]any); ok {
+						sub_obj_list = sl
+					} else {
+						sub_obj_list = make([]any, 0)
+						sub_obj_list = append(sub_obj_list, raw_sl)
+					}
+					sub_obj_list = append(sub_obj_list, sub_obj.Attrs[sub_obj.Name])
+					attrs[sub_obj.Name] = sub_obj_list
+				} else {
+					attrs[sub_obj.Name] = sub_obj.Attrs[sub_obj.Name]
+				}
+			} else {
+				if raw_sl, ok := attrs[sub_obj.Name]; !ok {
+					sub_obj_list = make([]any, 0)
+				} else {
+					if sl, ok := raw_sl.([]any); ok {
+						sub_obj_list = sl
+					}
+				}
+				sub_obj_list = append(sub_obj_list, sub_obj.Attrs)
+				attrs[sub_obj.Name] = sub_obj_list
+			}
+
+		case xml.EndElement:
+			if tt == start.End() {
+				return nil
+			}
+		case xml.CharData:
+			val := tt.Copy()
+			val = bytes.Trim(val, "\t\n\r ")
+			if len(val) != 0 {
+				content.Type = content_value
+				content.Attrs[content.Name] = string(val)
+				*res = *content
+			}
+		}
+	}
+}
+
+// parse a response in XML and return map[string]any
+func (c *Client) getXMLResponse(resp *resty.Response) any {
+	// var data map[string]interface{}
+	// var data_map map[string]interface{}
+	var data any
+
+	body := resp.Body()
+	if len(body) > 0 {
+		content_type := resp.Header().Get(contentTypeHeader)
+		if strings.Contains(content_type, "application/json") {
+			// tmp := make([]byte, len(body))
+			// copy(tmp, body)
+			var data_internal *Content
+			if err := xml.Unmarshal(body, &data_internal); err != nil {
+				c.logger.Error(
+					fmt.Sprintf("Fail to decode xml results %v", err),
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger))
+			}
+			data := make(map[string]any)
+			data[data_internal.Name] = data_internal.Attrs
+		}
+	} else {
+		data = make(map[any]any)
+	}
+	return data
+}
+
 // sent HTTP Method to uri with params or body and get the reponse and the json obj
 func (c *Client) Execute(
 	method, uri string,
 	params map[string]string,
-	body interface{}) (
+	body interface{},
+	parser string) (
 	// check_invalid_auth bool) (
 	*resty.Response,
 	any,
@@ -210,7 +327,9 @@ func (c *Client) Execute(
 		"collid", CollectorId(c.symtab, c.logger),
 		"script", ScriptName(c.symtab, c.logger),
 		"method", method,
-		"url", url)
+		"url", url,
+		"parser", "parser",
+	)
 	if body != nil {
 		c.logger.Debug(
 			"querying httpapi",
@@ -260,7 +379,11 @@ func (c *Client) Execute(
 				return resp, data, ErrInvalidLogin
 
 			} else {
-				data = c.getJSONResponse(resp)
+				if parser == "xml" {
+					data = c.getXMLResponse(resp)
+				} else if parser == "json" {
+					data = c.getJSONResponse(resp)
+				}
 				i = query_retry + 1
 			}
 			c.symtab["response_headers"] = resp.Header()
@@ -715,6 +838,7 @@ type CallClientExecuteParams struct {
 	Password string
 	Token    string
 	Timeout  time.Duration
+	Parser   string
 	// Check_invalid_Auth bool
 }
 
@@ -850,7 +974,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	//******************
 	//* play the request
 	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
-	resp, data, err := c.Execute(method, url, nil, payload)
+	resp, data, err := c.Execute(method, url, nil, payload, params.Parser)
 	if err != nil {
 		return err
 	}
