@@ -6,6 +6,7 @@
 
 /my_tests
 /config/
+/cmd
 
 /httpapi_exporter
 /passwd_encrypt
