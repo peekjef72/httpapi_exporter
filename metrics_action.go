@@ -25,10 +25,10 @@ type MetricsAction struct {
 	Metrics      []*MetricConfig `yaml:"metrics" json:"metrics"`                                 // metrics defined by this collector
 	Scope        string          `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
 	MetricPrefix string          `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // var to alert metric name
+	Actions      []Action        `yaml:"-" json:"-"`
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX     map[string]interface{} `yaml:",inline" json:"-"`
-	Actions []Action               `yaml:"-"`
+	XXX map[string]interface{} `yaml:",inline" json:"-"`
 
 	vars [][]any
 }
@@ -134,10 +134,12 @@ func SetScope(scope string, symtab map[string]any) (map[string]any, error) {
 	var err error
 
 	tmp_symtab := symtab
-	// split the scope string into parts: attr1.attr[0].attr
-	if scope[0] == '.' {
+	// remove first char if it is . like for gotemplate var .var.name.
+	// or $ like for path variable: $usage.data
+	if scope[0] == '.' || scope[0] == '$' {
 		scope = scope[1:]
 	}
+	// split the scope string into parts: attr1.attr[0].attr
 	vars := strings.Split(scope, ".")
 	// last_elmt := len(vars) -1
 	for _, var_name := range vars {

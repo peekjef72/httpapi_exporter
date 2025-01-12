@@ -140,7 +140,7 @@ func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		if key, ok := pair[0].(*Field); ok {
 			key_name, err = key.GetValueString(symtab, nil, false)
 			if err == nil {
-				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), 0); err != nil {
+				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
 					return err
 				}
 

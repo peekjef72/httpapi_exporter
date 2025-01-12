@@ -8,7 +8,6 @@
 /config/
 /cmd
 
-cmd/    
 /httpapi_exporter
 /passwd_encrypt
 /*.exe

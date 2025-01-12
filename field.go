@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"html"
 
-	// "regexp"
-
 	"strconv"
 	ttemplate "text/template"
 
@@ -140,7 +138,7 @@ func (f *Field) GetValueString(
 		return html.UnescapeString(tmp), nil
 	} else {
 		if f.vartype {
-			data, err := getVar(item, f.raw)
+			data, err := getVar(item, f.raw, check_item)
 			if err != nil {
 				return "", err
 			}
@@ -196,7 +194,7 @@ func (f *Field) GetValueFloat(
 		str_value = html.UnescapeString(tmp_res.String())
 	} else {
 		if f.vartype {
-			data, err := getVar(item, f.raw)
+			data, err := getVar(item, f.raw, true)
 			if err != nil {
 				return 0, err
 			}
@@ -214,8 +212,31 @@ func (f *Field) GetValueFloat(
 	return RawGetValueFloat(str_value), nil
 }
 
+func getSliceIndice(raw_value any, indice int) any {
+
+	if indice != -1 {
+		switch slice_val := raw_value.(type) {
+		case []any:
+			raw_value = slice_val[indice]
+		case []string:
+			raw_value = slice_val[indice]
+		case []byte:
+			raw_value = slice_val[indice]
+		case []int:
+			raw_value = slice_val[indice]
+		case []int64:
+			raw_value = slice_val[indice]
+		case []float32:
+			raw_value = slice_val[indice]
+		case []float64:
+			raw_value = slice_val[indice]
+		}
+	}
+	return raw_value
+}
+
 // ***************************************************************************************
-func getVar(symtab map[string]any, attr string) (any, error) {
+func getVar(symtab map[string]any, attr string, with_raw_name bool) (any, error) {
 	var err error
 
 	tmp_symtab := symtab
@@ -226,7 +247,23 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 	vars := strings.Split(attr, ".")
 	lenattr := len(vars) - 1
 	for idx, var_name := range vars {
+		indice := -1
+		// check if component contains indice pos
+		if pos := strings.Index(var_name, "["); pos != -1 {
+			pos2 := strings.Index(var_name, "]")
+			indice_str := var_name[pos+1 : pos2]
+			var_name = var_name[0:pos]
+			if i_value, err := strconv.ParseInt(indice_str, 10, 0); err != nil {
+				indice = 0
+			} else {
+				indice = int(i_value)
+			}
+		}
 		if raw_value, ok := tmp_symtab[var_name]; ok {
+			if indice != -1 {
+				raw_value = getSliceIndice(raw_value, indice)
+			}
+
 			if idx < lenattr {
 				switch cur_value := raw_value.(type) {
 				case map[string]any:
@@ -235,7 +272,13 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 					err = fmt.Errorf("can't set attr: '%s' has invalid type", var_name)
 				}
 			} else {
-				return raw_value, nil
+				if value, ok := raw_value.(*Field); ok {
+					raw_value, err = value.GetValueObject(symtab, with_raw_name)
+					if err == nil && indice != -1 {
+						raw_value = getSliceIndice(raw_value, indice)
+					}
+				}
+				return raw_value, err
 			}
 			// }
 		} else {
@@ -249,7 +292,9 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 
 func (f *Field) GetValueObject(
 	// item map[string]interface{}) ([]any, error) {
-	item any) (res any, err error) {
+	item any,
+	with_raw_name bool,
+) (res any, err error) {
 	res_slice := make([]any, 0)
 
 	if f == nil {
@@ -292,7 +337,7 @@ func (f *Field) GetValueObject(
 	} else {
 		if f.vartype {
 			if symtab, ok := item.(map[string]any); ok {
-				data, err := getVar(symtab, f.raw)
+				data, err := getVar(symtab, f.raw, with_raw_name)
 				if err != nil {
 					return res_slice, err
 				}
@@ -302,13 +347,19 @@ func (f *Field) GetValueObject(
 				return nil, nil
 			}
 		}
-		datas := &ResultElement{
-			raw: item,
-		}
-		if data, found := datas.GetSlice(f.raw); found {
-			return data, nil
+		// old deprecated format in metric value: value instead of $value or `{{ .value }}`
+		if with_raw_name {
+			datas := &ResultElement{
+				raw: item,
+			}
+			if data, found := datas.GetSlice(f.raw); found {
+				return data, nil
+			} else {
+				return nil, nil
+			}
 		} else {
-			return nil, nil
+			// else it is a simple string `value`
+			return RawGetValueString(f.raw), nil
 		}
 	}
 }

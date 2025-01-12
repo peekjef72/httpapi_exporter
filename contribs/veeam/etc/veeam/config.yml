@@ -113,7 +113,7 @@ targets:
   # default target is used as a pattern for exporter queries with target name not defined locally.
   - name: default
     scheme: https
-    host: set_later
+    host: template
     port: 9398
     auth_name: prometheus_encrypted
     # auth_config:

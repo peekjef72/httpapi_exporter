@@ -62,6 +62,7 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 				HandleError(http.StatusInternalServerError, err, *metricsPath, exporter, w, req)
 				return
 			}
+			tmp_t.targetType = TargetTypeDynamic
 			target, err = exporter.AddTarget(tmp_t)
 			if err != nil {
 				err := fmt.Errorf("unable to create temporary target %s", err)
@@ -92,13 +93,19 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 		if auth_key != "" {
 			target.SetSymbol("auth_key", auth_key)
 		}
+		health_only := false
+		health_only_str := params.Get("health")
+		if strings.ToLower(health_only_str) == "true" {
+			health_only = true
+		}
+
 		ctx, cancel := contextFor(req, exporter, target)
 		defer func() {
 			cancel()
 		}()
 
 		// Go through prometheus.Gatherers to sanitize and sort metrics.
-		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, target)}
+		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, target, health_only)}
 		mfs, err := gatherer.Gather()
 		if err != nil {
 			exporter.Logger().Error(

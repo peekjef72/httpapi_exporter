@@ -230,8 +230,9 @@ exporterKeys | |
 exporterValues | |
 exporterToRawJson | |
 |||
-lookupAddr [varstring] | obtain hostname from string representing and ip address ; like sprig/getHostByName but for string ip | lookupAddr .node.ipaddress
-convertToBytes | |
+lookupAddr [varstring] | obtain hostname from string representing an ip address ; like sprig/getHostByName but for string ip | lookupAddr .node.ipaddress
+convertToBytes value unit | convert the value contained in variable to bytes according to the unit string specified: <ul><li>"kilobyte" or "Kb" multiply by 1024 <li>"megabyte" or "Mb" multiply by 1024 * 1024<li>"gigabyte" or "Gb"multiply by 1024 * 1024 * 1024</ul> | '{{ convertToBytes .result.totalMiB "Mb" }}'
+convertBoolToInt value | convert value that may contain a boolean to 0&#124;1 representation. Value can be of any type. If something is <ul><li>like int or float and different from 0 is 1 else 0<li>string and is lower case 'true' or 'yes' or 'ok' is 1 else 0<li>like map or array and length >0 then 1 or 0</ul>| with {"proc": {"loopCrashing": "true",...}}<br> => '{{ convertBoolToInt .proc.loopCrashing }}<br> => 1'
 getHeader [varmap] | |
 LEN [var]| obtain the len of the var. works like sprig/len but accepts data of type any. |
 

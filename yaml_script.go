@@ -277,31 +277,27 @@ func AddCustomTemplate(ba BaseAction, customTemplate *exporterTemplate) error {
 }
 
 // ********************************************************************************
-func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_name string, cur_level int) (any, error) {
+func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_name string, with_raw_name bool) (any, error) {
 	var data any
 	var err error
 	switch curval := item.(type) {
 	case *Field:
 		check_value := false
-		if cur_level == 0 {
-			// this is a template populate list with var from symtab
-			data, err = curval.GetValueObject(symtab)
-			if err != nil {
-				return data, err
-			}
-			if data == nil {
-				check_value = true
-			} else if r_data, ok := data.([]any); ok {
-				if r_data == nil {
-					check_value = true
-				}
-			} else if s_data, ok := data.(string); ok {
-				if s_data == "" {
-					data = nil
-				}
-			}
-		} else {
+		// this is a template populate list with var from symtab
+		data, err = curval.GetValueObject(symtab, with_raw_name)
+		if err != nil {
+			return data, err
+		}
+		if data == nil {
 			check_value = true
+		} else if r_data, ok := data.([]any); ok {
+			if r_data == nil {
+				check_value = true
+			}
+		} else if s_data, ok := data.(string); ok {
+			if s_data == "" {
+				data = nil
+			}
 		}
 		if check_value {
 			data, err = curval.GetValueString(symtab, nil, false)
@@ -311,7 +307,7 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 		ldata := make(map[string]any, len(curval))
 
 		for r_key, r_value := range curval {
-			key, err := ValorizeValue(symtab, r_key, logger, action_name, cur_level+1)
+			key, err := ValorizeValue(symtab, r_key, logger, action_name, with_raw_name)
 			if err != nil {
 				logger.Warn(
 					fmt.Sprintf("error building map key: %v", r_key),
@@ -327,7 +323,7 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 			} else {
 				continue
 			}
-			value, err := ValorizeValue(symtab, r_value, logger, action_name, cur_level+1)
+			value, err := ValorizeValue(symtab, r_value, logger, action_name, with_raw_name)
 			if err != nil {
 				logger.Warn(
 					fmt.Sprintf("error building map value for key '%s'", key_val),
@@ -351,7 +347,7 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 	case []any:
 		ldata := make([]any, len(curval))
 		for idx, r_value := range curval {
-			values, err := ValorizeValue(symtab, r_value, logger, action_name, cur_level+1)
+			values, err := ValorizeValue(symtab, r_value, logger, action_name, with_raw_name)
 			if err != nil {
 				logger.Warn(
 					fmt.Sprintf("error building list value for index: %d", idx),
@@ -508,7 +504,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 			if key, ok := pair[0].(*Field); ok {
 				key_name, err := key.GetValueString(symtab, nil, false)
 				if err == nil {
-					value, err := ValorizeValue(symtab, pair[1], logger, ba.GetName(symtab, logger), 0)
+					value, err := ValorizeValue(symtab, pair[1], logger, ba.GetName(symtab, logger), false)
 					if err == nil {
 						if value != nil {
 							add_symbol := true
@@ -569,7 +565,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 		items = baWith
 		for _, item := range items {
 
-			data, err := ValorizeValue(symtab, item, logger, ba.GetName(symtab, logger), 0)
+			data, err := ValorizeValue(symtab, item, logger, ba.GetName(symtab, logger), false)
 			if err == nil {
 				if data != nil {
 					if l_data, ok := data.([]any); ok {

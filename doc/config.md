@@ -182,7 +182,7 @@ targets:
 
   - name: default
     scheme: https
-    host: set_latter
+    host: template
     port: 443
     # if target needs to authenticate, define here the auth params
     # either use an auth_name or a statically defined params:

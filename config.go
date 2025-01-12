@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -41,9 +42,16 @@ func LoadConfig(configFile string, logger *slog.Logger, collectorName string) (*
 	return &c, nil
 }
 
-//
+// type httpAPIConfig map[string]*YAMLScript
+// type Profile map[string]*YAMLScript
+type ScriptConfig map[string]*YAMLScript
+
+type Profile struct {
+	MetricPrefix string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
+	Scripts      map[string]*YAMLScript `yaml:"scripts" json:"scripts"`
+}
+
 // Top-level config
-//
 
 // Config is a collection of targets and collectors.
 type Config struct {
@@ -51,8 +59,10 @@ type Config struct {
 	CollectorFiles []string               `yaml:"collector_files,omitempty"`
 	Targets        []*TargetConfig        `yaml:"targets,omitempty"`
 	Collectors     []*CollectorConfig     `yaml:"collectors,omitempty"`
-	HttpAPIConfig  map[string]*YAMLScript `yaml:"httpapi_config"`
+	Profiles       map[string]*Profile    `yaml:"profiles"`
 	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
+	// obsolete will be remove in next version
+	HttpAPIConfigOld map[string]*YAMLScript `yaml:"httpapi_config"`
 
 	configFile string
 	logger     *slog.Logger
@@ -113,6 +123,11 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 						if !strings.HasPrefix(metric.Name, prefix) {
 							metric.Name = fmt.Sprintf("%s_%s", prefix, metric.Name)
 						}
+						if name, err := NewField(metric.Name, nil); err == nil {
+							metric.name = name
+						} else {
+							return err
+						}
 					}
 				}
 			}
@@ -153,8 +168,9 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if !found {
 		default_target := `
 name: default
-host: set_later
+host: template
 verifySSL: true
+profile: default
 collectors:
   - ~.*_metrics
 `
@@ -176,6 +192,11 @@ collectors:
 		if err != nil {
 			return err
 		}
+		if len(cs) == 0 {
+			return fmt.Errorf("target %s has no collector defined", t.Name)
+		} else {
+			c.logger.Debug(fmt.Sprintf("target '%s' has collectors", t.Name), "collectors", (CollectorConfigList)(cs).String())
+		}
 		t.collectors = cs
 
 		// substitute AuthConfig name with auth config parameters
@@ -189,8 +210,58 @@ collectors:
 		}
 	}
 
+	// convert old format HttpAPIConfig to new one
+	if c.HttpAPIConfigOld != nil {
+		if c.Profiles == nil {
+			c.Profiles = make(map[string]*Profile)
+		}
+		if _, found := c.Profiles["default"]; found {
+			return fmt.Errorf("incompatible: old config httpapi_config and profiles[\"default\"] found")
+		}
+		profile := &Profile{
+			MetricPrefix: c.Globals.MetricPrefix,
+			Scripts:      (ScriptConfig)(c.HttpAPIConfigOld),
+		}
+		c.Profiles["default"] = profile
+	}
+	// check HttpAPIConfig script:
+	for profile_name, profile := range c.Profiles {
+		if profile.MetricPrefix == "" {
+			profile.MetricPrefix = c.Globals.MetricPrefix
+		}
+		if len(profile.Scripts) == 0 {
+			return fmt.Errorf("profile '%s' has an empty scripts section", profile_name)
+		}
+		for name, sc := range profile.Scripts {
+			if sc != nil {
+				sc.name = name
+				// have to set the action to play for play_script_action
+				for _, a := range sc.Actions {
+					if a.Type() == play_script_action || a.Type() == actions_action {
+						if err := a.SetPlayAction(profile.Scripts); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Check for empty/duplicate target names
+	// check for valid "known" profile name
 	tnames := make(map[string]interface{})
+	var (
+		default_profile      *Profile
+		default_profile_name string
+	)
+	if len(c.Profiles) == 1 {
+		for profile_name, profile := range c.Profiles {
+			default_profile = profile
+			default_profile_name = profile_name
+			break
+		}
+	}
+
 	for _, t := range c.Targets {
 		if len(t.TargetsFiles) > 0 {
 			continue
@@ -210,20 +281,15 @@ collectors:
 		if t.QueryRetry == -1 {
 			t.QueryRetry = c.Globals.QueryRetry
 		}
-	}
-
-	// check HttpAPIConfig script:
-	for name, sc := range c.HttpAPIConfig {
-		if sc != nil {
-			sc.name = name
-			// have to set the action to play for play_script_action
-			for _, a := range sc.Actions {
-				if a.Type() == play_script_action || a.Type() == actions_action {
-					if err := a.SetPlayAction(c.HttpAPIConfig); err != nil {
-						return err
-					}
-				}
+		if profile, found := c.Profiles[t.ProfileName]; !found {
+			if default_profile != nil {
+				t.profile = default_profile
+				t.ProfileName = default_profile_name
+			} else {
+				return fmt.Errorf("profile %q not found for target name %q", t.ProfileName, t.Name)
 			}
+		} else {
+			t.profile = profile
 		}
 	}
 
@@ -237,6 +303,25 @@ func (c *Config) FindAuthConfig(auth_name string) *AuthConfig {
 		return nil
 	}
 	return auth
+}
+
+type DumpProfile struct {
+	MetricPrefix string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
+	Scripts      map[string]ActionsList `yaml:"scripts" json:"scripts"`
+}
+type DumpScriptConfig map[string]ActionsList
+
+func GetProfilesDef(profiles map[string]*Profile) map[string]*DumpProfile {
+	profile_def := make(map[string]*DumpProfile, len(profiles)+1)
+
+	for profile_name, profile := range profiles {
+		new_prof := &DumpProfile{
+			MetricPrefix: profile.MetricPrefix,
+			Scripts:      GetScriptsDef(profile.Scripts),
+		}
+		profile_def[profile_name] = new_prof
+	}
+	return profile_def
 }
 
 func GetScriptsDef(map_src map[string]*YAMLScript) map[string]ActionsList {
@@ -253,11 +338,11 @@ func GetScriptsDef(map_src map[string]*YAMLScript) map[string]ActionsList {
 }
 
 type dumpConfig struct {
-	Globals        *GlobalConfig          `yaml:"global" json:"global"`
-	CollectorFiles []string               `yaml:"collector_files,omitempty" json:"collector_files,omitempty"`
-	Collectors     []*dumpCollectorConfig `yaml:"collectors,omitempty" json:"collectors,omitempty"`
-	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty" json:"auth_configs,omitempty"`
-	HttpAPIConfig  map[string]ActionsList `yaml:"httpapi_config" json:"httpapi_config"`
+	Globals        *GlobalConfig           `yaml:"global" json:"global"`
+	CollectorFiles []string                `yaml:"collector_files,omitempty" json:"collector_files,omitempty"`
+	Collectors     []*dumpCollectorConfig  `yaml:"collectors,omitempty" json:"collectors,omitempty"`
+	AuthConfigs    map[string]*AuthConfig  `yaml:"auth_configs,omitempty" json:"auth_configs,omitempty"`
+	Profiles       map[string]*DumpProfile `yaml:"profiles" json:"profiles"`
 }
 
 // YAML marshals the config into YAML format.
@@ -267,7 +352,8 @@ func (c *Config) YAML() ([]byte, error) {
 		AuthConfigs:    c.AuthConfigs,
 		CollectorFiles: c.CollectorFiles,
 		Collectors:     GetCollectorsDef(c.Collectors),
-		HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
+		Profiles:       GetProfilesDef(c.Profiles),
+		//		HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
 	}
 	return yaml.Marshal(dc)
 }
@@ -283,7 +369,8 @@ func (c *Config) JSON() ([]byte, error) {
 			AuthConfigs:    c.AuthConfigs,
 			CollectorFiles: c.CollectorFiles,
 			Collectors:     GetCollectorsDef(c.Collectors),
-			HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
+			Profiles:       GetProfilesDef(c.Profiles),
+			//			HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
 		},
 	}
 	return json.Marshal(fc)
@@ -378,6 +465,12 @@ type GlobalConfig struct {
 	InvalidHttpCode any            `yaml:"invalid_auth_code,omitempty" json:"invalid_auth_code,omitempty"`
 	ExporterName    string         `yaml:"exporter_name,omitempty" json:"exporter_name,omitempty"`
 
+	UpMetricHelp        string `yaml:"up_help,omitempty" json:"up_help,omitempty"`
+	ScrapeDurationHelp  string `yaml:"scrape_duration_help,omitempty" json:"scrape_duration_help,omitempty"`
+	CollectorStatusHelp string `yaml:"collector_status_help,omitempty" json:"collector_status_help,omitempty"`
+	WebListenAddresses  string `yaml:"web.listen-address,omitempty" json:"web.listen-address,omitempty"`
+	LogLevel            string `yaml:"log.level,omitempty" json:"log.level,omitempty"`
+
 	invalid_auth_code []int
 	// query_retry int
 	// Catches all undefined fields and must be empty after parsing.
@@ -393,6 +486,9 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Default to .5 seconds.
 	g.TimeoutOffset = model.Duration(500 * time.Millisecond)
 	g.ExporterName = exporter_name
+	g.UpMetricHelp = upMetricHelp
+	g.ScrapeDurationHelp = scrapeDurationHelp
+	g.CollectorStatusHelp = collectorStatusHelp
 
 	// Default tp 3
 	g.QueryRetry = 3
@@ -421,9 +517,14 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return checkOverflow(g.XXX, "global")
 }
 
-//
+// *
 // Targets
-//
+// *
+const (
+	TargetTypeStatic  = iota
+	TargetTypeDynamic = iota
+	TargetTypeModel   = iota
+)
 
 // TargetConfig defines a url and a set of collectors to be executed on it.
 type TargetConfig struct {
@@ -441,11 +542,14 @@ type TargetConfig struct {
 	CollectorRefs   []string          `yaml:"collectors" json:"collectors"`                           // names of collectors to execute on the target
 	TargetsFiles    []string          `yaml:"targets_files,omitempty" json:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
 	QueryRetry      int               `yaml:"query_retry,omitempty" json:"query_retry,omitempty"`     // target specific number of times to retry a query
+	ProfileName     string            `yaml:"profile" json:"profile"`
 
 	collectors       []*CollectorConfig // resolved collector references
 	fromFile         string             // filepath if loaded from targets_files pattern
 	verifySSLUserSet bool
 	verifySSL        ConvertibleBoolean
+	targetType       int
+	profile          *Profile
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -470,6 +574,10 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	t.verifySSL = true
 	// by default value is not set by user; will be overwritten if user set a value
 	t.verifySSLUserSet = false
+	// default target type is static
+	t.targetType = TargetTypeStatic
+	// set profile to default
+	t.ProfileName = "default"
 
 	if err := unmarshal((*plain)(t)); err != nil {
 		return err
@@ -495,12 +603,17 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return fmt.Errorf("missing data_source_name for target %+v", t)
 		}
 
+		if strings.ToLower(t.Host) == "template" {
+			t.targetType = TargetTypeModel
+		}
+
 		if t.VerifySSLString != "" {
 			if err := t.verifySSL.UnmarshalJSON([]byte(t.VerifySSLString)); err != nil {
 				return err
 			}
 			t.verifySSLUserSet = true
 		}
+
 		checkCollectorRefs(t.CollectorRefs, t.Name)
 
 		if len(t.Labels) > 0 {
@@ -568,10 +681,12 @@ func (t *TargetConfig) Clone(host_path string, auth_name string) (*TargetConfig,
 		ScrapeTimeout:    t.ScrapeTimeout,
 		Labels:           t.Labels,
 		QueryRetry:       t.QueryRetry,
+		ProfileName:      t.ProfileName,
 		CollectorRefs:    t.CollectorRefs,
 		collectors:       t.collectors,
 		verifySSLUserSet: t.verifySSLUserSet,
 		verifySSL:        t.verifySSL,
+		profile:          t.profile,
 	}
 
 	url_elmt, err := url.Parse(host_path)
@@ -676,6 +791,22 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 	return checkOverflow(c.XXX, "collector")
 }
 
+type CollectorConfigList []*CollectorConfig
+
+func (cs CollectorConfigList) String() string {
+	buf := new(bytes.Buffer)
+	buf.WriteString("[")
+
+	for idx, c := range cs {
+		if idx > 0 && idx <= len(cs)-1 {
+			buf.WriteString(",")
+		}
+		buf.WriteString(c.Name)
+	}
+	buf.WriteString("]")
+	return buf.String()
+}
+
 type dumpCollectorConfig struct {
 	Name           string                 `yaml:"collector_name" json:"collector_name"`                   // name of this collector
 	MetricPrefix   string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
@@ -711,6 +842,8 @@ type MetricConfig struct {
 	Scope        string            `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
 
 	valueType      prometheus.ValueType // TypeString converted to prometheus.ValueType
+	name           *Field
+	help           *Field
 	key_labels_map map[string]string
 	key_labels     *Field
 }
@@ -734,6 +867,14 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	if m.TypeString == "" {
 		return fmt.Errorf("missing type for metric %q", m.Name)
+	}
+
+	if m.Help != "" {
+		if help, err := NewField(m.Help, nil); err == nil {
+			m.help = help
+		} else {
+			return err
+		}
 	}
 
 	switch strings.ToLower(m.TypeString) {
@@ -802,6 +943,14 @@ func (s *Secret) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (s Secret) MarshalYAML() (interface{}, error) {
 	if s != "" {
 		return "<secret>", nil
+	}
+	return nil, nil
+}
+
+// MarshalJSON implements the json.Marshaler interface for Secrets.
+func (s Secret) MarshalJSON() ([]byte, error) {
+	if s != "" {
+		return []byte("\"<secret>\""), nil
 	}
 	return nil, nil
 }

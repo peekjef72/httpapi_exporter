@@ -52,6 +52,49 @@ func convertToBytes(curval any, unit string) (int64, error) {
 	return i_value, nil
 }
 
+func convertBoolToInt(curval any) (int64, error) {
+	var i_value int64
+
+	if curval == nil {
+		return 0, nil
+	}
+
+	// it is a raw value not a template look in "item"
+	switch curval := curval.(type) {
+	case int:
+		i_value = int64(curval)
+	case int64:
+		i_value = curval
+	case float32:
+		i_value = int64(curval)
+	case float64:
+		i_value = int64(curval)
+	case string:
+		s_value := strings.ToLower(curval)
+		switch s_value {
+		case "true":
+			i_value = 1
+		case "yes":
+			i_value = 1
+		case "ok":
+			i_value = 1
+		default:
+			i_value = 0
+		}
+	case map[string]any:
+		i_value = int64(len(curval))
+	case map[any]any:
+		i_value = int64(len(curval))
+	case []any:
+		i_value = int64(len(curval))
+	case []string:
+		i_value = int64(len(curval))
+	default:
+		i_value = 0
+	}
+	return i_value, nil
+}
+
 // allow to retrive string header from response's headers
 func getHeader(headers http.Header, header string) (string, error) {
 	return headers.Get(header), nil
@@ -223,6 +266,10 @@ func exporterGet(dict any, lookup_key string) (any, error) {
 	var val any
 
 	switch maptype := dict.(type) {
+	case map[string]string:
+		if raw_val, ok := maptype[lookup_key]; ok {
+			val = raw_val
+		}
 	case map[string]any:
 		if raw_val, ok := maptype[lookup_key]; ok {
 			val = raw_val
@@ -387,6 +434,7 @@ func exportLookupAddr(ip string) (string, error) {
 func mymap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
 	sprig_map["convertToBytes"] = convertToBytes
+	sprig_map["convertBoolToInt"] = convertBoolToInt
 	sprig_map["getHeader"] = getHeader
 	sprig_map["getCookie"] = getCookie
 	sprig_map["queryEscape"] = QueryEscape

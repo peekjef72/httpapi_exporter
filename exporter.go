@@ -24,7 +24,7 @@ type Exporter interface {
 	prometheus.Gatherer
 
 	// WithContext returns a (single use) copy of the Exporter, which will use the provided context for Gather() calls.
-	WithContext(context.Context, Target) Exporter
+	WithContext(context.Context, Target, bool) Exporter
 	// Config returns the Exporter's underlying Config object.
 	Config() *Config
 	Targets() []Target
@@ -54,6 +54,7 @@ type exporter struct {
 	start_time    string
 	reload_time   string
 	logLevel      string
+	health_only   bool
 	content_mutex *sync.Mutex
 }
 
@@ -73,7 +74,7 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string) (
 		if len(t.TargetsFiles) > 0 {
 			continue
 		}
-		target, err := NewTarget(logContext, t, c.Globals, c.HttpAPIConfig, logger)
+		target, err := NewTarget(logContext, t, c.Globals, t.profile, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -93,12 +94,13 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string) (
 	}, nil
 }
 
-func (e *exporter) WithContext(ctx context.Context, t Target) Exporter {
+func (e *exporter) WithContext(ctx context.Context, t Target, health_only bool) Exporter {
 	return &exporter{
 		config:        e.config,
 		targets:       e.targets,
 		cur_target:    t,
 		ctx:           ctx,
+		health_only:   health_only,
 		logger:        e.logger,
 		content_mutex: e.content_mutex,
 	}
@@ -129,7 +131,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 			}
 		}()
 		defer wg.Done()
-		target.Collect(e.ctx, metricChan)
+		target.Collect(e.ctx, metricChan, e.health_only)
 	}(e.cur_target)
 
 	// Wait for all collectors to complete, then close the channel.
@@ -219,7 +221,7 @@ func (e *exporter) FindTarget(tname string) (Target, error) {
 func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
 	var logContext []interface{}
 
-	target, err := NewTarget(logContext, tg_config, e.config.Globals, e.config.HttpAPIConfig, e.logger)
+	target, err := NewTarget(logContext, tg_config, e.config.Globals, tg_config.profile, e.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -231,10 +233,20 @@ func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
 // GetFirstTarget implements Exporter.
 func (e *exporter) GetFirstTarget() (Target, error) {
 	var t_found Target
+	found := false
 	if len(e.targets) == 0 {
 		return t_found, errors.New("no target found")
 	} else {
-		t_found = e.targets[0]
+		for _, t := range e.targets {
+			if t.Config().Host != "template" {
+				t_found = t
+				found = true
+				break
+			}
+		}
+		if !found {
+			return t_found, ErrTargetNotFound
+		}
 	}
 	return t_found, nil
 }
@@ -337,6 +349,9 @@ func (e *exporter) ReloadConfig() error {
 	if err != nil {
 		return err
 	}
+	if c.HttpAPIConfigOld != nil {
+		e.logger.Warn("DEPRECATED usage of httpapi_config")
+	}
 
 	var targets []Target
 	var logContext []interface{}
@@ -347,7 +362,7 @@ func (e *exporter) ReloadConfig() error {
 		if len(t.TargetsFiles) > 0 {
 			continue
 		}
-		target, err := NewTarget(logContext, t, c.Globals, c.HttpAPIConfig, e.logger)
+		target, err := NewTarget(logContext, t, c.Globals, t.profile, e.logger)
 		if err != nil {
 			return err
 		}
