@@ -1,0 +1,36 @@
+{
+  "sampleTime": "2022-11-16T07:25:00+01:00",
+  "sampleTimeSec": 1668579900,
+  "total": 18,
+  "members": [
+    {
+      "node": 0,
+      "slot": 0,
+      "cardPort": 1,
+      "type": 1, 
+      "speed": 16,
+      "IO": {
+        "read": 5.4, 
+        "write": 7.3,
+        "total": 12.7
+      },
+      "KBytes": {
+        "read": 26.7,
+        "write": 11.0,
+        "total": 37.7
+      },
+      "serviceTimeMS": {
+        "read": 0.08,
+        "write": 2.1,
+        "total": 1.24
+      },
+      "IOSizeKB": {
+        "read": 4.9,
+        "write": 1.5,
+        "total": 3.0
+      },
+      "queueLength": 0,
+      "busyPct": 0.7
+    }
+  ]
+}

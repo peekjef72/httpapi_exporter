@@ -35,7 +35,7 @@ const (
 // like a prometheus.Collector, except its Collect() method takes a Context to run in.
 type Target interface {
 	// Collect is the equivalent of prometheus.Collector.Collect(), but takes a context to run in.
-	Collect(ctx context.Context, ch chan<- Metric)
+	Collect(ctx context.Context, ch chan<- Metric, health_only bool)
 	Name() string
 	SetSymbol(string, any) error
 	GetSymbolTable() map[string]any
@@ -111,7 +111,7 @@ func NewTarget(
 	logContext []interface{},
 	tpar *TargetConfig,
 	gc *GlobalConfig,
-	http_script map[string]*YAMLScript,
+	profile *Profile,
 	logger *slog.Logger) (Target, error) {
 
 	if tpar.Name != "" {
@@ -142,22 +142,22 @@ func NewTarget(
 		collectors = append(collectors, c)
 	}
 
-	upDesc := NewAutomaticMetricDesc(logContext, gc.MetricPrefix+"_"+upMetricName, upMetricHelp, prometheus.GaugeValue, constLabelPairs)
+	upDesc := NewAutomaticMetricDesc(logContext, profile.MetricPrefix+"_"+upMetricName, gc.UpMetricHelp, prometheus.GaugeValue, constLabelPairs)
 	scrapeDurationDesc :=
-		NewAutomaticMetricDesc(logContext, gc.MetricPrefix+"_"+scrapeDurationName, scrapeDurationHelp, prometheus.GaugeValue, constLabelPairs)
+		NewAutomaticMetricDesc(logContext, profile.MetricPrefix+"_"+scrapeDurationName, gc.ScrapeDurationHelp, prometheus.GaugeValue, constLabelPairs)
 
 	collectorStatusDesc := NewAutomaticMetricDesc(logContext,
-		gc.MetricPrefix+"_"+collectorStatusName,
-		collectorStatusHelp,
+		profile.MetricPrefix+"_"+collectorStatusName,
+		gc.CollectorStatusHelp,
 		prometheus.GaugeValue, constLabelPairs,
 		"collectorname")
 
 	t := target{
 		name:                tpar.Name,
 		config:              tpar,
-		client:              newClient(tpar, http_script, logger, gc),
+		client:              newClient(tpar, profile.Scripts, logger, gc),
 		collectors:          collectors,
-		httpAPIScript:       http_script,
+		httpAPIScript:       profile.Scripts,
 		upDesc:              upDesc,
 		scrapeDurationDesc:  scrapeDurationDesc,
 		collectorStatusDesc: collectorStatusDesc,
@@ -251,7 +251,7 @@ func (t *target) Unlock() {
 }
 
 // Collect implements Target.
-func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
+func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only bool) {
 
 	// chan to receive order from collector if something wrong with authentication
 	collectChan := make(chan int, capCollectChan)
@@ -392,6 +392,9 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric) {
 	if t.name != "" {
 		// Export the target's `up` metric as early as we know what it should be.
 		met_ch <- NewMetric(t.upDesc, boolToFloat64(targetUp), nil, nil)
+	}
+	if health_only {
+		return
 	}
 
 	// Don't bother with the collectors if target is down.

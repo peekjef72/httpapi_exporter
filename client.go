@@ -106,6 +106,12 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 
 	var err error
 	var tmp any
+	set_name := cl.SetScriptName("clone")
+	defer func() {
+		if set_name {
+			delete(cl.symtab, "__name__")
+		}
+	}()
 
 	tmp = c.symtab
 	if tmp, err = copystructure.Copy(c.symtab); err != nil {
@@ -155,6 +161,15 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	return cl
 }
 
+// set the played script name in client symtab (for logginf purpose mos of the time)
+func (cl *Client) SetScriptName(name string) bool {
+	set := false
+	if script_name := GetMapValueString(cl.symtab, "__name__"); script_name == "" {
+		cl.symtab["__name__"] = name
+	}
+	return set
+}
+
 // set the url for client
 func (c *Client) SetUrl(url string) string {
 	if _, ok := c.symtab["APIEndPoint"]; !ok {
@@ -176,29 +191,6 @@ func (c *Client) SetUrl(url string) string {
 		"collid", CollectorId(c.symtab, c.logger),
 		"script", ScriptName(c.symtab, c.logger))
 	return uri
-}
-
-// parse a response to a json map[string]interface{}
-func (c *Client) getJSONResponse(resp *resty.Response) any {
-	var data any
-
-	body := resp.Body()
-	if len(body) > 0 {
-		content_type := resp.Header().Get(contentTypeHeader)
-		if strings.Contains(content_type, "application/json") {
-			// tmp := make([]byte, len(body))
-			// copy(tmp, body)
-			if err := json.Unmarshal(body, &data); err != nil {
-				c.logger.Error(
-					fmt.Sprintf("Fail to decode json results %v", err),
-					"collid", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger))
-			}
-		}
-	} else {
-		data = make(map[any]any)
-	}
-	return data
 }
 
 // unmarshall a default content in xml... I hope so
@@ -277,8 +269,18 @@ func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 }
 
-// parse a response in XML and return map[string]any
-func (c *Client) getXMLResponse(resp *resty.Response) any {
+// parse a response according to the parser set for query:
+//
+// - json default
+//
+// - openmetrics
+//
+// - xml
+//
+// - none
+//
+// return:  map[string]any
+func (c *Client) getResponse(resp *resty.Response, parser string) any {
 	// var data map[string]interface{}
 	// var data_map map[string]interface{}
 	var data any
@@ -286,18 +288,35 @@ func (c *Client) getXMLResponse(resp *resty.Response) any {
 	body := resp.Body()
 	if len(body) > 0 {
 		content_type := resp.Header().Get(contentTypeHeader)
-		if strings.Contains(content_type, "application/json") {
-			// tmp := make([]byte, len(body))
-			// copy(tmp, body)
-			var data_internal *Content
-			if err := xml.Unmarshal(body, &data_internal); err != nil {
-				c.logger.Error(
-					fmt.Sprintf("Fail to decode xml results %v", err),
-					"collid", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger))
+		switch parser {
+		case "xml":
+			if strings.Contains(content_type, "text/xml") {
+				// tmp := make([]byte, len(body))
+				// copy(tmp, body)
+				var data_internal *Content
+				if err := xml.Unmarshal(body, &data_internal); err != nil {
+					c.logger.Error(
+						fmt.Sprintf("Fail to decode xml results %v", err),
+						"collid", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger))
+				}
+				data_tmp := make(map[string]any)
+				data_tmp[data_internal.Name] = data_internal.Attrs
+				data = data_tmp
 			}
-			data := make(map[string]any)
-			data[data_internal.Name] = data_internal.Attrs
+		case "json":
+			if strings.Contains(content_type, "application/json") {
+				// tmp := make([]byte, len(body))
+				// copy(tmp, body)
+				if err := json.Unmarshal(body, &data); err != nil {
+					c.logger.Error(
+						fmt.Sprintf("Fail to decode json results %v", err),
+						"collid", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger))
+				}
+			}
+		case "none":
+			data = string(body)
 		}
 	} else {
 		data = make(map[any]any)
@@ -328,7 +347,7 @@ func (c *Client) Execute(
 		"script", ScriptName(c.symtab, c.logger),
 		"method", method,
 		"url", url,
-		"parser", "parser",
+		"parser", parser,
 	)
 	if body != nil {
 		c.logger.Debug(
@@ -379,11 +398,11 @@ func (c *Client) Execute(
 				return resp, data, ErrInvalidLogin
 
 			} else {
-				if parser == "xml" {
-					data = c.getXMLResponse(resp)
-				} else if parser == "json" {
-					data = c.getJSONResponse(resp)
-				}
+				data = c.getResponse(resp, parser)
+				// if parser == "xml" {
+				// } else if parser == "json" {
+				// 	data = c.getJSONResponse(resp)
+				// }
 				i = query_retry + 1
 			}
 			c.symtab["response_headers"] = resp.Header()
@@ -926,13 +945,15 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 					return err
 				}
 			}
-			c.client.SetBasicAuth(user, passwd)
-			passwd = ""
 			symtab["auth_set"] = true
-			c.logger.Debug(
-				"basicauth Header set for request",
-				"collid", CollectorId(c.symtab, c.logger),
-				"script", ScriptName(c.symtab, c.logger))
+			if user != "" {
+				c.client.SetBasicAuth(user, passwd)
+				passwd = ""
+				c.logger.Debug(
+					"basicauth Header set for request",
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger))
+			}
 			delete(symtab, "auth_key")
 		} else if auth_mode == "token" {
 			auth_token := GetMapValueString(symtab, "auth_token")
@@ -1150,9 +1171,13 @@ type ClientInitParams struct {
 func (cl *Client) Init(params *ClientInitParams) error {
 	var reset_coll_id bool = false
 
+	set_name := cl.SetScriptName("init")
 	defer func() {
 		if reset_coll_id {
 			delete(cl.symtab, "__collector_id")
+		}
+		if set_name {
+			delete(cl.symtab, "__name__")
 		}
 	}()
 
@@ -1268,6 +1293,12 @@ func (cl *Client) Init(params *ClientInitParams) error {
 
 // login to target
 func (cl *Client) Login() (bool, error) {
+	set_name := cl.SetScriptName("login")
+	defer func() {
+		if set_name {
+			delete(cl.symtab, "__name__")
+		}
+	}()
 
 	// ** init the connection status func and symbol table
 	status := false
@@ -1309,6 +1340,12 @@ func (cl *Client) Login() (bool, error) {
 
 // logout from target
 func (cl *Client) Logout() error {
+	set_name := cl.SetScriptName("logout")
+	defer func() {
+		if set_name {
+			delete(cl.symtab, "__name__")
+		}
+	}()
 	// ** get the login script definition from config if one is defined
 	if script, ok := cl.sc["logout"]; ok && script != nil {
 		// cl.symtab["__client"] = cl.client
@@ -1338,6 +1375,12 @@ func (cl *Client) Logout() error {
 
 // clear auth info for target
 func (cl *Client) Clear() error {
+	set_name := cl.SetScriptName("clear")
+	defer func() {
+		if set_name {
+			delete(cl.symtab, "__name__")
+		}
+	}()
 	// ** get the clear script definition from config if one is defined
 	if script, ok := cl.sc["clear"]; ok && script != nil {
 		// cl.symtab["__client"] = cl.client
@@ -1373,6 +1416,12 @@ func (cl *Client) Ping() (bool, error) {
 	// ** init the connection status func and symbol table
 	status := false
 	cl.symtab["query_status"] = false
+	set_name := cl.SetScriptName("ping")
+	defer func() {
+		if set_name {
+			delete(cl.symtab, "__name__")
+		}
+	}()
 
 	cl.content_mutex.Lock()
 	logger := cl.logger

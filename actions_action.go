@@ -19,9 +19,9 @@ type ActionsAction struct {
 	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
 	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
 	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	Actions []Action            `yaml:"actions,omitempty" json:"actions,omitempty"`
 
-	Actions []Action `yaml:"actions"`
-	vars    [][]any
+	vars [][]any
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`

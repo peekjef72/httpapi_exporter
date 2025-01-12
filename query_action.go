@@ -119,8 +119,9 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 		switch qc.Parser {
 		case "json":
 		case "xml":
+		case "none":
 		default:
-			return fmt.Errorf("invalid value for parser: '%s': should be ('json','xml','openmetrics')", qc.Parser)
+			return fmt.Errorf("invalid value for parser: '%s': should be ('json','xml','openmetrics', 'none')", qc.Parser)
 		}
 	}
 	return checkOverflow(qc.XXX, "query action")
@@ -152,13 +153,13 @@ func buildStatus(raw_status any) []int {
 }
 
 type QueryAction struct {
-	Name    *Field              `yaml:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    [][]any             `yaml:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty"`
-	Query   *QueryActionConfig
+	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    [][]any             `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	Query   *QueryActionConfig  `yaml:"query" json:"query"`
 
 	vars [][]any
 

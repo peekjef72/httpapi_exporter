@@ -362,21 +362,47 @@ func StatusHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 // TargetsHandlerFunc is the HTTP handler for the `/target` page. It outputs the targets configuration marshaled in YAML format.
 func TargetsHandlerFunc(metricsPath string, exporter Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var targets_cfg []byte
-		var err error
+
+		type targets struct {
+			Tgs []*TargetConfig `yaml:"targets" json:"targets"`
+		}
+		var (
+			tgs         *targets
+			targets_cfg []byte
+			err         error
+		)
+
+		ctxval, ok := r.Context().Value(ctxKey{}).(*ctxValue)
+		if !ok {
+			err := errors.New("invalid context received")
+			HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
+			return
+
+		}
+
 		c := exporter.Config()
-		// for _, t := range c.Targets {
-		accept_type := r.Header.Get(acceptHeader)
-		if strings.Contains(accept_type, applicationJSON) {
-			type targets struct {
-				Tgs []*TargetConfig `json:"targets"`
+		if ctxval.path != "" {
+			if tg, err := exporter.FindTarget(ctxval.path); err == nil {
+				tgl := make([]*TargetConfig, 1)
+				tgl[0] = tg.Config()
+
+				tgs = &targets{
+					Tgs: tgl,
+				}
+			} else {
+				HandleError(http.StatusNotFound, errors.New(`target not found`), metricsPath, exporter, w, r)
+				return
 			}
-			tgs := &targets{
+		} else {
+			tgs = &targets{
 				Tgs: c.Targets,
 			}
+		}
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
+
 			targets_cfg, err = json.Marshal(tgs)
 			if err != nil {
-				// content = nil
 				HandleError(0, err, metricsPath, exporter, w, r)
 				return
 			}
@@ -387,12 +413,9 @@ func TargetsHandlerFunc(metricsPath string, exporter Exporter) func(http.Respons
 		} else {
 			targets_cfg, err = yaml.Marshal(c.Targets)
 			if err != nil {
-				// content = nil
 				HandleError(0, err, metricsPath, exporter, w, r)
 				return
 			}
-			// targets_cfg = append(targets_cfg, content...)
-			// }
 			w.Header().Set(contentTypeHeader, textHTML)
 			targetsTemplate.Execute(w, &tdata{
 				ExporterName: exporter.Config().Globals.ExporterName,

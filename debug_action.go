@@ -41,14 +41,14 @@ func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 
 // ****************************
 type DebugAction struct {
-	Name    *Field              `yaml:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty"`
+	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
 
-	Debug *DebugActionConfig `yaml:"debug"`
+	Debug *DebugActionConfig `yaml:"debug" json:"debug"`
 	vars  [][]any
 }
 

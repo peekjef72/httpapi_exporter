@@ -83,7 +83,7 @@ func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 		newRoute(OpEgals, "/reload", ReloadHandlerFunc(*metricsPath, exporter, actionCh)),
 		newRoute(OpMatch, "/loglevel(?:/(.*))?", LogLevelHandlerFunc(*metricsPath, exporter, actionCh, "")),
 		newRoute(OpEgals, "/status", StatusHandlerFunc(*metricsPath, exporter)),
-		newRoute(OpEgals, "/targets", TargetsHandlerFunc(*metricsPath, exporter)),
+		newRoute(OpMatch, "/targets(?:/(.*))?", TargetsHandlerFunc(*metricsPath, exporter)),
 		newRoute(OpEgals, *metricsPath, func(w http.ResponseWriter, r *http.Request) { ExporterHandlerFor(exporter).ServeHTTP(w, r) }),
 		// Expose exporter metrics separately, for debugging purposes.
 
@@ -171,7 +171,13 @@ func main() {
 		logger.Error(fmt.Sprintf("Error creating exporter: %s", err))
 		os.Exit(1)
 	}
+
+	if exporter.Config().Globals.LogLevel != "" {
+		logConfig.Level.Set(exporter.Config().Globals.LogLevel)
+		logger = promslog.New(&logConfig)
+	}
 	exporter.SetLogLevel(logConfig.Level.String())
+
 	if *dry_run {
 		logger.Info("configuration OK.")
 		// get the target if defined
@@ -239,7 +245,7 @@ func main() {
 		}
 		defer cancel()
 
-		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t)}
+		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t, false)}
 		mfs, err := gatherer.Gather()
 		if err != nil {
 			logger.Error(fmt.Sprintf("Error gathering metrics: %v", err))
@@ -315,6 +321,9 @@ func main() {
 	srvc := make(chan struct{})
 	term := make(chan os.Signal, 1)
 	signal.Notify(term, os.Interrupt, syscall.SIGTERM)
+	if exporter.Config().Globals.WebListenAddresses != "" {
+		*toolkitFlags.WebListenAddresses = strings.Split(exporter.Config().Globals.WebListenAddresses, ",")
+	}
 
 	go func() {
 		// Setup and start webserver.

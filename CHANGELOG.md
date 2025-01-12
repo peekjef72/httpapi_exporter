@@ -4,6 +4,112 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.0 / 2025-01-12 - not release
+
+###  2025-01-11
+- fixed: config output in json format.
+
+###  2025-01-08
+- fixed: now checks that each target has at least one collector defined; e.g.: failed if collector pattern matching doesn't correspond to any collector name.
+- fixed: allow "scope" directive to use $var_name format (like .var_name).
+
+###  2025-01-04
+- added "profile" for config and target. Now exporter can collect multiple apis with different "login" semantics. Before the config contains only one **httpapi_config** part that define the "init", "login", "logout", "ping" scripts. The new version allow to define "profiles", and in each profile the "default scripts", so that a target can use a named profile :
+
+  ```yaml
+  profiles:
+    default:
+        # all metrics will be named "[metric_prefix]_[metric_name]"
+        metric_prefix: "apiprefix"
+
+        scripts:
+          init:
+            - name: default headers
+              set_fact:
+                scheme: https
+                base_url: /my_url...
+                verifySSL: true
+                headers:
+                  "Content-Type": application/json
+                  Accept: "application/json"
+          login: ~
+          logout: ~
+
+          # method call to determine if a target is responding; will call login() if necessary
+          ping:
+            - name: check if API is replying
+              query:
+                url: my_ping_url
+                ...
+  ```
+
+  Then each target may set a profile name to use; by default if not set, the exporter will try to assign the profile "default" or the only one if there is only one profile defined in configuration, else the config check will failed.
+  Each profile, may also set a "metric_prefix", so that "up", "collector_status", "scrape_duration" have a distinct name for each profile!
+
+###  2024-12-14
+
+- added: parameter "health" to endpoint "/metrics", so that only "ping" script is performed and the metrics "up" with status returned. May be usefull to check if a target is responding; I use this feature in ansible playbook before to generate "file_sd_config" of scraping job for prometheus.
+- added: parsers feature to decode response in the query action. parser can be:
+  - `xml` for "text/xml" content : beta ; feedbacks are appreciated.
+  - `json` default parser. Before 0.4.0 all replies must be in json format.
+  - `none` for reponse that you don't want to parse (landing ping() page by example.)
+  - `openmetrics` not implemented yet!
+
+  httpapi_exporter can now provide unified results for multi-format api. I've got one that respond with both json and xml data.
+  usage:
+
+  ```yaml
+    - name: collect elements
+    query:
+      url: /path/entrypoint
+      var_name: results
+      # debug: yes
+      parser: xml
+
+  ```
+
+- fixed access to url without authentication (no user, password provided with defaut basic authentication). Removed the header generation (Authorization).
+- allow dynamic metric name and help. Now it is possible to define metrics in a loop:
+
+  ```yaml
+  - metric_name: "config_{{ .counter.name }}"
+    help: "parameter {{ .counter.value }} is enabled boolean (0: false - 1: true)"
+    type: gauge
+    key_labels: $labels
+    values:
+      _: "{{ convertBoolToInt .counter.value }}"
+    loop:
+      - name: hasAdvancedDocumentConversion
+        value: $results.hasAdvancedDocumentConversion
+      - name: hasAdvancedQueryReporting
+        value: $results.hasAdvancedQueryReporting
+    loop_var: counter
+  ```
+
+  that will produce:
+
+  ```text
+  # HELP exalead_license_config_hasAdvancedDocumentConversion parameter false is enabled boolean (0: false - 1: true)
+  # TYPE exalead_license_config_hasAdvancedDocumentConversion gauge
+  exalead_license_config_hasAdvancedDocumentConversion{company="My Company",param="hasSemanticFactory",type="-"} 0
+  # HELP exalead_license_config_hasAdvancedQueryReporting parameter false is enabled boolean (0: false - 1: true)
+  # TYPE exalead_license_config_hasAdvancedQueryReporting gauge
+  exalead_license_config_hasAdvancedQueryReporting{company="My Company",param="hasSemanticFactory",type="-"} 0
+  ```
+  this example is a lilte bit stupid, because it is more accurate to add a label param with name of parameter in config metric, but it explains how it can work !
+- add new template function `convertBoolToInt` to convert text boolean to value 0 or 1.
+  - string "true", "yes", "ok" returns 1 anything else 0.
+  - any int or float value distinct of 0 then 1 else 0.
+  - map,slice: if length of map or slice is greater than 0 then 1 else 0.
+- add contribs exalead exporter.
+
+- add config parameters in configuration file in global section for:
+    - web.listen-address (priority to config file over command line argument --web.listen-address)
+    - log.level (priority to config file over command line argument --log.level)
+    - up_help allow user to replace default help message for metric help (default is "if the target is reachable 1, else 0 if the scrape failed")
+    - scrape_duration_help same for scrap duration metric (default is "How long it took to scrape the target in seconds")
+    - collector_status_help same for collector status (default is "collector scripts status 0: error - 1: ok - 2: Invalid login 3: Timeout")
+
 ## 0.3.9 / 2024-12-14
 - removed passwd_encrypt tool source code from httpapi_exporter: created a new stand-alone package [passwd_encrypt](https://github.com/peekjef72/passwd_encrypt). Passwd_encrypt is still installed when building and added to the released archiv.
 - updated prometheus/exporter-toolkit to 0.13.0 (log => log/slog)

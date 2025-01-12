@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"reflect"
 	"sort"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,6 +28,8 @@ type MetricDesc interface {
 // MetricFamily implements MetricDesc for SQL metrics, with logic for populating its labels and values from sql.Rows.
 type MetricFamily struct {
 	config       *MetricConfig
+	name         string
+	help         string
 	constLabels  []*dto.LabelPair
 	labels       []*Label // raw string or template
 	valueslabels []*Label // raw string or template for key and value
@@ -122,9 +125,29 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 	item, ok := rawdatas.(map[string]any)
 	if !ok {
-		ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("metrtic %s invalid type", mf.config.Name))
+		ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("metric %s symbols table", mf.config.Name))
 		return
 	}
+	if mf.name == "" {
+		name, err := mf.config.name.GetValueString(item, nil, false)
+		if err != nil {
+			ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("metric %s can't get metric name", mf.config.Name))
+			return
+		} else {
+			mf.name = name
+		}
+	}
+	if mf.help == "" {
+		help, err := mf.config.help.GetValueString(item, nil, false)
+		if err != nil {
+			ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("metric %s can't get metric help", mf.name))
+			return
+		} else {
+			mf.help = help
+		}
+	}
+	mf.logContext[1] = mf.name
+
 	// set default scope to "loop_var" entry: item[item["loop_var"]]
 	if mf.config.Scope == "" {
 		if loop_var, ok := item["loop_var"].(string); ok {
@@ -150,7 +173,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 	// build the labels family with the content of the var(*Field)
 	if len(mf.labels) == 0 && mf.config.key_labels != nil {
-		if labelsmap_raw, err := ValorizeValue(item, mf.config.key_labels, logger, mf.config.Name, 0); err == nil {
+		if labelsmap_raw, err := ValorizeValue(item, mf.config.key_labels, logger, mf.name, true); err == nil {
 			if key_labels_map, ok := labelsmap_raw.(map[string]any); ok {
 				label_len := len(key_labels_map)
 				if len(mf.config.Values) > 1 {
@@ -161,9 +184,9 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				i := 0
 				for key, val_raw := range key_labels_map {
 					if val, ok := val_raw.(string); ok {
-						mf.labels[i], err = NewLabel(key, val, mf.config.Name, "key_label", nil)
+						mf.labels[i], err = NewLabel(key, val, mf.name, "key_label", nil)
 						if err != nil {
-							logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
+							logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err))
 							continue
 						}
 					}
@@ -171,15 +194,17 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				}
 				// add an element in labels for value_label (the name of the label); value will be set later
 				if len(mf.config.Values) > 1 {
-					mf.labels[i], _ = NewLabel(mf.config.ValueLabel, "", mf.config.Name, "value_label", nil)
+					mf.labels[i], _ = NewLabel(mf.config.ValueLabel, "", mf.name, "value_label", nil)
 					if err != nil {
-						logger.Warn(fmt.Sprintf("invalid templatefor value_label for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
+						logger.Warn(fmt.Sprintf("invalid templatefor value_label for metric %s: %s (maybe use |toRawJson.)", mf.name, err))
 						// 	return nil, err
 					}
 				}
+			} else {
+				logger.Warn("invalid type need map[string][string]", "type_error", reflect.TypeOf(labelsmap_raw))
 			}
 		} else {
-			logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.config.Name, err))
+			logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err))
 		}
 	}
 
@@ -196,7 +221,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 			if label.Key != nil {
 				labelNames[i], err = label.Key.GetValueString(item, nil, false)
 				if err != nil {
-					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.config.Name, label.Key.String(), err))
+					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err))
 					continue
 				}
 			}
@@ -206,7 +231,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				sub["_"] = labelNames[i]
 				labelValues[i], err = label.Value.GetValueString(item, sub, true)
 				if err != nil {
-					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.config.Name, label.Value.String(), err))
+					ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err))
 					continue
 				}
 			}
@@ -225,13 +250,13 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		if len(mf.config.Values) > 1 {
 			labelValues[len(labelValues)-1], err = label.Key.GetValueString(item, nil, false)
 			if err != nil {
-				ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.config.Name, label.Key.String(), err))
+				ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err))
 				continue
 			}
 		}
 		f_value, err = label.Value.GetValueFloat(item)
 		if err != nil {
-			ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.config.Name, label.Value.String(), err))
+			ch <- NewInvalidMetric(mf.logContext, fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err))
 			continue
 		}
 
@@ -244,12 +269,20 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 // Name implements MetricDesc.
 func (mf MetricFamily) Name() string {
-	return mf.config.Name
+	name := mf.name
+	if name == "" {
+		name = mf.config.Name
+	}
+	return name
 }
 
 // Help implements MetricDesc.
 func (mf MetricFamily) Help() string {
-	return mf.config.Help
+	help := mf.help
+	if help == "" {
+		help = mf.config.Help
+	}
+	return help
 }
 
 // ValueType implements MetricDesc.
