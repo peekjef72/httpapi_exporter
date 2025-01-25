@@ -1,4 +1,4 @@
-FROM golang:1.22 AS builder
+FROM golang:1.23.1 AS builder
 
 # Get httpapi_exporter
 ADD .   /go/src/httpapi_exporter
