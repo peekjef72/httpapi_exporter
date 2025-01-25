@@ -14,92 +14,94 @@ global:
   invalid_auth_code: [401,403]
   exporter_name: veeam_exporter
 
-httpapi_config:
-  init:
-    - name: default headers
-      set_fact:
-        headers:
-          - name: "Content-Type"
-            value: application/json
-          - name: Accept
-            value: "application/json"
-        scheme: https
-        port: 9398
-        verifySSL: false
-        base_url: /api
+profiles:
+  veeam:
+    scripts:
+      init:
+        - name: default headers
+          set_fact:
+            headers:
+              - name: "Content-Type"
+                value: application/json
+              - name: Accept
+                value: "application/json"
+            scheme: https
+            port: 9398
+            verifySSL: false
+            base_url: /api
 
-        # set default time in hours (time.Duration) to look back for jobs and tasks
-        jobHistory: -12h
-        taskHistory: -12h
-        
-        # default values for parameters that you don't want to set for each target
-        # base_url: /api/v1
-        # scheme: https
-        # port: 8080
-        # verifySSL: true|false
-        # query_retry: 3
+            # set default time in hours (time.Duration) to look back for jobs and tasks
+            jobHistory: -12h
+            taskHistory: -12h
+            
+            # default values for parameters that you don't want to set for each target
+            # base_url: /api/v1
+            # scheme: https
+            # port: 8080
+            # verifySSL: true|false
+            # query_retry: 3
 
-  auth_check:
-    - name: analyze login response ok
-      set_fact:
-        headers: 
-          - name: "X-RestSvcSessionId"
-            value: '{{ getHeader .response_headers "X-RestSvcSessionId" }}'
-        logged: true
-        login_retry: "{{ .queryRetry }}"
-        # remove .login entry from symbols table
-        # login: ~
-      when:
-        - eq .results_status 201
-    - name: analyze login response
-      set_fact:
-        # auth_token: ""
-        logged: false
-        login_retry: "{{ .queryRetry  }}"
-        headers: 
-          - name: "X-RestSvcSessionId"
-            action: delete
-      when:
-        - or (eq .results_status 401) (eq .results_status 403)
-    - name: analyze login response not ok with retry
-      set_fact:
-        # auth_token: ""
-        logged: false
-        login_retry: "{{ add .login_retry 1 }}"
-      when:
-        - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
-
-  login:
-    - name: init login loop
-      vars:
-        login_retry: 0
-        results_status: 0
-      until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
-
-      actions:
-        - name: login phase
-          query:
-            url: /sessionMngr/?v=latest
-            method: post
-            auth_config:
-              mode: basic
-            ok_status: 201
-            # don't store the value
-            var_name: _
+      auth_check:
+        - name: analyze login response ok
+          set_fact:
+            headers: 
+              - name: "X-RestSvcSessionId"
+                value: '{{ getHeader .response_headers "X-RestSvcSessionId" }}'
+            logged: true
+            login_retry: "{{ .queryRetry }}"
+            # remove .login entry from symbols table
+            # login: ~
+          when:
+            - eq .results_status 201
         - name: analyze login response
-          play_script: auth_check
+          set_fact:
+            # auth_token: ""
+            logged: false
+            login_retry: "{{ .queryRetry  }}"
+            headers: 
+              - name: "X-RestSvcSessionId"
+                action: delete
+          when:
+            - or (eq .results_status 401) (eq .results_status 403)
+        - name: analyze login response not ok with retry
+          set_fact:
+            # auth_token: ""
+            logged: false
+            login_retry: "{{ add .login_retry 1 }}"
+          when:
+            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
 
-  # method called to determine if a target is responding; will call login script if necessary
-  # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
-  ping:
-    - name: check ping cnx
-      query: 
-        # will call /api in fact !
-        url: /
-        method: get
-        ok_status: 200
-        # to catch and store the result and use it later...
-        # var_name: wsapi
+      login:
+        - name: init login loop
+          vars:
+            login_retry: 0
+            results_status: 0
+          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+
+          actions:
+            - name: login phase
+              query:
+                url: /sessionMngr/?v=latest
+                method: post
+                auth_config:
+                  mode: basic
+                ok_status: 201
+                # don't store the value
+                var_name: _
+            - name: analyze login response
+              play_script: auth_check
+
+      # method called to determine if a target is responding; will call login script if necessary
+      # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
+      ping:
+        - name: check ping cnx
+          query: 
+            # will call /api in fact !
+            url: /
+            method: get
+            ok_status: 200
+            # to catch and store the result and use it later...
+            # var_name: wsapi
 
 # list of authentication configuration to use to access to a target.
 auth_configs:

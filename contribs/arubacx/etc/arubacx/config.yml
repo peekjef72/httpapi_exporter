@@ -14,124 +14,126 @@ global:
   invalid_auth_code: [401,403]
   exporter_name: arubacx_exporter
 
-httpapi_config:
-  init:
-    - name: default headers
-      set_fact:
-        session_id: ''
-        headers:
-          - name: "Content-Type"
-            value: application/json
-          - name: Accept
-            value: "application/json"
-        base_url: /rest/v1
-        verifySSL: false
-        #** reload config info every one hour
-        configCacheDuration: 1h
-
-  auth_check:
-    - name: analyze login response ok
-      set_fact:
-        cookies: 
-          - name: "id"
-            value: '{{ getCookie .response_cookies "id" }}'
-        logged: true
-        login_retry: "{{ .queryRetry }}"
-        # remove .login entry from symbols table
-        # login: ~
-      when:
-        - eq .results_status 200
-    - name: analyze login response
-      set_fact:
-        # session_id: ''
-        logged: false
-        login_retry: "{{ .queryRetry }}"
-      when:
-        - or (eq .results_status 401) (eq .results_status 403)
-    - name: analyze login response not ok with retry
-      set_fact:
-        # auth_token: ""
-        logged: false
-        login_retry: "{{ add .login_retry 1 }}"
-      when:
-        - and (and (ne .results_status 200) (ne .results_status 401)) (ne .result_status 403)
-
-  login:
-    - name: init login loop
-      vars:
-        login_retry: 0
-        results_status: 0
-      until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
-
-      actions:
-        - name: login phase
-          vars:
+profiles:
+  arubacx:
+    scripts:
+      init:
+        - name: default headers
+          set_fact:
+            session_id: ''
             headers:
-              Content-Type: application/x-www-form-urlencoded
-              Accept: "*/*"
-          query:
-            url: /login
-            method: post
-              # {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-              # username={{ queryEscape .user }}&password={{ queryEscape $tmp_pass }}
-            data: >-
-              username={{ queryEscape .user }}&password={{ queryEscape .password }}
-            ok_status: 200
-            # don't store the value
-            var_name: _
+              - name: "Content-Type"
+                value: application/json
+              - name: Accept
+                value: "application/json"
+            base_url: /rest/v1
+            verifySSL: false
+            #** reload config info every one hour
+            configCacheDuration: 1h
+
+      auth_check:
+        - name: analyze login response ok
+          set_fact:
+            cookies: 
+              - name: "id"
+                value: '{{ getCookie .response_cookies "id" }}'
+            logged: true
+            login_retry: "{{ .queryRetry }}"
+            # remove .login entry from symbols table
+            # login: ~
+          when:
+            - eq .results_status 200
         - name: analyze login response
-          play_script: auth_check
+          set_fact:
+            # session_id: ''
+            logged: false
+            login_retry: "{{ .queryRetry }}"
+          when:
+            - or (eq .results_status 401) (eq .results_status 403)
+        - name: analyze login response not ok with retry
+          set_fact:
+            # auth_token: ""
+            logged: false
+            login_retry: "{{ add .login_retry 1 }}"
+          when:
+            - and (and (ne .results_status 200) (ne .results_status 401)) (ne .result_status 403)
 
-  logout:
-        - name: logout phase
+      login:
+        - name: init login loop
           vars:
-            headers:
-              Content-Type: application/x-www-form-urlencoded
-              Accept: "*/*"
-          query:
-            url: /logout
-            method: post
+            login_retry: 0
+            results_status: 0
+          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+
+          actions:
+            - name: login phase
+              vars:
+                headers:
+                  Content-Type: application/x-www-form-urlencoded
+                  Accept: "*/*"
+              query:
+                url: /login
+                method: post
+                  # {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+                  # username={{ queryEscape .user }}&password={{ queryEscape $tmp_pass }}
+                data: >-
+                  username={{ queryEscape .user }}&password={{ queryEscape .password }}
+                ok_status: 200
+                # don't store the value
+                var_name: _
+            - name: analyze login response
+              play_script: auth_check
+
+      logout:
+            - name: logout phase
+              vars:
+                headers:
+                  Content-Type: application/x-www-form-urlencoded
+                  Accept: "*/*"
+              query:
+                url: /logout
+                method: post
+                ok_status: 200
+
+      # method called to determine if a target is responding; will call login script if necessary
+      # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
+      ping:
+        - name: check ping cnx
+          query: 
+            # will call /api in fact !
+            url: /system?attributes=platform_name
+            method: get
             ok_status: 200
+            # to catch and store the result and use it later...
+            var_name: platform
 
-  # method called to determine if a target is responding; will call login script if necessary
-  # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
-  ping:
-    - name: check ping cnx
-      query: 
-        # will call /api in fact !
-        url: /system?attributes=platform_name
-        method: get
-        ok_status: 200
-        # to catch and store the result and use it later...
-        var_name: platform
+        - name: set config cache vars
+          set_fact:
+            config:
+              ts_next_check: 0
+          when: not ( exists .config )
+          # when: gt (len .config ) 0
 
-    - name: set config cache vars
-      set_fact:
-        config:
-          ts_next_check: 0
-      when: not ( exists .config )
-      # when: gt (len .config ) 0
+        - name: set config cache vars
+          when: 
+            - exists .config
+            - GT ( unixEpoch now ) .config.ts_next_check
+          set_fact:
+            _ : '
+                {{- $_ := exporterSet .config "interfaces" (list) -}}
+                {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch) -}}'
 
-    - name: set config cache vars
-      when: 
-        - exists .config
-        - GT ( unixEpoch now ) .config.ts_next_check
-      set_fact:
-        _ : '
-            {{- $_ := exporterSet .config "interfaces" (list) -}}
-            {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch) -}}'
-
-  # script called to reset all login infos after the ping script has received an invalid_auth_code.
-  # remove cookie id and set var logged to false
-  clear:
-    - name: reset session_id
-      set_fact:
-        cookies: 
-          - name: "id"
-            action: delete
-        # or
-        #  id: __delete__
-        logged: false
+      # script called to reset all login infos after the ping script has received an invalid_auth_code.
+      # remove cookie id and set var logged to false
+      clear:
+        - name: reset session_id
+          set_fact:
+            cookies: 
+              - name: "id"
+                action: delete
+            # or
+            #  id: __delete__
+            logged: false
 
 auth_configs:
   prometheus_encrypted:

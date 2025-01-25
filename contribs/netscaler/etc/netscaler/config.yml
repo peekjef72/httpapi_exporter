@@ -14,112 +14,114 @@ global:
   invalid_auth_code: [401,403]
   exporter_name: netscaler_exporter
 
-httpapi_config:
-  init:
-    - name: default headers
-      set_fact:
-        session_id: ''
-        headers:
-          - name: "Content-Type"
-            value: application/json
-          - name: Accept
-            value: "application/json"
-        base_url: /nitro/v1
-        verifySSL: true
-        #** reload config info every one hour
-        configCacheDuration: 1h
+profiles:
+  netscaler:
+    scripts:
+      init:
+        - name: default headers
+          set_fact:
+            session_id: ''
+            headers:
+              - name: "Content-Type"
+                value: application/json
+              - name: Accept
+                value: "application/json"
+            base_url: /nitro/v1
+            verifySSL: true
+            #** reload config info every one hour
+            configCacheDuration: 1h
 
-  auth_check:
-    - name: analyze login response ok
-      set_fact:
-        cookies: 
-          - name: "sessionid"
-            value: '{{ .login.sessionid }}'
-        logged: true
-        # session_id: '{{ .login.sessionid }}'
-        login_retry: "{{ .queryRetry }}"
-        # remove .login entry from symbols table
-        # login: ~
-      when:
-        - eq .results_status 201
-    - name: analyze login response
-      set_fact:
-        # session_id: ''
-        logged: false
-        login_retry: "{{ .queryRetry  }}"
-      when:
-        - or (eq .results_status 401) (eq .results_status 403)
-    - name: analyze login response not ok with retry
-      set_fact:
-        # auth_token: ""
-        logged: false
-        login_retry: "{{ add .login_retry 1 }}"
-      when:
-        - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
-
-  login:
-    - name: init login loop
-      vars:
-        login_retry: 0
-        results_status: 0
-      until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
-
-      actions:
-        - name: login phase
-          query:
-            url: /config/login
-            method: post
-            data: >-
-              {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-              {{ $login := dict "username" .user "password" $tmp_pass }}
-              {{ $data := dict "login" $login }}
-              {{ $data | toRawJson }}
-            ok_status: 201
-            # don't store the value
-            var_name: login
+      auth_check:
+        - name: analyze login response ok
+          set_fact:
+            cookies: 
+              - name: "sessionid"
+                value: '{{ .login.sessionid }}'
+            logged: true
+            # session_id: '{{ .login.sessionid }}'
+            login_retry: "{{ .queryRetry }}"
+            # remove .login entry from symbols table
+            # login: ~
+          when:
+            - eq .results_status 201
         - name: analyze login response
-          play_script: auth_check
+          set_fact:
+            # session_id: ''
+            logged: false
+            login_retry: "{{ .queryRetry  }}"
+          when:
+            - or (eq .results_status 401) (eq .results_status 403)
+        - name: analyze login response not ok with retry
+          set_fact:
+            # auth_token: ""
+            logged: false
+            login_retry: "{{ add .login_retry 1 }}"
+          when:
+            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
 
-  # method called to determine if a target is responding; will call login script if necessary
-  # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
-  ping:
-    - name: check ping cnx
-      query: 
-        # will call /api in fact !
-        url: /config/nsversion
-        method: get
-        ok_status: 200
-        # to catch and store the result and use it later...
-        var_name: nsversion
+      login:
+        - name: init login loop
+          vars:
+            login_retry: 0
+            results_status: 0
+          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
 
-    - name: set config cache vars
-      set_fact:
-        config:
-          ts_next_check: 0
-      when: not ( exists .config )
-      # when: gt (len .config ) 0
-    - name: set config cache vars
-      when: 
-        - exists .config
-        - GT ( unixEpoch now ) .config.ts_next_check
-      set_fact:
-        _ : '
-            {{- $_ := exporterSet .config "svclb" (dict)  -}}
-            {{- $_ := exporterSet .config "svcgrplb" (dict)  -}}
-            {{- $_ := exporterSet .config "cluster" (dict)  -}}
-            {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch)  -}}'
+          actions:
+            - name: login phase
+              query:
+                url: /config/login
+                method: post
+                data: >-
+                  {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+                  {{ $login := dict "username" .user "password" $tmp_pass }}
+                  {{ $data := dict "login" $login }}
+                  {{ $data | toRawJson }}
+                ok_status: 201
+                # don't store the value
+                var_name: login
+            - name: analyze login response
+              play_script: auth_check
 
-  # script called to reset all login infos after the ping script has received an invalid_auth_code.
-  # remove cookie sessionid and set var logged to false
-  clear:
-    - name: reset session_id
-      set_fact:
-        cookies: 
-          - name: "sessionid"
-            action: delete
-        # or
-        #  sessionid: __delete__
-        logged: false
+      # method called to determine if a target is responding; will call login script if necessary
+      # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
+      ping:
+        - name: check ping cnx
+          query: 
+            # will call /api in fact !
+            url: /config/nsversion
+            method: get
+            ok_status: 200
+            # to catch and store the result and use it later...
+            var_name: nsversion
+
+        - name: set config cache vars
+          set_fact:
+            config:
+              ts_next_check: 0
+          when: not ( exists .config )
+          # when: gt (len .config ) 0
+        - name: set config cache vars
+          when: 
+            - exists .config
+            - GT ( unixEpoch now ) .config.ts_next_check
+          set_fact:
+            _ : '
+                {{- $_ := exporterSet .config "svclb" (dict)  -}}
+                {{- $_ := exporterSet .config "svcgrplb" (dict)  -}}
+                {{- $_ := exporterSet .config "cluster" (dict)  -}}
+                {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch)  -}}'
+
+      # script called to reset all login infos after the ping script has received an invalid_auth_code.
+      # remove cookie sessionid and set var logged to false
+      clear:
+        - name: reset session_id
+          set_fact:
+            cookies: 
+              - name: "sessionid"
+                action: delete
+            # or
+            #  sessionid: __delete__
+            logged: false
 
 auth_configs:
   prometheus_encrypted:

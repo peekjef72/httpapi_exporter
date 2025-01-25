@@ -4,17 +4,30 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.0 / 2025-01-12 - not release
+## 0.4.0 / 2025-01-15 - not release
+
+###  2025-01-15
+- fixed: changed **--dry-run** command line flag behavior when no target specified: only check config; do not try to collect first available target.
+- added: disable_warn: true|false in auth_config to disable warning messages from RESTY if auth is basic and connection is http.
+
+  ```yaml
+    auth_config:
+      mode: basic
+      user: <user>
+      password: <password>
+      disable_warn: true
+  ```
 
 ###  2025-01-11
 - fixed: config output in json format.
+- fixed: warn messages ("script_name not defined"), displayed with loglevel "debug"
 
 ###  2025-01-08
 - fixed: now checks that each target has at least one collector defined; e.g.: failed if collector pattern matching doesn't correspond to any collector name.
 - fixed: allow "scope" directive to use $var_name format (like .var_name).
 
 ###  2025-01-04
-- added "profile" for config and target. Now exporter can collect multiple apis with different "login" semantics. Before the config contains only one **httpapi_config** part that define the "init", "login", "logout", "ping" scripts. The new version allow to define "profiles", and in each profile the "default scripts", so that a target can use a named profile :
+- added "profile" for config and target. Now exporter can collect multiple apis with different "login" semantics. Before the config contains only one **httpapi_config** part that may define the "clear", "init", "login", "logout", "ping" scripts. The new version allows to define "profiles", and in each profile the "default scripts", so that a target can use a named profile :
 
   ```yaml
   profiles:
@@ -43,8 +56,14 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
                 ...
   ```
 
+  Alternatively it is possible to add profiles via profile files with **profiles_file_config** directive: set a list of filepath accepting wildcards '*' (golang filegob ()) to "profiles". The content of each file must be a profile_config (see above or contribs)
+  ```yaml
+    profiles_file_config:
+      - "*_profile.yml"
+  ```
+
   Then each target may set a profile name to use; by default if not set, the exporter will try to assign the profile "default" or the only one if there is only one profile defined in configuration, else the config check will failed.
-  Each profile, may also set a "metric_prefix", so that "up", "collector_status", "scrape_duration" have a distinct name for each profile!
+  Each profile, may also set a "metric_prefix", so that "up", "collector_status", "scrape_duration" metrics have a distinct name for each profile!
 
 ###  2024-12-14
 
