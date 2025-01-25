@@ -106,10 +106,10 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 
 	var err error
 	var tmp any
-	set_name := cl.SetScriptName("clone")
+	set_name := c.SetScriptName("clone")
 	defer func() {
 		if set_name {
-			delete(cl.symtab, "__name__")
+			delete(c.symtab, "__name__")
 		}
 	}()
 
@@ -164,8 +164,10 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 // set the played script name in client symtab (for logginf purpose mos of the time)
 func (cl *Client) SetScriptName(name string) bool {
 	set := false
-	if script_name := GetMapValueString(cl.symtab, "__name__"); script_name == "" {
-		cl.symtab["__name__"] = name
+	if cl.symtab != nil {
+		if script_name := GetMapValueString(cl.symtab, "__name__"); script_name == "" {
+			cl.symtab["__name__"] = name
+		}
 	}
 	return set
 }
@@ -271,15 +273,15 @@ func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 
 // parse a response according to the parser set for query:
 //
-// - json default
+//   - json default
 //
-// - openmetrics
+//   - openmetrics (not implemented)
 //
-// - xml
+//   - xml
 //
-// - none
+//   - none
 //
-// return:  map[string]any
+//     return:  map[string]any
 func (c *Client) getResponse(resp *resty.Response, parser string) any {
 	// var data map[string]interface{}
 	// var data_map map[string]interface{}
@@ -1255,6 +1257,8 @@ func (cl *Client) Init(params *ClientInitParams) error {
 		cl.client = resty.New().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: !verifySSL})
 	} else if scheme == "http" {
 		cl.client = resty.New()
+		// remove waring message in basic auth mode and http, according to use config
+		cl.client.SetDisableWarn(bool(params.AuthConfig.DisableWarn))
 	} else {
 		cl.logger.Error(
 			fmt.Sprintf("invalid scheme for url '%s'", scheme),

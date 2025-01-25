@@ -60,6 +60,7 @@ type Config struct {
 	Targets        []*TargetConfig        `yaml:"targets,omitempty"`
 	Collectors     []*CollectorConfig     `yaml:"collectors,omitempty"`
 	Profiles       map[string]*Profile    `yaml:"profiles"`
+	ProfileFiles   []string               `yaml:"profiles_file_config"`
 	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
 	// obsolete will be remove in next version
 	HttpAPIConfigOld map[string]*YAMLScript `yaml:"httpapi_config"`
@@ -172,7 +173,7 @@ host: template
 verifySSL: true
 profile: default
 collectors:
-  - ~.*_metrics
+  - ~.*
 `
 		t := &TargetConfig{}
 		if err := yaml.Unmarshal([]byte(default_target), t); err != nil {
@@ -224,7 +225,13 @@ collectors:
 		}
 		c.Profiles["default"] = profile
 	}
-	// check HttpAPIConfig script:
+
+	// Load any externally defined collectors.
+	if err := c.loadProfileFiles(); err != nil {
+		return err
+	}
+
+	// check each profile scripts:
 	for profile_name, profile := range c.Profiles {
 		if profile.MetricPrefix == "" {
 			profile.MetricPrefix = c.Globals.MetricPrefix
@@ -374,6 +381,53 @@ func (c *Config) JSON() ([]byte, error) {
 		},
 	}
 	return json.Marshal(fc)
+}
+
+// loadProfileFiles resolves all profile file globs to files and loads the profiles they define.
+func (c *Config) loadProfileFiles() error {
+	baseDir := filepath.Dir(c.configFile)
+	for _, pfglob := range c.ProfileFiles {
+		// Resolve relative paths by joining them to the configuration file's directory.
+		if len(pfglob) > 0 && !filepath.IsAbs(pfglob) {
+			pfglob = filepath.Join(baseDir, pfglob)
+		}
+
+		// Resolve the glob to actual filenames.
+		pfs, err := filepath.Glob(pfglob)
+		c.logger.Debug(fmt.Sprintf("Checking profiles from %s", pfglob))
+		if err != nil {
+			// The only error can be a bad pattern.
+			return fmt.Errorf("error parsing profile files for %s: %s", pfglob, err)
+		}
+
+		type Profiles map[string]*Profile
+		// And load the Profiles defined in each file.
+		for _, pf := range pfs {
+			c.logger.Debug(fmt.Sprintf("Loading profiles from %s", pf))
+			buf, err := os.ReadFile(pf)
+			if err != nil {
+				return fmt.Errorf("reading profiles file %s: %s", pf, err)
+			}
+
+			var profiles Profiles
+			err = yaml.Unmarshal(buf, &profiles)
+			if err != nil {
+				return fmt.Errorf("reading %s: %s", pf, err)
+			}
+			if c.Profiles == nil {
+				c.Profiles = make(map[string]*Profile)
+			}
+			for p_name, p := range profiles {
+				c.logger.Info(fmt.Sprintf("Loaded profile %s from %s", p_name, pf))
+				if _, found := c.Profiles[p_name]; found {
+					return fmt.Errorf("profile %s already defined", p_name)
+				}
+				c.Profiles[p_name] = p
+			}
+		}
+	}
+
+	return nil
 }
 
 // loadCollectorFiles resolves all collector file globs to files and loads the collectors they define.
@@ -971,11 +1025,13 @@ func (bit *ConvertibleBoolean) UnmarshalJSON(data []byte) error {
 }
 
 type AuthConfig struct {
-	Mode     string `yaml:"mode,omitempty" json:"mode,omitempty"` // basic, encrypted, bearer
-	Username string `yaml:"user,omitempty" json:"user,omitempty"`
-	Password Secret `yaml:"password,omitempty" json:"password,omitempty"`
-	Token    Secret `yaml:"token,omitempty" json:"token,omitempty"`
-	authKey  string
+	Mode        string             `yaml:"mode,omitempty" json:"mode,omitempty"` // basic, encrypted, bearer
+	Username    string             `yaml:"user,omitempty" json:"user,omitempty"`
+	Password    Secret             `yaml:"password,omitempty" json:"password,omitempty"`
+	Token       Secret             `yaml:"token,omitempty" json:"token,omitempty"`
+	DisableWarn ConvertibleBoolean `yaml:"disable_warn,omitempty" json:"disable_warn,omitempty"`
+
+	authKey string
 }
 
 func check_env_var(value string) string {
@@ -987,6 +1043,7 @@ func check_env_var(value string) string {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for authConfig
 func (auth *AuthConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// auth.DisableWarn = false
 	type plain AuthConfig
 	if err := unmarshal((*plain)(auth)); err != nil {
 		return err
@@ -1039,14 +1096,14 @@ func resolveCollectorRefs(
 	for _, cref := range collectorRefs {
 		// check if cref(a collector name) is a pattern or not
 		if strings.HasPrefix(cref, "~") {
-			pat := regexp.MustCompile(cref[1:])
+			pat := regexp.MustCompile(strings.TrimSpace(cref[1:]))
 			for c_name, c := range collectors {
 				if pat.MatchString(c_name) {
 					resolved = append(resolved, c)
 				}
 			}
 		} else if strings.HasPrefix(cref, "!~") {
-			pat := regexp.MustCompile(cref[2:])
+			pat := regexp.MustCompile(strings.TrimSpace(cref[2:]))
 			for c_name, c := range collectors {
 				if !pat.MatchString(c_name) {
 					resolved = append(resolved, c)

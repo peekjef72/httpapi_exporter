@@ -14,98 +14,100 @@ global:
   invalid_auth_code: [401,403]
   exporter_name: hp3par_exporter
 
-httpapi_config:
-  init:
-    - name: default headers
-      set_fact:
-        headers:
-          - name: "Content-Type"
-            value: application/json
-          - name: Accept
-            value: "application/json"
-        base_url: /api/v1
-        port: 8080
-        verifySSL: false
-        
-        # default values for parameters that you don't want to set for each target
-        # base_url: /api/v1
-        # scheme: https
-        # port: 443
-        # verifySSL: true|false
-        # query_retry: 3
+profiles:
+  netscaler:
+    scripts:
+      init:
+        - name: default headers
+          set_fact:
+            headers:
+              - name: "Content-Type"
+                value: application/json
+              - name: Accept
+                value: "application/json"
+            base_url: /api/v1
+            port: 8080
+            verifySSL: false
+            
+            # default values for parameters that you don't want to set for each target
+            # base_url: /api/v1
+            # scheme: https
+            # port: 443
+            # verifySSL: true|false
+            # query_retry: 3
 
-  auth_check:
-    - name: analyze login response ok
-      set_fact:
-        # auth_token: "{{ .login.key }}"
-        headers: 
-          - name: "x-hp3par-wsapi-sessionkey"
-            value: "{{ .login.key }}"
-        logged: true
-        login_retry: "{{ .queryRetry }}"
-      when:
-        - eq .results_status 201
-        - hasKey .login "key"
-    - name: analyze login response
-      set_fact:
-        # auth_token: ""
-        logged: false
-        login_retry: "{{ .queryRetry  }}"
-        headers: 
-          - name: "x-hp3par-wsapi-sessionkey"
-            action: delete
-      when:
-        - or (eq .results_status 401) (eq .results_status 403)
-    - name: analyze login response not ok with retry
-      set_fact:
-        # auth_token: ""
-        logged: false
-        login_retry: "{{ add .login_retry 1 }}"
-      when:
-        - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
-
-  login:
-    - name: init login loop
-      vars:
-        login_retry: 0
-        results_status: 0
-      until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
-
-      actions:
-        - name: login phase
-          query:
-            url: /credentials
-            method: post
-            data: >-
-              {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-              {{ $data := dict "user" .user "password" $tmp_pass }}
-              {{ $data | toRawJson }}
-            # headers:
-            ok_status: 201
-            var_name: login
+      auth_check:
+        - name: analyze login response ok
+          set_fact:
+            # auth_token: "{{ .login.key }}"
+            headers: 
+              - name: "x-hp3par-wsapi-sessionkey"
+                value: "{{ .login.key }}"
+            logged: true
+            login_retry: "{{ .queryRetry }}"
+          when:
+            - eq .results_status 201
+            - hasKey .login "key"
         - name: analyze login response
-          play_script: auth_check
+          set_fact:
+            # auth_token: ""
+            logged: false
+            login_retry: "{{ .queryRetry  }}"
+            headers: 
+              - name: "x-hp3par-wsapi-sessionkey"
+                action: delete
+          when:
+            - or (eq .results_status 401) (eq .results_status 403)
+        - name: analyze login response not ok with retry
+          set_fact:
+            # auth_token: ""
+            logged: false
+            login_retry: "{{ add .login_retry 1 }}"
+          when:
+            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
 
-  # script called to reset all login infos after the ping script has received an invalid_auth_code.
-  # remove specific header and set var logged to false
-  clear:
-    - name: reset auth element
-      set_fact:
-        logged: false
-        headers: 
-          - name: "x-hp3par-wsapi-sessionkey"
-            action: delete
+      login:
+        - name: init login loop
+          vars:
+            login_retry: 0
+            results_status: 0
+          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
 
-  # method called to determine if a target is responding; will call login script if necessary
-  # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually )
-  ping:
-    - name: check ping cnx
-      query: 
-        url: /wsapiconfiguration
-        method: get
-        ok_status: 200
-        # to catch and store the result and use it later...
-        var_name: wsapi
+          actions:
+            - name: login phase
+              query:
+                url: /credentials
+                method: post
+                data: >-
+                  {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+                  {{ $data := dict "user" .user "password" $tmp_pass }}
+                  {{ $data | toRawJson }}
+                # headers:
+                ok_status: 201
+                var_name: login
+            - name: analyze login response
+              play_script: auth_check
+
+      # script called to reset all login infos after the ping script has received an invalid_auth_code.
+      # remove specific header and set var logged to false
+      clear:
+        - name: reset auth element
+          set_fact:
+            logged: false
+            headers: 
+              - name: "x-hp3par-wsapi-sessionkey"
+                action: delete
+
+      # method called to determine if a target is responding; will call login script if necessary
+      # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually )
+      ping:
+        - name: check ping cnx
+          query: 
+            url: /wsapiconfiguration
+            method: get
+            ok_status: 200
+            # to catch and store the result and use it later...
+            var_name: wsapi
 
 auth_configs:
   prometheus_encrypted:

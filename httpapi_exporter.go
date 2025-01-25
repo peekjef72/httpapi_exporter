@@ -214,61 +214,60 @@ func main() {
 				}
 			}
 			if err == ErrTargetNotFound {
+				logger.Warn(fmt.Sprintf("specified target %s not found. look for first available target", t.Name()))
 				t, err = exporter.GetFirstTarget()
 			}
-		} else {
-			t, err = exporter.GetFirstTarget()
-		}
-		if err != nil {
-			logger.Error(err.Error())
-			os.Exit(1)
-		}
-		if *auth_key != "" {
-			t.SetSymbol("auth_key", *auth_key)
-		}
-
-		logger.Info(fmt.Sprintf("try to collect target %s.", t.Name()))
-		timeout := time.Duration(0)
-		configTimeout := time.Duration(exporter.Config().Globals.ScrapeTimeout)
-
-		// If the configured scrape timeout is more restrictive, use that instead.
-		if configTimeout > 0 && (timeout <= 0 || configTimeout < timeout) {
-			timeout = configTimeout
-		}
-		var ctx context.Context
-		var cancel context.CancelFunc
-		if timeout <= 0 {
-			ctx = context.Background()
-			cancel = func() {}
-		} else {
-			ctx, cancel = context.WithTimeout(context.Background(), timeout)
-		}
-		defer cancel()
-
-		gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t, false)}
-		mfs, err := gatherer.Gather()
-		if err != nil {
-			logger.Error(fmt.Sprintf("Error gathering metrics: %v", err))
-			if len(mfs) == 0 {
-				os.Exit(1)
-			}
-		} else {
-			logger.Info("collect is OK. Dumping result to stdout.")
-		}
-
-		//dump metric to stdout
-		enc := expfmt.NewEncoder(os.Stdout, `text/plain; version=`+expfmt.TextVersion+`; charset=utf-8`)
-
-		for _, mf := range mfs {
-			err := enc.Encode(mf)
 			if err != nil {
 				logger.Error(err.Error())
-				break
+				os.Exit(1)
 			}
-		}
-		if closer, ok := enc.(expfmt.Closer); ok {
-			// This in particular takes care of the final "# EOF\n" line for OpenMetrics.
-			closer.Close()
+			if *auth_key != "" {
+				t.SetSymbol("auth_key", *auth_key)
+			}
+
+			logger.Info(fmt.Sprintf("try to collect target %s.", t.Name()))
+			timeout := time.Duration(0)
+			configTimeout := time.Duration(exporter.Config().Globals.ScrapeTimeout)
+
+			// If the configured scrape timeout is more restrictive, use that instead.
+			if configTimeout > 0 && (timeout <= 0 || configTimeout < timeout) {
+				timeout = configTimeout
+			}
+			var ctx context.Context
+			var cancel context.CancelFunc
+			if timeout <= 0 {
+				ctx = context.Background()
+				cancel = func() {}
+			} else {
+				ctx, cancel = context.WithTimeout(context.Background(), timeout)
+			}
+			defer cancel()
+
+			gatherer := prometheus.Gatherers{exporter.WithContext(ctx, t, false)}
+			mfs, err := gatherer.Gather()
+			if err != nil {
+				logger.Error(fmt.Sprintf("Error gathering metrics: %v", err))
+				if len(mfs) == 0 {
+					os.Exit(1)
+				}
+			} else {
+				logger.Info("collect is OK. Dumping result to stdout.")
+			}
+
+			//dump metric to stdout
+			enc := expfmt.NewEncoder(os.Stdout, `text/plain; version=`+expfmt.TextVersion+`; charset=utf-8`)
+
+			for _, mf := range mfs {
+				err := enc.Encode(mf)
+				if err != nil {
+					logger.Error(err.Error())
+					break
+				}
+			}
+			if closer, ok := enc.(expfmt.Closer); ok {
+				// This in particular takes care of the final "# EOF\n" line for OpenMetrics.
+				closer.Close()
+			}
 		}
 		logger.Info("dry-run is over. Exiting.")
 		os.Exit(0)
