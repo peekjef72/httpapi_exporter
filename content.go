@@ -185,7 +185,7 @@ func HealthHandlerfunc(metricsPath string, exporter Exporter) func(http.Response
 		accept_type := r.Header.Get(acceptHeader)
 		if strings.Contains(accept_type, applicationJSON) {
 			w.Header().Set(contentTypeHeader, applicationJSON)
-			status = []byte("{\"status\"=\"ok\"}")
+			status = []byte(`{"message":"ok","status": 1,"data": {"status":"ok"}}`)
 			w.Header().Set(contentLengthHeader, fmt.Sprint(len(status)))
 		} else if strings.Contains(accept_type, textPLAIN) {
 			w.Header().Set(contentTypeHeader, textPLAIN)
@@ -260,7 +260,7 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 			case applicationJSON:
 				w.Header().Set(contentTypeHeader, applicationJSON)
 				result = []byte(
-					fmt.Sprintf("{\"loglevel\"=\"%s\"}", exporter.GetLogLevel()))
+					fmt.Sprintf(`{"message":"ok","status": 1,"data": {"loglevel": "%s"}}`, exporter.GetLogLevel()))
 				w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
 			default:
 				w.Header().Set(contentTypeHeader, textHTML)
@@ -292,11 +292,11 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 				case textPLAIN:
 					w.Header().Set(contentTypeHeader, textPLAIN)
 					result = []byte(
-						fmt.Sprintf("OK loglevel set to %s", err.Error()))
+						fmt.Sprintf("OK loglevel set to %s", exporter.GetLogLevel()))
 				case applicationJSON:
 					w.Header().Set(contentTypeHeader, applicationJSON)
 					result = []byte(
-						fmt.Sprintf("{\"loglevel\"=\"%s\"}", err.Error()))
+						fmt.Sprintf(`{"message":"ok","status": 1,"data": {"loglevel": "%s"}}`, exporter.GetLogLevel()))
 					w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
 				default:
 					w.Header().Set(contentTypeHeader, textHTML)
@@ -304,7 +304,7 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 						ExporterName: exporter.Config().Globals.ExporterName,
 						MetricsPath:  metricsPath,
 						DocsUrl:      docsUrl,
-						Message:      fmt.Sprintf("OK loglevel set to %s", err),
+						Message:      fmt.Sprintf("OK loglevel set to %s", exporter.GetLogLevel()),
 					})
 					return
 				}
