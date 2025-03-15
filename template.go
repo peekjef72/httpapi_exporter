@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	"strings"
@@ -431,6 +432,15 @@ func exportLookupAddr(ip string) (string, error) {
 	return host, nil
 }
 
+func exporterRegexExtract(regex_pat string, search_str string) ([]string, error) {
+
+	if re, err := regexp.Compile(regex_pat); err != nil {
+		return nil, fmt.Errorf(`invalid regexp expression '%s': %s`, regex_pat, err.Error())
+	} else {
+		return re.FindStringSubmatch(search_str), nil
+	}
+}
+
 func mymap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
 	sprig_map["convertToBytes"] = convertToBytes
@@ -455,6 +465,7 @@ func mymap() ttemplate.FuncMap {
 	sprig_map["exporterValues"] = exporterValues
 	sprig_map["exporterToRawJson"] = exporterToRawJson
 	sprig_map["lookupAddr"] = exportLookupAddr
+	sprig_map["exporterRegexExtract"] = exporterRegexExtract
 
 	return sprig_map
 }

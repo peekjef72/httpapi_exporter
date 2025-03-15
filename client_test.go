@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/go-resty/resty/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseJsonResponse(t *testing.T) {
@@ -20,12 +22,12 @@ func TestParseJsonResponse(t *testing.T) {
 	}
 	file, err := os.ReadFile("fixtures/response.json")
 	if err != nil {
-		t.Errorf(`ParseJsonResponse() load test result error: %s`, err.Error())
+		t.Errorf(`ParseJsonResponse() load test results error: %s`, err.Error())
 		return
 	}
 	var data any
 	if err := json.Unmarshal(file, &data); err != nil {
-		t.Errorf(`ParseJsonResponse() parsing test result error: %s`, err.Error())
+		t.Errorf(`ParseJsonResponse() parsing test results error: %s`, err.Error())
 		return
 	}
 	raw_http := &http.Response{
@@ -38,7 +40,7 @@ func TestParseJsonResponse(t *testing.T) {
 	resp.SetBody(file)
 	res_data := client.getResponse(resp, "json")
 	if !reflect.DeepEqual(data, res_data) {
-		t.Errorf(`ParseJsonResponse() parsed json result differ`)
+		t.Errorf(`ParseJsonResponse() parsed json results differ`)
 	}
 }
 
@@ -77,4 +79,72 @@ func TestParseXMLResponse(t *testing.T) {
 	if !reflect.DeepEqual(data, res_data) {
 		t.Errorf(`ParseXMLResponse() parsed xml results differ`)
 	}
+}
+
+func TestParseYAMLResponse(t *testing.T) {
+	client := &Client{
+		client: resty.New(),
+		symtab: map[string]any{},
+		logger: &slog.Logger{},
+	}
+	file, err := os.ReadFile("fixtures/response_simple.yml")
+	if err != nil {
+		t.Errorf(`ParseYAMLResponse() load test results error: %s`, err.Error())
+		return
+	}
+	var (
+		data_internal any
+	)
+	if err := yaml.Unmarshal(file, &data_internal); err != nil {
+		t.Errorf(`ParseYAMLResponse() parsing test results error: %s`, err.Error())
+		return
+	}
+	raw_http := &http.Response{
+		Header: make(map[string][]string),
+	}
+	raw_http.Header.Add(contentTypeHeader, "application/yaml")
+	resp := &resty.Response{
+		RawResponse: raw_http,
+	}
+	resp.SetBody(file)
+	res_data := client.getResponse(resp, "yaml")
+	if !reflect.DeepEqual(data_internal, res_data) {
+		t.Errorf(`ParseYAMLResponse() parsed json results differ`)
+	}
+
+}
+
+func TestParseTextLineResponse(t *testing.T) {
+	client := &Client{
+		client: resty.New(),
+		symtab: map[string]any{},
+		logger: &slog.Logger{},
+	}
+	file, err := os.ReadFile("fixtures/response_line_simple.txt")
+	if err != nil {
+		t.Errorf(`ParseTextLineResponse() load test results error: %s`, err.Error())
+		return
+	}
+	var data []string
+
+	if re, err := regexp.Compile("\r?\n"); err != nil {
+		t.Errorf(`ParseTextLineResponse() parsing test results error: %s`, err.Error())
+		return
+	} else {
+		data = re.Split(string(file), -1)
+	}
+
+	raw_http := &http.Response{
+		Header: make(map[string][]string),
+	}
+	raw_http.Header.Add(contentTypeHeader, "text/plain")
+	resp := &resty.Response{
+		RawResponse: raw_http,
+	}
+	resp.SetBody(file)
+	res_data := client.getResponse(resp, "text-lines")
+	if !reflect.DeepEqual(data, res_data) {
+		t.Errorf(`ParseTextLineResponse() parsed text results differ`)
+	}
+
 }

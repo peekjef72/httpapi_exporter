@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"regexp"
 
 	// "net"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/peekjef72/passwd_encrypt/encrypt"
 	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -291,6 +293,30 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 	if len(body) > 0 {
 		content_type := resp.Header().Get(contentTypeHeader)
 		switch parser {
+		case "json":
+			if strings.Contains(content_type, "application/json") {
+				// tmp := make([]byte, len(body))
+				// copy(tmp, body)
+				if err := json.Unmarshal(body, &data); err != nil {
+					c.logger.Error(
+						fmt.Sprintf("Fail to decode json results %v", err),
+						"collid", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger))
+				}
+			}
+		case "none":
+			data = string(body)
+
+		case "text-lines":
+			if re, err := regexp.Compile("\r?\n"); err != nil {
+				c.logger.Error(
+					fmt.Sprintf("Fail to build text-lines decoder %v", err),
+					"collid", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger))
+			} else {
+				data = re.Split(string(body), -1)
+			}
+
 		case "xml":
 			if strings.Contains(content_type, "text/xml") {
 				// tmp := make([]byte, len(body))
@@ -306,19 +332,18 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 				data_tmp[data_internal.Name] = data_internal.Attrs
 				data = data_tmp
 			}
-		case "json":
-			if strings.Contains(content_type, "application/json") {
+		case "yaml":
+			if strings.Contains(content_type, "application/yaml") {
 				// tmp := make([]byte, len(body))
 				// copy(tmp, body)
-				if err := json.Unmarshal(body, &data); err != nil {
+				if err := yaml.Unmarshal(body, &data); err != nil {
 					c.logger.Error(
-						fmt.Sprintf("Fail to decode json results %v", err),
+						fmt.Sprintf("Fail to decode yaml results %v", err),
 						"collid", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger))
 				}
 			}
-		case "none":
-			data = string(body)
+
 		}
 	} else {
 		data = make(map[any]any)
