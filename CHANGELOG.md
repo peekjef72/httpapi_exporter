@@ -4,21 +4,26 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.0 / 2025-01-15 - not release
+## 0.4.0 / 2025-03-03 - not release
+
+### 2025-03-03 - not release
+- added: parsers 'yaml' and 'text-lines' (split result into lines after "\r?\n")
+- added: template function "exporterRegexExtract" to obtain matching group from regex and searching string: [array] <= exporterRegexExtract[regexp] [search_string]
+
 ### 2025-02-17
 - fixed: json reponse format for /status and /loglevel
   - {"message":"ok","status": 1,"data": {"status":"ok"}}
-  - {"message":"ok","status": 1,"data": {"loglevel": &lt;loglevel&gt;}}
+  - {"message":"ok","status": 1,"data": {"loglevel": "&lt;loglevel&gt;"}}
 
-### 2025-01-15
+###  2025-01-15
 - fixed: changed **--dry-run** command line flag behavior when no target specified: only check config; do not try to collect first available target.
 - added: disable_warn: true|false in auth_config to disable warning messages from RESTY if auth is basic and connection is http.
 
   ```yaml
     auth_config:
       mode: basic
-      user: <user>
-      password: <password>
+      user: ping
+      password: ping
       disable_warn: true
   ```
 

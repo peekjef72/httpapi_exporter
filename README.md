@@ -235,6 +235,7 @@ convertToBytes value unit | convert the value contained in variable to bytes acc
 convertBoolToInt value | convert value that may contain a boolean to 0&#124;1 representation. Value can be of any type. If something is <ul><li>like int or float and different from 0 is 1 else 0<li>string and is lower case 'true' or 'yes' or 'ok' is 1 else 0<li>like map or array and length >0 then 1 or 0</ul>| with {"proc": {"loopCrashing": "true",...}}<br> => '{{ convertBoolToInt .proc.loopCrashing }}<br> => 1'
 getHeader [varmap] | |
 LEN [var]| obtain the len of the var. works like sprig/len but accepts data of type any. |
+exporterRegexExtract [regexp var] [search var] : []string | obtain the list of extracted found element from regexp on search | extract value from line as group 1 fof regexp: <br> res: "{{ index  (exporterRegexExtract "^status:(.*+)" "status:OK") 1 }}"
 
 ## boolean checks
 name| usage | e.g. |
