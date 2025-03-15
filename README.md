@@ -2,9 +2,15 @@
 
 # Prometheus HTTPAPI Exporter
 
-This exporter wants to be a generic JSON REST API exporter. That's mean it can login, then makes requests to collect metrics and performs transformations on values and finally returns metrics in prometheus format.
+This exporter wants to be a generic REST API exporter. That's mean it can login, then makes requests to urls to collect metrics and performs transformations on values and finally returns metrics in prometheus format.
 
 Nothing is hard coded in the exporter. That why it is a generic exporter.
+
+The queried url can return data in several format:
+- json (default parser)
+- yaml
+- xml
+- raw text (parse as text-lines)
 
 As examples 4 configurations for exporters are provided (see contribs):
 - [hp3par_exporter](contribs/hp3par/README.md)
@@ -92,7 +98,7 @@ the exporter http server has a default landing page that permit to access
 * "/profiling": expose exporter debug/profiling metrics
 * "/httpapi_exporter_metrics": exporter internal prometheus metrics
 * "/help: help on github.
-* "/metrics": expose target's metrics.
+* "/metrics": expose target's metrics. Require a target parameter with valid value.
 * "/loglevel": GET exposes exporter current log level. POST /loglevel increases by one the current level (cycling). POST /loglevel/[level] set the new [level].
 * "/reload": method POST only: tells the exporter to reload the configuration.
 
@@ -110,7 +116,7 @@ parameters to scrape a target:
 
 1. `/metrics?target=mytarget` scrapes the target `mytarget` without any parameter; It must be fully defined in the exporter configuration files; it has either no authentication or password is not encrypted.
 2. `/metrics?auth_key=<cipherkey>&target=mytarget2` scrapes the target `mytarget2` that is fully defined in the exporter configuration files, and has a password that is encrypted and can be decrypted with the cipherkey.
-3. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>` define a dynamic target that is reachable at url `https://myhost.domain.name:port`, using the authentication parameters defined by `<auth_name>` and "default" model, then scrapes it. This target was not initially defined in the exporter configuration files, and only exists until the exporter is running.
+3. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>` define a dynamic target that is reachable at url `https://myhost.domain.name:port`, using the authentication parameters defined by `<auth_name>` and "default" model, then scrapes it. This target was not initially defined in the exporter configuration files, and only exists until the exporter is running. `<auth_name>` has a encrypted password and so requires `<cipherkey>` to decipher it.
 4. `/metrics?auth_key=<cipherkey>&target=<https://myhost.domain.name:port>&auth_name=<auth_name>&model=mytarget` same than previous example but the dynamic target creation use "mytarget" model instead of default.
 
 ## Authentication
@@ -235,7 +241,7 @@ convertToBytes value unit | convert the value contained in variable to bytes acc
 convertBoolToInt value | convert value that may contain a boolean to 0&#124;1 representation. Value can be of any type. If something is <ul><li>like int or float and different from 0 is 1 else 0<li>string and is lower case 'true' or 'yes' or 'ok' is 1 else 0<li>like map or array and length >0 then 1 or 0</ul>| with {"proc": {"loopCrashing": "true",...}}<br> => '{{ convertBoolToInt .proc.loopCrashing }}<br> => 1'
 getHeader [varmap] | |
 LEN [var]| obtain the len of the var. works like sprig/len but accepts data of type any. |
-exporterRegexExtract [regexp var] [search var] : []string | obtain the list of extracted found element from regexp on search | extract value from line as group 1 fof regexp: <br> res: "{{ index  (exporterRegexExtract "^status:(.*+)" "status:OK") 1 }}"
+exporterRegexExtract [regexp var] [search var] : []string | obtain the list of extracted elements from regexp on search string or nil if not found | extract value from line as group 1 of regexp: <br> res: "{{ index  (exporterRegexExtract "^status:\s(.+)$" "status:OK") 1 }}"
 
 ## boolean checks
 name| usage | e.g. |
