@@ -119,11 +119,12 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 		switch qc.Parser {
 		case "json":
 		case "none":
+		case "prometheus":
 		case "text-lines":
 		case "xml":
 		case "yaml":
 		default:
-			return fmt.Errorf("invalid value for parser: '%s': should be ('json', 'none', 'openmetrics', 'text-lines', 'xml', 'yaml')", qc.Parser)
+			return fmt.Errorf("invalid value for parser: '%s': should be ('json', 'none', 'prometheus', 'text-lines', 'xml', 'yaml')", qc.Parser)
 		}
 	}
 	return checkOverflow(qc.XXX, "query action")

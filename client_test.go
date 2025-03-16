@@ -20,13 +20,13 @@ func TestParseJsonResponse(t *testing.T) {
 		symtab: map[string]any{},
 		logger: &slog.Logger{},
 	}
-	file, err := os.ReadFile("fixtures/response.json")
+	file_content, err := os.ReadFile("fixtures/response.json")
 	if err != nil {
 		t.Errorf(`ParseJsonResponse() load test results error: %s`, err.Error())
 		return
 	}
 	var data any
-	if err := json.Unmarshal(file, &data); err != nil {
+	if err := json.Unmarshal(file_content, &data); err != nil {
 		t.Errorf(`ParseJsonResponse() parsing test results error: %s`, err.Error())
 		return
 	}
@@ -37,7 +37,7 @@ func TestParseJsonResponse(t *testing.T) {
 	resp := &resty.Response{
 		RawResponse: raw_http,
 	}
-	resp.SetBody(file)
+	resp.SetBody(file_content)
 	res_data := client.getResponse(resp, "json")
 	if !reflect.DeepEqual(data, res_data) {
 		t.Errorf(`ParseJsonResponse() parsed json results differ`)
@@ -50,7 +50,7 @@ func TestParseXMLResponse(t *testing.T) {
 		symtab: map[string]any{},
 		logger: &slog.Logger{},
 	}
-	file, err := os.ReadFile("fixtures/response.xml")
+	file_content, err := os.ReadFile("fixtures/response.xml")
 	if err != nil {
 		t.Errorf(`ParseXMLResponse() load test result error: %s`, err.Error())
 		return
@@ -59,7 +59,7 @@ func TestParseXMLResponse(t *testing.T) {
 		data_internal *Content
 		data          any
 	)
-	if err := xml.Unmarshal(file, &data_internal); err != nil {
+	if err := xml.Unmarshal(file_content, &data_internal); err != nil {
 		t.Errorf(`ParseXMLResponse() parsing test results error: %s`, err.Error())
 		return
 	}
@@ -74,7 +74,7 @@ func TestParseXMLResponse(t *testing.T) {
 	resp := &resty.Response{
 		RawResponse: raw_http,
 	}
-	resp.SetBody(file)
+	resp.SetBody(file_content)
 	res_data := client.getResponse(resp, "xml")
 	if !reflect.DeepEqual(data, res_data) {
 		t.Errorf(`ParseXMLResponse() parsed xml results differ`)
@@ -87,7 +87,7 @@ func TestParseYAMLResponse(t *testing.T) {
 		symtab: map[string]any{},
 		logger: &slog.Logger{},
 	}
-	file, err := os.ReadFile("fixtures/response_simple.yml")
+	file_content, err := os.ReadFile("fixtures/response_simple.yml")
 	if err != nil {
 		t.Errorf(`ParseYAMLResponse() load test results error: %s`, err.Error())
 		return
@@ -95,7 +95,7 @@ func TestParseYAMLResponse(t *testing.T) {
 	var (
 		data_internal any
 	)
-	if err := yaml.Unmarshal(file, &data_internal); err != nil {
+	if err := yaml.Unmarshal(file_content, &data_internal); err != nil {
 		t.Errorf(`ParseYAMLResponse() parsing test results error: %s`, err.Error())
 		return
 	}
@@ -106,7 +106,7 @@ func TestParseYAMLResponse(t *testing.T) {
 	resp := &resty.Response{
 		RawResponse: raw_http,
 	}
-	resp.SetBody(file)
+	resp.SetBody(file_content)
 	res_data := client.getResponse(resp, "yaml")
 	if !reflect.DeepEqual(data_internal, res_data) {
 		t.Errorf(`ParseYAMLResponse() parsed json results differ`)
@@ -120,7 +120,7 @@ func TestParseTextLineResponse(t *testing.T) {
 		symtab: map[string]any{},
 		logger: &slog.Logger{},
 	}
-	file, err := os.ReadFile("fixtures/response_line_simple.txt")
+	file_content, err := os.ReadFile("fixtures/response_line_simple.txt")
 	if err != nil {
 		t.Errorf(`ParseTextLineResponse() load test results error: %s`, err.Error())
 		return
@@ -131,7 +131,7 @@ func TestParseTextLineResponse(t *testing.T) {
 		t.Errorf(`ParseTextLineResponse() parsing test results error: %s`, err.Error())
 		return
 	} else {
-		data = re.Split(string(file), -1)
+		data = re.Split(string(file_content), -1)
 	}
 
 	raw_http := &http.Response{
@@ -141,7 +141,7 @@ func TestParseTextLineResponse(t *testing.T) {
 	resp := &resty.Response{
 		RawResponse: raw_http,
 	}
-	resp.SetBody(file)
+	resp.SetBody(file_content)
 	res_data := client.getResponse(resp, "text-lines")
 	if !reflect.DeepEqual(data, res_data) {
 		t.Errorf(`ParseTextLineResponse() parsed text results differ`)

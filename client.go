@@ -307,6 +307,18 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 		case "none":
 			data = string(body)
 
+		case "prometheus":
+			if strings.Contains(content_type, "text/plain") {
+				if tmp_data, err := ParsePrometheusResponse(body); err != nil {
+					c.logger.Error(
+						fmt.Sprintf("Fail to parse prometheus content %v", err),
+						"collid", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger))
+				} else {
+					data = tmp_data
+				}
+			}
+
 		case "text-lines":
 			if re, err := regexp.Compile("\r?\n"); err != nil {
 				c.logger.Error(

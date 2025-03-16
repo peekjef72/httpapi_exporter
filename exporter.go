@@ -147,7 +147,11 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 		}
 	}()
 
-	e.logger.Debug(fmt.Sprintf("exporter.Gather(): **** Target collect() launch is OVER :'%s' ****", e.cur_target.Name()))
+	e.logger.Debug(
+		"exporter.Gather(): **** Target collect() launch is OVER ****",
+		"collid", e.cur_target.Name(),
+	)
+
 	// Gather.
 	dtoMetricFamilies := make(map[string]*dto.MetricFamily, 10)
 	for metric := range metricChan {
@@ -175,7 +179,11 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 		}
 		dtoMetricFamily.Metric = append(dtoMetricFamily.Metric, dtoMetric)
 	}
-	e.logger.Debug("exporter.Gather(): **** Target channel analysis is OVER ****")
+
+	e.logger.Debug(
+		"exporter.Gather(): **** Target channel collect metrics received from channel is OVER ****",
+		"collid", e.cur_target.Name(),
+	)
 
 	// No need to sort metric families, prometheus.Gatherers will do that for us when merging.
 	result := make([]*dto.MetricFamily, 0, len(dtoMetricFamilies))
