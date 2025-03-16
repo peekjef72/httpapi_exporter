@@ -1,0 +1,92 @@
+# HELP nrpe_command_duration Length of time the NRPE command took in second
+# TYPE nrpe_command_duration gauge
+nrpe_command_duration{command="_NRPE_CHECK"} 0.000145003
+# HELP nrpe_command_ok Indicates whether or not the command was a success (0: cmd status code did not equal 0 | 1: ok)
+# TYPE nrpe_command_ok gauge
+nrpe_command_ok{command="_NRPE_CHECK"} 1
+# HELP nrpe_command_status Indicates the status of the command (nrpe status: 0: OK | 1: WARNING | 2: CRITICAL | 3: UNKNOWN)
+# TYPE nrpe_command_status gauge
+nrpe_command_status{command="_NRPE_CHECK",nrpe_command_result_msg="NRPE v4.0.3"} 0
+# HELP nrpe_scrap_duration Length of time the NRPE commands took
+# TYPE nrpe_scrap_duration gauge
+nrpe_scrap_duration 0.009904746
+# HELP nrpe_up Indicates whether or not nrpe agent is ip
+# TYPE nrpe_up gauge
+nrpe_up 1
+# HELP apache_workers Apache worker statuses
+# TYPE apache_workers gauge
+apache_workers{state="busy"} 1
+apache_workers{state="idle"} 99
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 3.9464e-05
+go_gc_duration_seconds{quantile="0.25"} 5.5593e-05
+go_gc_duration_seconds{quantile="0.5"} 7.7457e-05
+go_gc_duration_seconds{quantile="0.75"} 0.00010531
+go_gc_duration_seconds{quantile="1"} 0.015503494
+go_gc_duration_seconds_sum 0.803447317
+go_gc_duration_seconds_count 4382
+# HELP go_sched_pauses_total_gc_seconds Distribution of individual GC-related stop-the-world pause latencies. This is the time from deciding to stop the world until the world is started again. Some of this time is spent getting all threads to stop (this is measured directly in /sched/pauses/stopping/gc:seconds), during which some threads may still be running. Bucket counts increase monotonically.
+# TYPE go_sched_pauses_total_gc_seconds histogram
+go_sched_pauses_total_gc_seconds_bucket{le="6.399999999999999e-08"} 0
+go_sched_pauses_total_gc_seconds_bucket{le="6.399999999999999e-07"} 0
+go_sched_pauses_total_gc_seconds_bucket{le="7.167999999999999e-06"} 11218
+go_sched_pauses_total_gc_seconds_bucket{le="8.191999999999999e-05"} 25778
+go_sched_pauses_total_gc_seconds_bucket{le="0.0009175039999999999"} 29390
+go_sched_pauses_total_gc_seconds_bucket{le="0.010485759999999998"} 29406
+go_sched_pauses_total_gc_seconds_bucket{le="0.11744051199999998"} 29406
+go_sched_pauses_total_gc_seconds_bucket{le="+Inf"} 29406
+go_sched_pauses_total_gc_seconds_sum 0.422120704
+go_sched_pauses_total_gc_seconds_count 29406
+# HELP postfix_showq_message_size_bytes Size of messages in Postfix's message queue, in bytes
+# TYPE postfix_showq_message_size_bytes histogram
+postfix_showq_message_size_bytes_bucket{queue="active",le="1000"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="10000"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="100000"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="1e+06"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="1e+07"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="1e+08"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="1e+09"} 0
+postfix_showq_message_size_bytes_bucket{queue="active",le="+Inf"} 0
+postfix_showq_message_size_bytes_sum{queue="active"} 0
+postfix_showq_message_size_bytes_count{queue="active"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="1000"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="10000"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="100000"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="1e+06"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="1e+07"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="1e+08"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="1e+09"} 0
+postfix_showq_message_size_bytes_bucket{queue="deferred",le="+Inf"} 0
+postfix_showq_message_size_bytes_sum{queue="deferred"} 0
+postfix_showq_message_size_bytes_count{queue="deferred"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="1000"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="10000"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="100000"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="1e+06"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="1e+07"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="1e+08"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="1e+09"} 0
+postfix_showq_message_size_bytes_bucket{queue="hold",le="+Inf"} 0
+postfix_showq_message_size_bytes_sum{queue="hold"} 0
+postfix_showq_message_size_bytes_count{queue="hold"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="1000"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="10000"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="100000"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="1e+06"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="1e+07"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="1e+08"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="1e+09"} 0
+postfix_showq_message_size_bytes_bucket{queue="incoming",le="+Inf"} 0
+postfix_showq_message_size_bytes_sum{queue="incoming"} 0
+postfix_showq_message_size_bytes_count{queue="incoming"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="1000"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="10000"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="100000"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="1e+06"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="1e+07"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="1e+08"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="1e+09"} 0
+postfix_showq_message_size_bytes_bucket{queue="maildrop",le="+Inf"} 0
+postfix_showq_message_size_bytes_sum{queue="maildrop"} 0
+postfix_showq_message_size_bytes_count{queue="maildrop"} 0

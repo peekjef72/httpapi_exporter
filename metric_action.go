@@ -132,9 +132,11 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 		if raw_loop_var_idx > 0 {
 			loop_var_idx = fmt.Sprintf(" %d", raw_loop_var_idx)
 		}
+	} else {
+		loop_var_idx = "<no loop>"
 	}
 	logger.Debug(
-		fmt.Sprintf("[Type: MetricAction] %s", loop_var_idx),
+		fmt.Sprintf("[Type: MetricAction] loop %s", loop_var_idx),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
