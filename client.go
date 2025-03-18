@@ -24,8 +24,8 @@ import (
 
 var (
 	ErrInvalidLogin              = fmt.Errorf("invalid_login")
-	ErrInvalidLoginNoCipher      = fmt.Errorf("can't obtain cipher to decrypt")
-	ErrInvalidLoginInvalidCipher = fmt.Errorf("invalid key provided to decrypt")
+	ErrInvalidLoginNoCipher      = fmt.Errorf("can't obtain cipher to decrypt login")
+	ErrInvalidLoginInvalidCipher = fmt.Errorf("invalid key provided to decrypt login")
 	ErrInvalidQueryResult        = fmt.Errorf("invalid_result_code")
 	// context deadline exceeded
 	ErrContextDeadLineExceeded = fmt.Errorf("global_scraping_timeout")
