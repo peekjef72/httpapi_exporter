@@ -233,6 +233,61 @@ func ConfigHandlerFunc(metricsPath string, exporter Exporter) func(http.Response
 	}
 }
 
+// ReloadHandlerFunc is the HTTP handler for the POST reload entry point (`/reload`).
+func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var result []byte
+
+		if r.Method != "POST" {
+			exporter.Logger().Info(
+				"received invalid method on /reload", "client", r.RemoteAddr)
+			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a POST request"), metricsPath, exporter, w, r)
+			return
+		}
+
+		exporter.Logger().Info(
+			"received /reload from %s", "client", r.RemoteAddr)
+
+		msg := actionMsg{
+			actiontype: ACTION_RELOAD,
+			retCh:      make(chan error),
+		}
+		reloadCh <- msg
+		if err := <-msg.retCh; err != nil {
+			HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
+		}
+
+		accept_type := r.Header.Get(acceptHeader)
+		if strings.Contains(accept_type, applicationJSON) {
+			accept_type = applicationJSON
+		} else if strings.Contains(accept_type, textPLAIN) {
+			accept_type = textPLAIN
+		} else {
+			accept_type = textHTML
+		}
+
+		switch accept_type {
+		case textPLAIN:
+			w.Header().Set(contentTypeHeader, textPLAIN)
+			result = []byte(`OK reload asked.`)
+		case applicationJSON:
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			result = []byte(`{"message":"ok","status": 1,"data": {"reload": true}}`)
+			w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
+		default:
+			w.Header().Set(contentTypeHeader, textHTML)
+			healthTemplate.Execute(w, &tdata{
+				ExporterName: exporter.Config().Globals.ExporterName,
+				MetricsPath:  metricsPath,
+				DocsUrl:      docsUrl,
+				Message:      `OK reload asked.`,
+			})
+			return
+		}
+		w.Write(result)
+	}
+}
+
 // LogLevelHandlerFunc is the HTTP handler for the POST loglevel entry point (`/loglevel`).
 func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg, path string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

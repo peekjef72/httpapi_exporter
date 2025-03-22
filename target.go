@@ -276,6 +276,8 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 	leave_loop := false
 	t.client.symtab["__collector_id"] = t.name
+	msg_done_count := 0
+
 	for msg := range collectChan {
 		switch msg {
 
@@ -355,6 +357,11 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				"after waiting for ping is over",
 				"collid", fmt.Sprintf("ping/%s", t.name))
 			need_login := false
+			// repopulate collect channel with already received message.
+			for range msg_done_count {
+				collectChan <- MsgDone
+			}
+			// read one message
 			submsg := <-collectChan
 
 			switch submsg {
@@ -377,6 +384,10 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			} else {
 				collectChan <- MsgQuit
 			}
+		case MsgDone:
+			// we received MsgDone when we are not waiting them: it is to early!
+			// store them to resend then in MsgWait sub loop
+			msg_done_count += 1
 		}
 		// leave collectChan loop
 		if leave_loop {
@@ -390,6 +401,12 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 		targetUp = false
 	}
 	if t.name != "" {
+		t.content_mutex.Lock()
+		logger := t.logger
+		t.content_mutex.Unlock()
+		logger.Debug(
+			"target: send metric up result",
+			"collid", t.name)
 		// Export the target's `up` metric as early as we know what it should be.
 		met_ch <- NewMetric(t.upDesc, boolToFloat64(targetUp), nil, nil)
 	}
@@ -416,6 +433,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 		// to check if channel is already closed
 		has_quitted := false
+		msg_done_count = 0
 
 		for msg := range collectChan {
 			switch msg {
@@ -557,11 +575,24 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 					"after waiting for all collectors is over",
 					"collid", t.name)
 				need_login := false
+
+				// repopulate collect channel with already received messages.
+				for range msg_done_count {
+					collectChan <- MsgDone
+				}
 				// we have received len(t.collectors) msgs from collectors
-				for i := 0; i < len(t.collectors); i++ {
+				for i := range t.collectors {
 					logger.Debug(
-						fmt.Sprintf("target wait: read msg[%d] from collector", i),
+						fmt.Sprintf("target wait: reading msg channel for collector '%s'", t.collectors[i].GetName()),
 						"collid", t.name)
+					if len(collectChan) == 0 {
+						logger.Warn(
+							fmt.Sprintf("target wait: msg channel for collector '%s' is empty. STOPPING", t.collectors[i].GetName()),
+							"collid", t.name)
+						collectChan <- MsgQuit
+						break
+					}
+					// read one message
 					submsg := <-collectChan
 
 					switch submsg {
@@ -572,7 +603,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 						need_login = true
 					default:
 						logger.Debug(
-							fmt.Sprintf("target wait: received msg[%d]=[%s] from collector", i, Msg2Text(submsg)),
+							fmt.Sprintf("target wait: received msg for collector '%s': '%s'", t.collectors[i].GetName(), Msg2Text(submsg)),
 							"collid", t.name)
 					}
 				}
@@ -588,6 +619,17 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				} else {
 					collectChan <- MsgQuit
 				}
+			case MsgDone:
+				// we received MsgDone when we are not waiting them: it is to early!
+				// store them to resend then in MsgWait sub loop
+				t.content_mutex.Lock()
+				logger := t.logger
+				t.content_mutex.Unlock()
+				logger.Debug(
+					"target: MsgDone received too early",
+					"collid", t.name)
+				msg_done_count += 1
+
 			}
 		}
 		t.logger.Debug(

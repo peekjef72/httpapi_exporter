@@ -132,29 +132,6 @@ const (
 	ACTION_LOGLEVEL = iota
 )
 
-// ReloadHandlerFunc is the HTTP handler for the POST reload entry point (`/reload`).
-func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- actionMsg) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			exporter.Logger().Info(
-				"received invalid method on /reload", "client", r.RemoteAddr)
-			HandleError(http.StatusMethodNotAllowed, errors.New("this endpoint requires a POST request"), metricsPath, exporter, w, r)
-			return
-		}
-		exporter.Logger().Info(
-			"received /reload from %s", "client", r.RemoteAddr)
-		msg := actionMsg{
-			actiontype: ACTION_RELOAD,
-			retCh:      make(chan error),
-		}
-		reloadCh <- msg
-		if err := <-msg.retCh; err != nil {
-			HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
-		}
-		http.Error(w, "OK reload asked.", http.StatusOK)
-	}
-}
-
 func main() {
 
 	flag.AddFlags(kingpin.CommandLine, &logConfig)

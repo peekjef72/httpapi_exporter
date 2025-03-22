@@ -109,6 +109,7 @@ cpu_usage_percent{node="0",cpu="0",mode="user"} 1.8
 cpu_usage_percent{node="0",cpu="0",mode="system"} 8.5
 cpu_usage_percent{node="0",cpu="0",mode="idel"} 89.7
 ```
+and so on for all node elements.
 
 ## YAML
 
@@ -183,12 +184,49 @@ In details, each subelement of an element is represented as a array even if the 
 
 ## None Parser
 
-This parser is a do nothing parser: it means you don't want to use the result content so it is useless to perform any operation on it. That my be usefull for "ping" page without any interesting content.
+This parser is a do nothing parser: it means you don't want to use the result content so it is useless to perform any operation on it. That may be usefull for "ping" page without any interesting content.
 
 ## text-lines
 
 This parser is intended to work with plain text content. It splits the content into lines after each carriage return (regexp pattern "\r?\n"), thus transforming the content into a array of strings. Then each line can be looped to search, extract data from ... 
 
+e.g.
+You collect a generated status page with "status" text written into:
+
+```text
+STATUS: OK
+an another line
+```
+you can use a "text-lines" parser to read the content and build a metric on the status content:
+
+```yaml
+scripts:
+  check_status:
+    - name: get status page
+      query:
+        url: /status
+        var_name: results
+        # debug: true
+        parser: text-lines
+    # $results content
+    # => text/plain
+    #   STATUS:OK
+    - name: debug virtualbrowser_status
+      # get fist line, converted to string, regexpExtract group 1
+      # {{ exporterRegexExtract "^STATUS:\\s*(.+)$" (toString (index .results 0)) }}
+      set_fact:
+        status: >
+          {{- index (exporterRegexExtract "^STATUS:\\s*(.+)$" (toString (index .results 0) ) ) 1 -}}
+
+    - name: proceed elements
+      scope: none
+      metrics:
+        - metric_name: access_status
+          help: "status value returned by /status url: 1:OK - 0: KO"
+          type: gauge
+          values:
+            _: '{{ if EQ .status "OK" }}1{{ else }}0{{ end }}'
+```
 ## Prometheus
 
 This parser is intended to work with prometheus exporter content. It will build an go map[string]any object; each key of the object is metric name, and the value the metric definition with labels and value.
@@ -271,33 +309,39 @@ will produce an object:
 results = {
     "go_gc_duration_seconds": {
         "name": "go_gc_duration_seconds",
-        "help": "A summary of the pause duration of garbage collection cycles.",
         "type": "summary",
-        "metrics": [{
+        "help": "A summary of the pause duration of garbage collection cycles.",
+        "metrics": [
+            {
                 "labels": {},
                 "summary": {
-                    "sample_count": 4382,
-                    "sample_sum": 0.803447317
-                },
-                "quantile": [{
-                        "quantile": 0,
-                        "value": 0.000039464
-                    },{
-                         "quantile": 0,
-                        "value": 0.000039464
-                    },{
-                         "quantile": 0,
-                        "value": 0.000039464
-                    },{
-                         "quantile": 0,
-                        "value": 0.000039464
-                    },{
-                         "quantile": 0,
-                        "value": 0.000039464
+                "quantile": [
+                    {
+                    "quantile": 0,
+                    "value": 0.000039464
+                    },
+                    {
+                    "quantile": 0.25,
+                    "value": 0.000055593
+                    },
+                    {
+                    "quantile": 0.5,
+                    "value": 0.000077457
+                    },
+                    {
+                    "quantile": 0.75,
+                    "value": 0.00010531
+                    },
+                    {
+                    "quantile": 1,
+                    "value": 0.015503494
                     }
-                ]
+                ],
+                "sample_count": 4382,
+                "sample_sum": 0.803447317
+                }
             }
-        ]
+        ],
     },
     "go_sched_pauses_total_gc_seconds": {
         "name": "go_sched_pauses_total_gc_seconds",

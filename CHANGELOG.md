@@ -4,11 +4,23 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.0 / 2025-03-03 - not release
+## 0.4.0 / 2025-03-22
+
+### 2025-03-19 - not release
+- bugfixed: synchronization error between target and collectors replies. target may stayed in infinite wait for collectors that had send replies too early in process (gofunc() channel synchro pb)
+- added: debug messages (to track previous bug)
+- fixed: json reponse format for /reload
+  - {"message":"ok","status": 1,"data": {"reload": true}}
+
+### 2025-03-16 - not release
+- added: parser 'prometheus' that can interact with data returned by an exporter.
+- added: documentation for [parsers](doc/parsers.md).
+- fixed: debug message
 
 ### 2025-03-03 - not release
-- added: parsers 'yaml' and 'text-lines' (split result into lines after "\r?\n")
+- added: parsers 'yaml' and 'text-lines' (split result into lines after "\r?\n"). See documentation [parsers](doc/parsers.md) for more infos.
 - added: template function "exporterRegexExtract" to obtain matching group from regex and searching string: [array] <= exporterRegexExtract[regexp] [search_string]
+- added: some gotest for exporter template function.
 
 ### 2025-02-17
 - fixed: json reponse format for /status and /loglevel
