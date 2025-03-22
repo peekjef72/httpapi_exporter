@@ -219,13 +219,14 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		coll_ch <- MsgDone
 		c.logger.Debug(
 			"MsgDone sent to channel.",
+			"coll_channel_length", fmt.Sprintf("%d", len(coll_ch)),
 			"collid", CollectorId(c.client.symtab, c.logger),
 			"script", ScriptName(c.client.symtab, c.logger))
 	}
 
 	// clean up
 	c.logger.Debug(
-		fmt.Sprintf("removing metric channel for '%s'", c.config.Name),
+		fmt.Sprintf("removing from symtab metric,coll channels vars for '%s'", c.config.Name),
 		"collid", CollectorId(c.client.symtab, c.logger))
 
 	delete(c.client.symtab, "__metric_channel")
