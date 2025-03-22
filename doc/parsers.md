@@ -5,7 +5,8 @@ Parsers are used to build structured objects with the content obtained by a quer
 
 The default parser in json, because historically httpapi_exporter was designed to work only with server that returns json content.
 
-## Currently defined parsers are:
+## Currently defined parsers are
+
 - [json](#json)
 - [none](#none-parser)
 - [prometheus](#prometheus)
@@ -13,7 +14,7 @@ The default parser in json, because historically httpapi_exporter was designed t
 - [xml](#xml)
 - [yaml](#yaml)
 
-## Usage:
+## Usage
 
 The parser attribute applies only to the query action.
 
@@ -24,7 +25,7 @@ The parser attribute applies only to the query action.
         var_name: results
         parser: json
 
-``` 
+```
 
 This above example tells to parse the result content as a json object called "results" in the symbol table, so it can be use and traverse for further operations.
 
@@ -46,7 +47,8 @@ Imagine the returned content is:
     ]
   }
 ```
-according to the previous config, you have a variable `result` containing this object; something that you can write in javascript:
+
+According to the previous config, you have a variable `result` containing this object; something that you can write in javascript:
 
 ```javacript
 result = {
@@ -60,7 +62,8 @@ result = {
     ]
 }
 ```
-so `{{ .results.members | toRawJson }}` write in gotemplate syntax or `$results.members` in exporter syntax, is a list of object that you can loop on to obtain each "node".
+
+So `{{ .results.members | toRawJson }}` write in gotemplate syntax or `$results.members` in exporter syntax, is a list of object that you can loop on to obtain each "node".
 
 with following config:
 
@@ -81,7 +84,9 @@ with following config:
             idle:   $idlePct
           loop: $members
 ```
+
 This block of configuration is a two levels instuction set:
+
 1) `metrics` with scope
 
     here `scope` directive tells to reduce the symbols table to only 'results" variable, so ease the writing of formula by compacting the syntax; anyway you can perfectly loop on $resuls.members.
@@ -89,7 +94,8 @@ This block of configuration is a two levels instuction set:
 
 It is quite complicated to explain, but the result is in fact very simple and natural: you want a metric called `cpu_usage_percent` labeled by each `node` and `cpu` and with the `mode` that is corresponding to cpu time spent percent into that state.
 
-so for the first `member`:
+So for the first `member`:
+
 ```json
 {"node":0, "cpu":0, "userPct": 1.8, "systemPct":8.5, "idlePct":89.7, "interruptsPerSec":40452.9, "contextSwitchesPerSec":84915.9}
 ```
@@ -109,7 +115,8 @@ cpu_usage_percent{node="0",cpu="0",mode="user"} 1.8
 cpu_usage_percent{node="0",cpu="0",mode="system"} 8.5
 cpu_usage_percent{node="0",cpu="0",mode="idel"} 89.7
 ```
-and so on for all node elements.
+
+And so on for all node elements.
 
 ## YAML
 
@@ -197,7 +204,8 @@ You collect a generated status page with "status" text written into:
 STATUS: OK
 an another line
 ```
-you can use a "text-lines" parser to read the content and build a metric on the status content:
+
+You can use a "text-lines" parser to read the content and build a metric on the status content:
 
 ```yaml
 scripts:
@@ -227,6 +235,7 @@ scripts:
           values:
             _: '{{ if EQ .status "OK" }}1{{ else }}0{{ end }}'
 ```
+
 ## Prometheus
 
 This parser is intended to work with prometheus exporter content. It will build an go map[string]any object; each key of the object is metric name, and the value the metric definition with labels and value.

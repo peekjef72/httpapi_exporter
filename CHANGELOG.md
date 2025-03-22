@@ -7,27 +7,32 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 ## 0.4.0 / 2025-03-22
 
 ### 2025-03-19 - not release
+
 - bugfixed: synchronization error between target and collectors replies. target may stayed in infinite wait for collectors that had send replies too early in process (gofunc() channel synchro pb)
 - added: debug messages (to track previous bug)
 - fixed: json reponse format for /reload
   - {"message":"ok","status": 1,"data": {"reload": true}}
 
 ### 2025-03-16 - not release
+
 - added: parser 'prometheus' that can interact with data returned by an exporter.
 - added: documentation for [parsers](doc/parsers.md).
 - fixed: debug message
 
 ### 2025-03-03 - not release
+
 - added: parsers 'yaml' and 'text-lines' (split result into lines after "\r?\n"). See documentation [parsers](doc/parsers.md) for more infos.
 - added: template function "exporterRegexExtract" to obtain matching group from regex and searching string: [array] <= exporterRegexExtract[regexp] [search_string]
 - added: some gotest for exporter template function.
 
 ### 2025-02-17
+
 - fixed: json reponse format for /status and /loglevel
   - {"message":"ok","status": 1,"data": {"status":"ok"}}
   - {"message":"ok","status": 1,"data": {"loglevel": "&lt;loglevel&gt;"}}
 
 ###  2025-01-15
+
 - fixed: changed **--dry-run** command line flag behavior when no target specified: only check config; do not try to collect first available target.
 - added: disable_warn: true|false in auth_config to disable warning messages from RESTY if auth is basic and connection is http.
 
@@ -40,14 +45,17 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   ```
 
 ###  2025-01-11
+
 - fixed: config output in json format.
 - fixed: warn messages ("script_name not defined"), displayed with loglevel "debug"
 
 ###  2025-01-08
+
 - fixed: now checks that each target has at least one collector defined; e.g.: failed if collector pattern matching doesn't correspond to any collector name.
 - fixed: allow "scope" directive to use $var_name format (like .var_name).
 
 ###  2025-01-04
+
 - added "profile" for config and target. Now exporter can collect multiple apis with different "login" semantics. Before the config contains only one **httpapi_config** part that may define the "clear", "init", "login", "logout", "ping" scripts. The new version allows to define "profiles", and in each profile the "default scripts", so that a target can use a named profile :
 
   ```yaml
@@ -78,6 +86,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   ```
 
   Alternatively it is possible to add profiles via profile files with **profiles_file_config** directive: set a list of filepath accepting wildcards '*' (golang filegob ()) to "profiles". The content of each file must be a profile_config (see above or contribs)
+  
   ```yaml
     profiles_file_config:
       - "*_profile.yml"
@@ -136,7 +145,8 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   # TYPE exalead_license_config_hasAdvancedQueryReporting gauge
   exalead_license_config_hasAdvancedQueryReporting{company="My Company",param="hasSemanticFactory",type="-"} 0
   ```
-  this example is a lilte bit stupid, because it is more accurate to add a label param with name of parameter in config metric, but it explains how it can work !
+
+  This example is a lilte bit stupid, because it is more accurate to add a label param with name of parameter in config metric, but it explains how it can work !
 - add new template function `convertBoolToInt` to convert text boolean to value 0 or 1.
   - string "true", "yes", "ok" returns 1 anything else 0.
   - any int or float value distinct of 0 then 1 else 0.
@@ -144,13 +154,14 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 - add contribs exalead exporter.
 
 - add config parameters in configuration file in global section for:
-    - web.listen-address (priority to config file over command line argument --web.listen-address)
-    - log.level (priority to config file over command line argument --log.level)
-    - up_help allow user to replace default help message for metric help (default is "if the target is reachable 1, else 0 if the scrape failed")
-    - scrape_duration_help same for scrap duration metric (default is "How long it took to scrape the target in seconds")
-    - collector_status_help same for collector status (default is "collector scripts status 0: error - 1: ok - 2: Invalid login 3: Timeout")
+  - web.listen-address (priority to config file over command line argument --web.listen-address)
+  - log.level (priority to config file over command line argument --log.level)
+  - up_help allow user to replace default help message for metric help (default is "if the target is reachable 1, else 0 if the scrape failed")
+  - scrape_duration_help same for scrap duration metric (default is "How long it took to scrape the target in seconds")
+  - collector_status_help same for collector status (default is "collector scripts status 0: error - 1: ok - 2: Invalid login 3: Timeout")
 
 ## 0.3.9 / 2024-12-14
+
 - removed passwd_encrypt tool source code from httpapi_exporter: created a new stand-alone package [passwd_encrypt](https://github.com/peekjef72/passwd_encrypt). Passwd_encrypt is still installed when building and added to the released archiv.
 - updated prometheus/exporter-toolkit to 0.13.0 (log => log/slog)
 - renamed entrypoint /healthz to /health : response format depends on "accept" header (application/json, text/plain, text/html default)
