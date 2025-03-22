@@ -11,6 +11,7 @@ The queried url can return data in several format:
 - yaml
 - xml
 - raw text (parse as text-lines)
+- prometheus openmetrics
 
 As examples 4 configurations for exporters are provided (see contribs):
 - [hp3par_exporter](contribs/hp3par/README.md)
@@ -88,9 +89,9 @@ Exporter requires configuration to works:
   
   see [config.md](doc/config.md) documentation
 
-## exporter http server
+## Exporter http server
 
-the exporter http server has a default landing page that permit to access
+The exporter http server has a default landing page that permit to access
 * "/health" : a simple heartbeat page that return "OK" if exporter is UP
 * "/configuration": expose defined configuration of the exporter
 * "/targets": expose all known targets (locally defined or dynamically defined). Password are masked.
@@ -104,7 +105,7 @@ the exporter http server has a default landing page that permit to access
 
 ## exporter metrics access
 
-parameters to scrape a target:
+Parameters to scrape a target:
 
 * target: `<locally_defined_target>` or `<scheme://[user:password@]host:port>` (dynamic target)
 * auth_key: the shared secret key used to decrypt encrypted password set in authentication config.
