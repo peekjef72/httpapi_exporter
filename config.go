@@ -509,6 +509,12 @@ func (c *Config) loadTargetsFiles(targetFilepath []string) error {
 	return nil
 }
 
+const (
+	tls_version_upto_1_2 uint = 0x1 // tls_upto_1.2
+	tls_version_1_2      uint = 0x2 // tls_1.2
+	tls_version_1_3      uint = 0x4 // tls_1.3
+)
+
 // GlobalConfig contains globally applicable defaults.
 type GlobalConfig struct {
 	MinInterval     model.Duration `yaml:"min_interval" json:"min_interval"`                   // minimum interval between query executions, default is 0
@@ -524,8 +530,11 @@ type GlobalConfig struct {
 	CollectorStatusHelp string `yaml:"collector_status_help,omitempty" json:"collector_status_help,omitempty"`
 	WebListenAddresses  string `yaml:"web.listen-address,omitempty" json:"web.listen-address,omitempty"`
 	LogLevel            string `yaml:"log.level,omitempty" json:"log.level,omitempty"`
+	TLSVersion          string `yaml:"tls_version,omitempty" json:"tls_version,omitempty"`
 
 	invalid_auth_code []int
+	tls_version       uint
+
 	// query_retry int
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -543,6 +552,7 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	g.UpMetricHelp = upMetricHelp
 	g.ScrapeDurationHelp = scrapeDurationHelp
 	g.CollectorStatusHelp = collectorStatusHelp
+	g.tls_version = 0
 
 	// Default tp 3
 	g.QueryRetry = 3
@@ -568,6 +578,23 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		g.invalid_auth_code = buildStatus(g.InvalidHttpCode)
 	}
 
+	if g.TLSVersion != "" {
+		version := strings.ToLower(g.TLSVersion)
+
+		if strings.Contains(version, "all") {
+			g.tls_version = (tls_version_upto_1_2 | tls_version_1_2 | tls_version_1_3)
+		} else {
+			if strings.Contains(version, "tls_upto_1.2") {
+				g.tls_version |= tls_version_upto_1_2
+			}
+			if strings.Contains(version, "tls_1.2") {
+				g.tls_version |= tls_version_1_2
+			}
+			if strings.Contains(version, "tls_1.3") {
+				g.tls_version |= tls_version_1_3
+			}
+		}
+	}
 	return checkOverflow(g.XXX, "global")
 }
 
@@ -918,6 +945,11 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if m.Name == "" {
 		return fmt.Errorf("missing name for metric %+v", m)
 	}
+	if name, err := NewField(m.Name, nil); err != nil {
+		return err
+	} else {
+		m.name = name
+	}
 
 	if m.TypeString == "" {
 		return fmt.Errorf("missing type for metric %q", m.Name)
@@ -944,15 +976,26 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if m.KeyLabels != nil {
 		switch ktype := m.KeyLabels.(type) {
 		case map[string]string:
-			for key := range ktype {
-				checkLabel(key, "metric", m.Name)
+			for key, val := range ktype {
+				if err := checkLabel(key, "metric", m.Name); err != nil {
+					return err
+				}
+				// specific for format key_name: _ => replace by ${key_name}
+				if val == "_" {
+					ktype[key] = "$" + key
+				}
 			}
 			m.key_labels_map = ktype
 		case map[string]any:
 			m.key_labels_map = make(map[string]string, len(ktype))
 			for key, val_raw := range ktype {
-				checkLabel(key, "metric", m.Name)
+				if err := checkLabel(key, "metric", m.Name); err != nil {
+					return err
+				}
 				if val, ok := val_raw.(string); ok {
+					if val == "_" {
+						val = "$" + key
+					}
 					m.key_labels_map[key] = val
 				}
 			}

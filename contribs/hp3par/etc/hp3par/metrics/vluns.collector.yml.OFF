@@ -128,16 +128,16 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
-            _: '{{ .IO.read }}'
+            _: $item.IO.read
           # when:
           #   - .active 
-          loop: members
+          loop: $members
 
         - metric_name: vluns_write_io_per_second
           help: Number of IO write operations per second.
@@ -145,16 +145,16 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
-            _: '{{ .IO.write }}'
+            _: $IO.write
           # when:
           #   - .active 
-          loop: members
+          loop: $members
 
         # read and write bytes per seconds
         - metric_name: vluns_read_bytes_per_second
@@ -163,16 +163,16 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
             _: '{{ convertToBytes .KBytes.read "Kb" }}'
           # when:
           #   - .active 
-          loop: members
+          loop: $members
 
 
         - metric_name: vluns_write_bytes_per_second
@@ -181,9 +181,9 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
@@ -191,7 +191,7 @@ scripts:
           results: [ members ]
           # when:
           #   - .active 
-          loop: members
+          loop: $members
 
         # read and write latency Service Time
         - metric_name: vluns_read_latency_second
@@ -200,16 +200,16 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
             _: '{{ mulf .serviceTimeMS.read 1E-3}}'
           # when:
           #   - .active 
-          loop: members
+          loop: $members
 
         - metric_name: vluns_write_latency_second
           help: Write service time in millisecond statistic data.
@@ -217,16 +217,16 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
             _: '{{ mulf .serviceTimeMS.write 1E-3 }}'
           # when:
           #   - .active 
-          loop: members
+          loop: $members
 
         # busy percent
         - metric_name: vluns_busy_percent
@@ -235,13 +235,13 @@ scripts:
           key_labels:
             node: _
             slot: _
-            cardport: cardPort
+            cardport: $cardPort
             lun: _
-            volumename: volumeName
+            volumename: $volumeName
             hostname: _
             # type: '{{ template "vlunType" .type }}'
           values:
-            _: '{{ .busyPct }}'
+            _: $item.busyPct
           # when:
           #   - .active 
-          loop: members
+          loop: $members

@@ -131,12 +131,12 @@ Parameters to scrape a target:
 Most of the time the access to a http api requires an authentication. It is the case for the 3 contribs (hp3par, veeam, netscaler).
 The exporter allows you 2 modes:
 
- - to define the authentication parameters statically for each target.
- - to define a dictionnary (map) of authentications and then to use it a target definition, or even to set it in the prometheus query.
+- to define the authentication parameters statically for each target.
+- to define a dictionnary (map) of authentications and then to use it a target definition, or even to set it in the prometheus query.
 
 The auth parameters are:
 
-- mode: should be 
+- mode: should be:
   - basic: use http basic authentication: the "user" and "password" values will be sent in the http header request
   - token: use bearer token to authenticate
   - script: user, password will be used in the login script to access the api.
@@ -247,13 +247,13 @@ exporterSet | | |
 exporterKeys | | |
 exporterValues | | |
 exporterToRawJson | | |
- | | |
+&nsbp; | | |
 lookupAddr [varstring] | obtain hostname from string representing an ip address ; like sprig/getHostByName but for string ip | lookupAddr .node.ipaddress |
 convertToBytes value unit | convert the value contained in variable to bytes according to the unit string specified: <ul><li>"kilobyte" or "Kb" multiply by 1024 <li>"megabyte" or "Mb" multiply by 1024 * 1024<li>"gigabyte" or "Gb"multiply by 1024 * 1024 * 1024</ul> | '{{ convertToBytes .result.totalMiB "Mb" }}' |
 convertBoolToInt value | convert value that may contain a boolean to 0&#124;1 representation. Value can be of any type. If something is <ul><li>like int or float and different from 0 is 1 else 0<li>string and is lower case 'true' or 'yes' or 'ok' is 1 else 0<li>like map or array and length >0 then 1 or 0</ul>| with {"proc": {"loopCrashing": "true",...}}<br> => '{{ convertBoolToInt .proc.loopCrashing }}<br> => 1' |
 getHeader [varmap] | | |
-LEN [var] | obtain the len of the var. works like sprig/len but accepts data of type any. |
-exporterRegexExtract [regexp var] [search var] : []string | obtain the list of extracted elements from regexp on search string or nil if not found | extract value from line as group 1 of regexp: <br> res: "{{ index  (exporterRegexExtract "^status:\s(.+)$" "status:OK") 1 }}"
+LEN [var] | obtain the len of the var. works like sprig/len but accepts data of type any. | |
+exporterRegexExtract [regexp var] [search var] : []string | obtain the list of extracted elements from regexp on search string or nil if not found | extract value from line as group 1 of regexp: <br> res: "{{ index  (exporterRegexExtract "^status:\s(.+)$" "status:OK") 1 }}" |
 
 ## boolean checks
 

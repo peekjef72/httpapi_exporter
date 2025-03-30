@@ -1,5 +1,5 @@
 
-## Configuration
+# Configuration
 
 ```yaml
 # Global defaults.
@@ -16,6 +16,9 @@ global:
   # all http codes that will be consider auth is invalid and must do a Login()
   invalid_auth_code: [401,403]
   exporter_name: <name_exporter>
+  # list of allowed tls version, meaning authorized ciphers for https connections
+  #   all, tls_upto_1.2, tls_1.2 ,tls_1.3
+  # tls_version: "tls_upto_1.2,tls_1.2,tls_1.3" or "all"
 
 #
 profiles: # list of profile_configs

@@ -31,6 +31,13 @@ const (
 	exporter_name         = "httpapi_exporter"
 )
 
+var pat_var_finder *regexp.Regexp
+
+func init() {
+	// initialize a global variable to detect and extract variable in format ${var}
+	pat_var_finder, _ = regexp.Compile("{([^{]+)}")
+}
+
 var (
 	// listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(metricsPublishingPort).String()
 	metricsPath = kingpin.Flag("web.telemetry-path", "Path under which to expose collector's internal metrics.").Default("/metrics").String()

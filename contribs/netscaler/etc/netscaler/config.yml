@@ -13,6 +13,9 @@ global:
   # all http codes that will consider the connection has an invalid auth and must do a Login()
   invalid_auth_code: [401,403]
   exporter_name: netscaler_exporter
+  # list of allowed tls version, meaning authorized ciphers for https connections
+  #   all, tls_upto_1.2, tls_1.2 ,tls_1.3
+  tls_version: all
 
 profiles:
   netscaler:

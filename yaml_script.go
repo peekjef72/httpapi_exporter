@@ -119,7 +119,7 @@ func ScriptName(symtab map[string]any, logger *slog.Logger) string {
 }
 
 func Name(name *Field, symtab map[string]any, logger *slog.Logger) string {
-	str, err := name.GetValueString(symtab, nil, false)
+	str, err := name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(fmt.Sprintf("invalid action name: %v", err))
 		return ""
@@ -284,7 +284,7 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 	case *Field:
 		check_value := false
 		// this is a template populate list with var from symtab
-		data, err = curval.GetValueObject(symtab, with_raw_name)
+		data, err = curval.GetValueObject(symtab)
 		if err != nil {
 			return data, err
 		}
@@ -300,7 +300,7 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 			}
 		}
 		if check_value {
-			data, err = curval.GetValueString(symtab, nil, false)
+			data, err = curval.GetValueString(symtab)
 		}
 		return data, err
 	case map[any]any:
@@ -502,7 +502,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 				continue
 			}
 			if key, ok := pair[0].(*Field); ok {
-				key_name, err := key.GetValueString(symtab, nil, false)
+				key_name, err := key.GetValueString(symtab)
 				if err == nil {
 					value, err := ValorizeValue(symtab, pair[1], logger, ba.GetName(symtab, logger), false)
 					if err == nil {
@@ -566,13 +566,26 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 		for _, item := range items {
 
 			data, err := ValorizeValue(symtab, item, logger, ba.GetName(symtab, logger), false)
+			if val_err, ok := (err).(VarError); ok {
+				if val_err.Code() == error_var_not_found || val_err.Code() == error_var_mapkey_not_found ||
+					val_err.Code() == error_var_sliceindice_not_found {
+					// reset everything to build an empty loop
+					data = nil
+					err = nil
+					logger.Debug(
+						"with_items list empty.",
+						"collid", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+						"name", ba.GetName(symtab, logger))
+				}
+			}
 			if err == nil {
 				if data != nil {
 					if l_data, ok := data.([]any); ok {
 						if len(l_data) > 0 {
 							final_items = append(final_items, l_data...)
 						} else {
-							logger.Warn(
+							logger.Debug(
 								"with_items list empty.",
 								"collid", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
@@ -997,7 +1010,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			when = cond
 		}
 
-		// parse when
+		// parse until
 		if raw, ok := cur_act["until"]; ok {
 			cond, err := build_Cond(script, raw)
 			if err != nil {
@@ -1103,12 +1116,8 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			a := &MetricAction{
 				mc: mc,
 			}
-			name, err = NewField(mc.Name, nil)
-			if err != nil {
-				return nil, fmt.Errorf("name for action invalid %q: %s", mc.Name, err)
-			}
 
-			if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(mc.name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)

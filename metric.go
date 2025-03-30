@@ -132,7 +132,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 	}
 	symtab := item
 	if mf.name == "" {
-		name, err := mf.config.name.GetValueString(item, nil, false)
+		name, err := mf.config.name.GetValueString(item)
 		if err != nil {
 			err := fmt.Errorf("metric %s can't get metric name", mf.config.Name)
 			logger.Warn(err.Error(),
@@ -146,7 +146,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		}
 	}
 	if mf.help == "" {
-		help, err := mf.config.help.GetValueString(item, nil, false)
+		help, err := mf.config.help.GetValueString(item)
 		if err != nil {
 			err := fmt.Errorf("metric %s can't get metric help", mf.name)
 			logger.Warn(err.Error(),
@@ -214,15 +214,13 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 				i := 0
 				for key, val_raw := range key_labels_map {
-					if val, ok := val_raw.(string); ok {
-						mf.labels[i], err = NewLabel(key, val, mf.name, "key_label", nil)
-						if err != nil {
-							logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
-								"collid", CollectorId(symtab, logger),
-								"script", ScriptName(symtab, logger),
-							)
-							continue
-						}
+					mf.labels[i], err = NewLabel(key, RawGetValueString(val_raw), mf.name, "key_label", nil)
+					if err != nil {
+						logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
+							"collid", CollectorId(symtab, logger),
+							"script", ScriptName(symtab, logger),
+						)
+						continue
 					}
 					i++
 				}
@@ -263,19 +261,17 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		}
 		if item != nil {
 			if label.Key != nil {
-				labelNames[i], err = label.Key.GetValueString(item, nil, false)
+				labelNames[i], err = label.Key.GetValueString(item)
 				if err != nil {
 					err = fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err)
 					logger.Warn(err.Error())
 					ch <- NewInvalidMetric(mf.logContext, err)
-					continue
+					return
 				}
 			}
 
 			if label.Value != nil {
-				sub := make(map[string]string)
-				sub["_"] = labelNames[i]
-				labelValues[i], err = label.Value.GetValueString(item, sub, true)
+				labelValues[i], err = label.Value.GetValueString(item)
 				if err != nil {
 					err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
 					logger.Warn(err.Error(),
@@ -283,7 +279,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 						"script", ScriptName(symtab, logger),
 					)
 					ch <- NewInvalidMetric(mf.logContext, err)
-					continue
+					return
 				}
 			}
 		} else {
@@ -299,7 +295,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 		// fill the label value for value_label with the current name of the value if there is a label !
 		if len(mf.config.Values) > 1 {
-			labelValues[len(labelValues)-1], err = label.Key.GetValueString(item, nil, false)
+			labelValues[len(labelValues)-1], err = label.Key.GetValueString(item)
 			if err != nil {
 				err = fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err)
 				logger.Warn(err.Error(),
@@ -307,18 +303,31 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 					"script", ScriptName(symtab, logger),
 				)
 				ch <- NewInvalidMetric(mf.logContext, err)
-				continue
+				return
 			}
 		}
 		f_value, err = label.Value.GetValueFloat(item)
 		if err != nil {
-			err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
-			logger.Warn(err.Error(),
-				"collid", CollectorId(symtab, logger),
-				"script", ScriptName(symtab, logger),
-			)
-			ch <- NewInvalidMetric(mf.logContext, err)
-			continue
+			warn := true
+			if var_err, ok := err.(VarError); ok {
+				if var_err.Code() == error_var_not_found {
+					warn = false
+					logger.Debug(err.Error(),
+						"collid", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+					)
+				}
+			}
+			// do not complain in logs if metric was not found.
+			if warn {
+				err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
+				logger.Warn(err.Error(),
+					"collid", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+				)
+				ch <- NewInvalidMetric(mf.logContext, err)
+			}
+			return
 		}
 		logger.Debug(
 			fmt.Sprintf("metric.Collect() send metric to channel (len labelNames: %d lenlabelValue: %d)", len(labelNames), len(labelValues)),

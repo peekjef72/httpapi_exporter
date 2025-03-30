@@ -24,6 +24,7 @@ type QueryActionConfig struct {
 	AuthConfig *AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
 	Timeout    int                `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 	Parser     string             `yaml:"parser,omitempty" json:"parser,omitempty"`
+	Trace      ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
 
 	query    *Field
 	method   *Field
@@ -176,7 +177,7 @@ func (a *QueryAction) Type() int {
 }
 
 func (a *QueryAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab, nil, false)
+	str, err := a.Name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
@@ -330,7 +331,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
-	query, err = a.Query.query.GetValueString(symtab, nil, false)
+	query, err = a.Query.query.GetValueString(symtab)
 	if err != nil {
 		query = a.Query.Query
 		logger.Warn(
@@ -341,7 +342,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	}
 
 	if a.Query.data != nil {
-		payload, err = a.Query.data.GetValueString(symtab, nil, false)
+		payload, err = a.Query.data.GetValueString(symtab)
 		if err != nil {
 			payload = a.Query.Data
 			logger.Warn(
@@ -354,7 +355,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		payload = ""
 	}
 
-	method, err = a.Query.method.GetValueString(symtab, nil, false)
+	method, err = a.Query.method.GetValueString(symtab)
 	if err != nil {
 		method = strings.ToUpper(a.Query.Method)
 		logger.Warn(
@@ -364,7 +365,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger))
 	}
 
-	var_name, err = a.Query.var_name.GetValueString(symtab, nil, false)
+	var_name, err = a.Query.var_name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for var_name '%s': %v", a.Query.VarName, err),
@@ -373,7 +374,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger))
 	}
 
-	auth_mode, err = a.Query.auth_mode.GetValueString(symtab, nil, false)
+	auth_mode, err = a.Query.auth_mode.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.mode '%s': %v", a.Query.AuthConfig.Mode, err),
@@ -382,7 +383,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger))
 	}
 
-	user, err = a.Query.user.GetValueString(symtab, nil, false)
+	user, err = a.Query.user.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.user '%s': %v", a.Query.AuthConfig.Username, err),
@@ -391,7 +392,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger))
 	}
 
-	passwd, err = a.Query.passwd.GetValueString(symtab, nil, false)
+	passwd, err = a.Query.passwd.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.password '%s': %v", a.Query.AuthConfig.Password, err),
@@ -400,7 +401,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger))
 	}
 
-	auth_token, err = a.Query.token.GetValueString(symtab, nil, false)
+	auth_token, err = a.Query.token.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.token '%s': %v", a.Query.AuthConfig.Token, err),
@@ -414,6 +415,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		Method:   method,
 		Url:      query,
 		Debug:    bool(a.Query.Debug),
+		Trace:    bool(a.Query.Trace),
 		VarName:  var_name,
 		OkStatus: a.Query.ok_status,
 		AuthMode: auth_mode,

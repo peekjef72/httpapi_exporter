@@ -24,10 +24,10 @@ scripts:
           help: system info id labeled by model, version, serial, patches
           type: gauge
           key_labels:
-            model: _
-            serial: serialNumber
-            version: systemVersion
-            patches: _
+            model: $model
+            serial: $serialNumber
+            version: $systemVersion
+            patches: $patches
           values:
             _: $id
 

@@ -195,7 +195,7 @@ This parser is a do nothing parser: it means you don't want to use the result co
 
 ## text-lines
 
-This parser is intended to work with plain text content. It splits the content into lines after each carriage return (regexp pattern "\r?\n"), thus transforming the content into a array of strings. Then each line can be looped to search, extract data from ... 
+This parser is intended to work with plain text content. It splits the content into lines after each carriage return (regexp pattern "\r?\n"), thus transforming the content into a array of strings. Then each line can be looped to search, extract data from ...
 
 e.g.
 You collect a generated status page with "status" text written into:

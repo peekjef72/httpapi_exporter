@@ -31,7 +31,7 @@ func (a *SetStatsAction) Type() int {
 }
 
 func (a *SetStatsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab, nil, false)
+	str, err := a.Name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
@@ -137,7 +137,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 			return errors.New("set_fact: invalid key value")
 		}
 		if key, ok := pair[0].(*Field); ok {
-			key_name, err = key.GetValueString(symtab, nil, false)
+			key_name, err = key.GetValueString(symtab)
 			if err == nil {
 				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
 					return err

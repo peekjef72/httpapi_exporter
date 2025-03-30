@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 
@@ -15,32 +16,35 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/peekjef72/passwd_encrypt/encrypt"
+	"github.com/spf13/cast"
 )
 
 func convertToBytes(curval any, unit string) (int64, error) {
 	var i_value int64
-	var err error
+
 	if curval == nil {
 		return 0, nil
 	}
+	i_value = cast.ToInt64(curval)
 
 	// it is a raw value not a template look in "item"
-	switch curval := curval.(type) {
-	case int:
-		i_value = int64(curval)
-	case int64:
-		i_value = curval
-	case float32:
-		i_value = int64(curval)
-	case float64:
-		i_value = int64(curval)
-	case string:
-		if i_value, err = strconv.ParseInt(strings.Trim(curval, "\r\n "), 10, 64); err != nil {
-			i_value = 0
-		}
-	default:
-		i_value = 0
-	}
+	// switch curval := curval.(type) {
+	// case int:
+	// 	i_value = int64(curval)
+	// case int64:
+	// 	i_value = curval
+	// case float32:
+	// 	i_value = int64(curval)
+	// case float64:
+	// 	i_value = int64(curval)
+	// case string:
+	// 	if i_value, err = strconv.ParseInt(strings.Trim(curval, "\r\n "), 10, 64); err != nil {
+	// 		i_value = 0
+	// 	}
+	// default:
+	// 	i_value = 0
+	// }
+
 	switch unit {
 	case "kilobyte", "Kb":
 		i_value = i_value * 1024
@@ -53,6 +57,19 @@ func convertToBytes(curval any, unit string) (int64, error) {
 	return i_value, nil
 }
 
+// convert the variable cast to boolean to return 0 or 1.
+//
+// convertion convention:
+//
+// - something like number : if value != 0 => 1 else 0
+//
+// - a map[any]any: if len(map) != 0 => 1 else 0
+//
+// - a slice []any: if len(slice) != 0 => 1 else 0
+//
+// - a string: if lowercase is "true", "t", "on", "ok" ,"yes" =>1 else 0
+//
+// - a bool: if true 1 else 0
 func convertBoolToInt(curval any) (int64, error) {
 	var i_value int64
 
@@ -60,38 +77,31 @@ func convertBoolToInt(curval any) (int64, error) {
 		return 0, nil
 	}
 
-	// it is a raw value not a template look in "item"
-	switch curval := curval.(type) {
-	case int:
-		i_value = int64(curval)
-	case int64:
-		i_value = curval
-	case float32:
-		i_value = int64(curval)
-	case float64:
-		i_value = int64(curval)
-	case string:
-		s_value := strings.ToLower(curval)
+	vSrc := reflect.ValueOf(curval)
+	switch vSrc.Kind() {
+	case reflect.String:
+		s_value := strings.ToLower(vSrc.String())
 		switch s_value {
-		case "true":
-			i_value = 1
-		case "yes":
-			i_value = 1
-		case "ok":
+		case "true", "yes", "ok", "on", "t":
 			i_value = 1
 		default:
 			i_value = 0
 		}
-	case map[string]any:
-		i_value = int64(len(curval))
-	case map[any]any:
-		i_value = int64(len(curval))
-	case []any:
-		i_value = int64(len(curval))
-	case []string:
-		i_value = int64(len(curval))
+	case reflect.Map, reflect.Slice:
+		i_value = int64(vSrc.Len())
+	// case reflect.Slice:
+	// 	i_value = int64(vSrc.Len())
+	// case map[any]any:
+	// 	i_value = int64(len(curval))
+	// case []any:
+	// 	i_value = int64(len(curval))
+	// case []string:
+	// 	i_value = int64(len(curval))
 	default:
-		i_value = 0
+		i_value = cast.ToInt64(curval)
+	}
+	if i_value != 0 {
+		i_value = 1
 	}
 	return i_value, nil
 }
@@ -228,17 +238,14 @@ func exporterLT(val1 any, val2 any) bool {
 func exporterLEN(dict any) int64 {
 	var res int = 0
 
-	switch maptype := dict.(type) {
-	case map[string]any:
-		res = len(maptype)
-	case map[any]any:
-		res = len(maptype)
-	case []any:
-		res = len(maptype)
-	case []string:
-		res = len(maptype)
-	case string:
-		res = len(maptype)
+	vSrc := reflect.ValueOf(dict)
+	switch vSrc.Kind() {
+	case reflect.String:
+		res = len(vSrc.String())
+
+	case reflect.Map, reflect.Slice:
+		res = vSrc.Len()
+		// case :
 	}
 
 	return int64(res)
@@ -248,16 +255,23 @@ func exporterLEN(dict any) int64 {
 func exporterHasKey(dict any, lookup_key string) (bool, error) {
 	res := false
 
-	switch maptype := dict.(type) {
-	case map[string]any:
-		if _, ok := maptype[lookup_key]; ok {
-			res = true
-		}
-	case map[any]any:
-		if _, ok := maptype[lookup_key]; ok {
+	vSrc := reflect.ValueOf(dict)
+	if vSrc.Kind() == reflect.Map {
+		tmp_value := vSrc.MapIndex(reflect.ValueOf(lookup_key))
+		if tmp_value.IsValid() {
 			res = true
 		}
 	}
+	// switch maptype := dict.(type) {
+	// case map[string]any:
+	// 	if _, ok := maptype[lookup_key]; ok {
+	// 		res = true
+	// 	}
+	// case map[any]any:
+	// 	if _, ok := maptype[lookup_key]; ok {
+	// 		res = true
+	// 	}
+	// }
 
 	return res, nil
 }
@@ -266,34 +280,51 @@ func exporterHasKey(dict any, lookup_key string) (bool, error) {
 func exporterGet(dict any, lookup_key string) (any, error) {
 	var val any
 
-	switch maptype := dict.(type) {
-	case map[string]string:
-		if raw_val, ok := maptype[lookup_key]; ok {
-			val = raw_val
+	vSrc := reflect.ValueOf(dict)
+	if vSrc.Kind() == reflect.Map {
+		tmp_value := vSrc.MapIndex(reflect.ValueOf(lookup_key))
+		if tmp_value.IsValid() {
+			val = tmp_value.Interface()
 		}
-	case map[string]any:
-		if raw_val, ok := maptype[lookup_key]; ok {
-			val = raw_val
-		}
-	case map[any]any:
-		if raw_val, ok := maptype[lookup_key]; ok {
-			val = raw_val
-		}
-	default:
+	}
+
+	// switch maptype := dict.(type) {
+	// case map[string]string:
+	// 	if raw_val, ok := maptype[lookup_key]; ok {
+	// 		val = raw_val
+	// 	}
+	// case map[string]any:
+	// 	if raw_val, ok := maptype[lookup_key]; ok {
+	// 		val = raw_val
+	// 	}
+	// case map[any]any:
+	// 	if raw_val, ok := maptype[lookup_key]; ok {
+	// 		val = raw_val
+	// 	}
+	// default:
+	// 	val = ""
+	// }
+	if val == nil {
 		val = ""
 	}
+
 	return val, nil
 }
 
 // function for template: custom dict set() key with value that allow to set key of dict map[any]any type instead of map[string]any
 func exporterSet(dict any, lookup_key string, val any) (any, error) {
 
-	switch maptype := dict.(type) {
-	case map[string]any:
-		maptype[lookup_key] = val
-	case map[any]any:
-		maptype[lookup_key] = val
+	vDst := reflect.ValueOf(dict)
+
+	if vDst.Kind() == reflect.Map {
+		vDst.SetMapIndex(reflect.ValueOf(lookup_key), reflect.ValueOf(val))
 	}
+	// switch maptype := dict.(type) {
+	// case map[string]any:
+	// 	maptype[lookup_key] = val
+	// case map[any]any:
+	// 	maptype[lookup_key] = val
+	// }
 
 	return dict, nil
 }
@@ -301,23 +332,29 @@ func exporterSet(dict any, lookup_key string, val any) (any, error) {
 // function for template: custom dict keys() that allow to obtain keys slide from dict map[any]any type instead of map[string]any
 func exporterKeys(dict any) ([]any, error) {
 	var res []any
+	vDst := reflect.ValueOf(dict)
 
-	switch maptype := dict.(type) {
-	case map[string]any:
-		res = make([]any, len(maptype))
-		i := 0
-		for raw_key := range maptype {
-			res[i] = raw_key
-			i++
-		}
-	case map[any]any:
-		res = make([]any, len(maptype))
-		i := 0
-		for raw_key := range maptype {
-			res[i] = raw_key
-			i++
+	if vDst.Kind() == reflect.Map {
+		res = make([]any, len(vDst.MapKeys()))
+		for i, raw_key := range vDst.MapKeys() {
+			res[i] = raw_key.String()
 		}
 	}
+	// switch maptype := dict.(type) {
+	// case map[string]any:
+	// 	i := 0
+	// 	for raw_key := range maptype {
+	// 		res[i] = raw_key
+	// 		i++
+	// 	}
+	// case map[any]any:
+	// 	res = make([]any, len(maptype))
+	// 	i := 0
+	// 	for raw_key := range maptype {
+	// 		res[i] = raw_key
+	// 		i++
+	// 	}
+	// }
 
 	return res, nil
 }
@@ -325,23 +362,34 @@ func exporterKeys(dict any) ([]any, error) {
 // function for template: custom dict values() that allow to obtain values slide from map[any]any type instead of map[string]any
 func exporterValues(dict any) ([]any, error) {
 	var res []any
+	vDst := reflect.ValueOf(dict)
 
-	switch maptype := dict.(type) {
-	case map[string]any:
-		res = make([]any, len(maptype))
+	if vDst.Kind() == reflect.Map {
+		res = make([]any, len(vDst.MapKeys()))
+		iter := vDst.MapRange()
 		i := 0
-		for _, raw_value := range maptype {
-			res[i] = raw_value
-			i++
-		}
-	case map[any]any:
-		res = make([]any, len(maptype))
-		i := 0
-		for _, raw_value := range maptype {
-			res[i] = raw_value
+		for iter.Next() {
+			res[i] = iter.Value().Interface()
 			i++
 		}
 	}
+
+	// switch maptype := dict.(type) {
+	// case map[string]any:
+	// 	res = make([]any, len(maptype))
+	// 	i := 0
+	// 	for _, raw_value := range maptype {
+	// 		res[i] = raw_value
+	// 		i++
+	// 	}
+	// case map[any]any:
+	// 	res = make([]any, len(maptype))
+	// 	i := 0
+	// 	for _, raw_value := range maptype {
+	// 		res[i] = raw_value
+	// 		i++
+	// 	}
+	// }
 
 	return res, nil
 }

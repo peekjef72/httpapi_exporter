@@ -38,7 +38,7 @@ func (a *MetricsAction) Type() int {
 }
 
 func (a *MetricsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab, nil, false)
+	str, err := a.Name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
@@ -169,7 +169,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)),
 		"collid", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
-		"name", a.GetName(symtab, logger))
+	)
 
 	// this can't arrive because previous c.Collect() / c.client.Execute() has returned ErrInvalidQueryResult
 	// so collect() stops and don't play metrics_actions.

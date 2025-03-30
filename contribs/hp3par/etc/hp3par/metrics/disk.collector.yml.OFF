@@ -25,7 +25,7 @@ scripts:
         debug: yes
         var_name: results
     - name: collect disks
-      scope: results
+      scope: $results
       metrics:
 
         - metric_name: disk_status
@@ -33,9 +33,9 @@ scripts:
           type: gauge
           key_labels:
             model: _
-            serial: serialNumber
+            serial: $serialNumber
             position: cage-{{ .position.cage | default "undef" }}/Port-{{ .position.slot | default "undef" }}/diskPos-{{ .position.diskPos | default "undef" }}
-            capacity: mfgCapacityGB
+            capacity: $mfgCapacityGB
           values:
-            _ : state
-          loop: members
+            _ : $state
+          loop: $members

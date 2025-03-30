@@ -57,7 +57,7 @@ func (a *DebugAction) Type() int {
 }
 
 func (a *DebugAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab, nil, false)
+	str, err := a.Name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
@@ -154,7 +154,7 @@ func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
-	str, err := a.Debug.msg.GetValueString(symtab, nil, false)
+	str, err := a.Debug.msg.GetValueString(symtab)
 	if err != nil {
 		str = a.Debug.MsgVal
 		logger.Warn(

@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"regexp"
 
 	// "net"
@@ -22,6 +23,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/mitchellh/copystructure"
 	"github.com/peekjef72/passwd_encrypt/encrypt"
+	"github.com/spf13/cast"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
@@ -33,6 +35,41 @@ var (
 	ErrInvalidQueryResult        = fmt.Errorf("invalid_result_code")
 	// context deadline exceeded
 	ErrContextDeadLineExceeded = fmt.Errorf("global_scraping_timeout")
+
+	cipherSuites_upto_tls_1_2 = []uint16{
+		// TLS 1.0 - 1.2 cipher suites.
+		tls.TLS_RSA_WITH_RC4_128_SHA,
+		tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA,
+		tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+	}
+	cipherSuites_tls_1_2 = []uint16{
+		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+	}
+
+	cipherSuites_tls_1_3 = []uint16{
+		// TLS 1.3 cipher suites.
+		tls.TLS_AES_128_GCM_SHA256,
+		tls.TLS_AES_256_GCM_SHA384,
+		tls.TLS_CHACHA20_POLY1305_SHA256,
+	}
 )
 
 // type to unmarshal xml stream
@@ -51,7 +88,8 @@ type Content struct {
 
 // Query wraps a sql.Stmt and all the metrics populated from it. It helps extract keys and values from result rows.
 type Client struct {
-	client *resty.Client
+	client      *resty.Client
+	tls_version uint
 
 	// logContext []interface{}
 	logger *slog.Logger
@@ -73,6 +111,7 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Log
 		sc:                sc,
 		symtab:            map[string]any{},
 		invalid_auth_code: gc.invalid_auth_code,
+		tls_version:       gc.tls_version,
 	}
 
 	params := &ClientInitParams{
@@ -104,6 +143,7 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 		// wait_mutex:    sync.Mutex{},
 		// content_mutex: sync.Mutex{},
 		invalid_auth_code: c.invalid_auth_code,
+		tls_version:       c.tls_version,
 	}
 
 	var err error
@@ -483,7 +523,7 @@ func (cl *Client) proceedHeaders() error {
 				// ** get header name
 				switch header := r_header.(type) {
 				case *Field:
-					if head_name, err = header.GetValueString(cl.symtab, nil, false); err != nil {
+					if head_name, err = header.GetValueString(cl.symtab); err != nil {
 						return err
 					}
 				case string:
@@ -492,7 +532,7 @@ func (cl *Client) proceedHeaders() error {
 
 				switch value := r_value.(type) {
 				case *Field:
-					if head_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+					if head_value, err = value.GetValueString(cl.symtab); err != nil {
 						return err
 					}
 				case string:
@@ -511,7 +551,7 @@ func (cl *Client) proceedHeaders() error {
 
 				switch value := r_value.(type) {
 				case *Field:
-					if head_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+					if head_value, err = value.GetValueString(cl.symtab); err != nil {
 						return err
 					}
 				case string:
@@ -534,7 +574,7 @@ func (cl *Client) proceedHeaders() error {
 						var key_name string
 						switch key_val := r_key.(type) {
 						case *Field:
-							if key_name, err = key_val.GetValueString(cl.symtab, nil, false); err != nil {
+							if key_name, err = key_val.GetValueString(cl.symtab); err != nil {
 								return err
 							}
 						case string:
@@ -543,7 +583,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_name, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if head_name, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -555,7 +595,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "value" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if head_value, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -567,7 +607,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if action, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -591,7 +631,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_name, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if head_name, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -603,7 +643,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "value" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if head_value, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -614,7 +654,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if action, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -679,7 +719,7 @@ func (cl *Client) proceedCookies() error {
 				// ** get header name
 				switch header := r_header.(type) {
 				case *Field:
-					if cookie_name, err = header.GetValueString(cl.symtab, nil, false); err != nil {
+					if cookie_name, err = header.GetValueString(cl.symtab); err != nil {
 						return err
 					}
 				case string:
@@ -688,7 +728,7 @@ func (cl *Client) proceedCookies() error {
 
 				switch value := r_value.(type) {
 				case *Field:
-					if cookie_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+					if cookie_value, err = value.GetValueString(cl.symtab); err != nil {
 						return err
 					}
 				case string:
@@ -718,7 +758,7 @@ func (cl *Client) proceedCookies() error {
 						var key_name string
 						switch key_val := r_key.(type) {
 						case *Field:
-							if key_name, err = key_val.GetValueString(cl.symtab, nil, false); err != nil {
+							if key_name, err = key_val.GetValueString(cl.symtab); err != nil {
 								return err
 							}
 						case string:
@@ -727,7 +767,7 @@ func (cl *Client) proceedCookies() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_name, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_name, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -737,7 +777,7 @@ func (cl *Client) proceedCookies() error {
 							// get value
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_value, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -747,7 +787,7 @@ func (cl *Client) proceedCookies() error {
 							// get domain
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_domain, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_domain, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -757,7 +797,7 @@ func (cl *Client) proceedCookies() error {
 							// get path
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_path, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_path, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -766,7 +806,7 @@ func (cl *Client) proceedCookies() error {
 						} else if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if action, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -806,7 +846,7 @@ func (cl *Client) proceedCookies() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_name, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_name, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -816,7 +856,7 @@ func (cl *Client) proceedCookies() error {
 							// get value
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_value, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_value, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -826,7 +866,7 @@ func (cl *Client) proceedCookies() error {
 							// get domain
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_domain, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_domain, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -836,7 +876,7 @@ func (cl *Client) proceedCookies() error {
 							// get path
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_path, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if cookie_path, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -845,7 +885,7 @@ func (cl *Client) proceedCookies() error {
 						} else if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab, nil, false); err != nil {
+								if action, err = value.GetValueString(cl.symtab); err != nil {
 									return err
 								}
 							case string:
@@ -897,6 +937,7 @@ type CallClientExecuteParams struct {
 	Token    string
 	Timeout  time.Duration
 	Parser   string
+	Trace    bool
 	// Check_invalid_Auth bool
 }
 
@@ -1034,23 +1075,47 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	//******************
 	//* play the request
 	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
+	if params.Trace {
+		c.client.EnableTrace()
+	}
+
 	resp, data, err := c.Execute(method, url, nil, payload, params.Parser)
 	if err != nil {
 		return err
 	}
 	if params.Debug {
 		c.logger.Debug(
-			"launch query debug",
+			"query debug infos",
 			"collid", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
 			"url", symtab["uri"].(string),
 			"results", string(resp.Body()))
+		if params.Trace {
+			c.logger.Debug(
+				"query debug trace",
+				"collid", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger),
+				"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
+		}
 	}
 	// * get returned status
 	code := resp.StatusCode()
 	// * set it to symbols table so user can access it
 	symtab["results_status"] = code
 
+	// if user asks for performance traces add info to symbols table
+	if params.Trace {
+		traces := make(map[string]float64)
+		tr := resp.Request.TraceInfo()
+		traces["dns_lookup"] = tr.DNSLookup.Seconds()
+		traces["conn_time"] = tr.ConnTime.Seconds()
+		traces["tcp_con_time"] = tr.TCPConnTime.Seconds()
+		traces["tls_handshake"] = tr.TLSHandshake.Seconds()
+		traces["server_time"] = tr.ServerTime.Seconds()
+		traces["response_time"] = tr.ResponseTime.Seconds()
+		traces["total_time"] = tr.TotalTime.Seconds()
+		symtab["trace_infos"] = traces
+	}
 	if !slices.Contains(valid_status, code) {
 		symtab["query_status"] = false
 		c.logger.Info(
@@ -1124,65 +1189,95 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 }
 
 func GetMapValueString(symtab map[string]any, key string) string {
-	var value string
+	var value string = ""
 	if value_raw, ok := symtab[key]; ok {
-		switch value_val := value_raw.(type) {
-		case string:
-			value = value_val
-		case int:
-			value = fmt.Sprintf("%d", value_val)
-		default:
-			value = ""
-		}
+		value = cast.ToString(value_raw)
+		// switch value_val := value_raw.(type) {
+		// case string:
+		// 	value = value_val
+		// case int:
+		// 	value = fmt.Sprintf("%d", value_val)
+		// default:
+		// 	value = ""
+		// }
 	}
 	return value
 }
 
 func GetMapValueInt(symtab map[string]any, key string) (int, bool) {
-	var value int
+	var value int = 0
 	found := false
 	if value_raw, ok := symtab[key]; ok {
 		found = true
-		switch value_val := value_raw.(type) {
-		case string:
-			var i_value int64
-			var err error
-			if i_value, err = strconv.ParseInt(value_val, 10, 0); err != nil {
-				i_value = 0
-			}
-			value = int(i_value)
-		case int:
-			value = value_val
-		default:
-			value = 0
-			found = false
-		}
+		value = cast.ToInt(value_raw)
+		// switch value_val := value_raw.(type) {
+		// case string:
+		// 	var i_value int64
+		// 	var err error
+		// 	if i_value, err = strconv.ParseInt(value_val, 10, 0); err != nil {
+		// 		i_value = 0
+		// 	}
+		// 	value = int(i_value)
+		// case int:
+		// 	value = value_val
+		// default:
+		// 	value = 0
+		// 	found = false
+		// }
 	}
 	return value, found
 }
 
 func GetMapValueBool(symtab map[string]any, key string) (bool, bool) {
-	var value bool
-
+	value := false
 	found := false
+
 	if value_raw, ok := symtab[key]; ok {
 		found = true
 		switch value_val := value_raw.(type) {
-		case bool:
-			value = value_val
 		case string:
 			asString := strings.ToLower(value_val)
-			if asString == "1" || asString == "true" || asString == "yes" || asString == "on" {
+			switch asString {
+			case "1", "t", "true", "on", "yes":
 				value = true
-			} else if asString == "0" || asString == "false" || asString == "no" || asString == "off" {
-				value = false
+				// case "0", "f", "false", "off", "no":
+				// value = false
 			}
 		default:
-			value = false
-			found = false
+			value = cast.ToBool(value_raw)
 		}
 	}
 	return value, found
+}
+
+func GetMapValueFloat(symtab map[string]any, key string) (float64, bool) {
+	var value float64 = 0
+	found := false
+	if value_raw, ok := symtab[key]; ok {
+		found = true
+		value = cast.ToFloat64(value_raw)
+	}
+	return value, found
+}
+
+func GetMapValueMap(symtab map[string]any, key string) map[string]any {
+	var value map[string]any
+
+	if value_raw, ok := symtab[key]; ok {
+		vSrc := reflect.ValueOf(value_raw)
+
+		if vSrc.Kind() == reflect.Map {
+			mAny := make(map[string]any)
+			iter := vSrc.MapRange()
+			for iter.Next() {
+				raw_key := iter.Key()
+				raw_value := iter.Value()
+				mAny[raw_key.String()] = raw_value.Interface()
+			}
+			value = mAny
+		}
+	}
+	return value
 }
 
 // ****************************************************************
@@ -1290,8 +1385,26 @@ func (cl *Client) Init(params *ClientInitParams) error {
 		cl.logger.Debug(
 			fmt.Sprintf("verify certificate set to %v", verifySSL),
 			"collid", CollectorId(cl.symtab, cl.logger),
-			"script", ScriptName(cl.symtab, cl.logger))
-		cl.client = resty.New().SetTLSClientConfig(&tls.Config{InsecureSkipVerify: !verifySSL})
+			"script", ScriptName(cl.symtab, cl.logger),
+		)
+		var ciphers []uint16
+		if cl.tls_version&tls_version_upto_1_2 != 0 {
+			ciphers = append(ciphers, cipherSuites_upto_tls_1_2...)
+		}
+		if cl.tls_version&tls_version_1_2 != 0 {
+			ciphers = append(ciphers, cipherSuites_tls_1_2...)
+		}
+		if cl.tls_version&tls_version_1_3 != 0 {
+			ciphers = append(ciphers, cipherSuites_tls_1_3...)
+		}
+
+		config := &tls.Config{
+			InsecureSkipVerify: !verifySSL,
+		}
+		if len(ciphers) > 0 {
+			config.CipherSuites = ciphers
+		}
+		cl.client = resty.New().SetTLSClientConfig(config)
 	} else if scheme == "http" {
 		cl.client = resty.New()
 		// remove waring message in basic auth mode and http, according to use config

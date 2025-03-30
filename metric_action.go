@@ -33,7 +33,7 @@ func (a *MetricAction) Type() int {
 }
 
 func (a *MetricAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab, nil, false)
+	str, err := a.Name.GetValueString(symtab)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),

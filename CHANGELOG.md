@@ -4,6 +4,130 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.1 / 2025-03-30 - not release
+
+### 2025-03-26 - not release
+
+- added: global config parameter tls_version that allows to add old tls ciphers, because of golang change since 1.22: see [config](doc/config.md); update the netscaler default config file to use tls_version: all
+- code refactored to use [cast](github.com/spf13/cast) for type conversion in internal functions.
+- added: scripting language evolution to allow named var into expr : \$var_name.\${another_varname\[.attr1]}.\[attr2\]
+- changed: loglevel trace from warn to debug for metrics not found:
+
+e.g.:
+
+  ```yaml
+    - metric_name: system_nodes_total
+      help: total nodes in system
+      type: gauge
+      values:
+        _: $totalNodes
+  ```
+
+  If `$totalNodes` is not found, now won't be logged at warn level.
+  
+  The same behavior is implemented for variables used in `loop` or `with_items` action.
+
+### BREAKING CHANGE
+
+- remove feature that allows to set a single text not preceded by $ sign as value for key_labels or values:
+
+```yaml
+    - name: collect disks
+      scope: results
+      metrics:
+
+        - metric_name: disk_status
+          help: "physical disk status: 0: normal - 1: degraded - 2: New - 4: Failed - 99: Unknown"
+          type: gauge
+          key_labels:
+            model: _
+            serial: serialNumber # NOW FORBIDDEN
+            position: cage-{{ .position.cage | default "undef" }}/Port-{{ .position.slot | default "undef" }}/diskPos-{{ .position.diskPos | default "undef" }}
+            capacity: mfgCapacityGB # NOW FORBIDDEN
+          values:
+            _ : state # NOW FORBIDDEN
+          loop: members # NOW FORBIDDEN
+```
+
+and is replaced by:
+
+```yaml
+- name: collect disks
+  scope: results
+  metrics:
+    - metric_name: disk_status
+      help: "physical disk status: 0: normal - 1: degraded - 2: New - 4: Failed - 99: Unknown"
+      type: gauge
+      key_labels:
+        model: _
+        serial: $serialNumber
+        position: cage-{{ .position.cage | default "undef" }}/Port-{{ .position.slot | default "undef" }}/diskPos-{{ .position.diskPos | default "undef" }}
+        capacity: $mfgCapacityGB
+      values:
+        _ : $state
+      loop: $members
+```
+
+### 2025-03-23 - not release
+
+- add trace infos for queries: the **query** action can now be set to enable traces collecting (disable by default), so that metrics can be created using that infos.
+
+e.g.:
+
+```yaml
+scripts:
+  check_status:
+    - name: get status page
+      query:
+        url: /status
+        var_name: results
+        # debug: true
+        parser: text-lines
+        trace: true
+
+    # $results content
+    # => text/plain
+    #   STATUS:OK
+    - name: debug virtualbrowser_status
+      # get fist line, converted to string, regexpExtract group 1
+      # {{ exporterRegexExtract "^STATUS:\\s*(.+)$" (toString (index .results 0)) }}
+      set_fact:
+        status: >
+          {{- index (exporterRegexExtract "^STATUS:\\s*(.+)$" (toString (index .results 0) ) ) 1 -}}
+
+    - name: proceed elements
+      scope: none
+      metrics:
+        - metric_name: access_status
+          help: "status value returned by /status url: 1:OK - 0: KO"
+          type: gauge
+          values:
+            _: '{{ if EQ .status "OK" }}1{{ else }}0{{ end }}'
+        - metric_name: query_perf_seconds
+          help: "query stage duration in seconds"
+          type: gauge
+          key_labels:
+            stage: $item
+            page: status
+          values:
+            _: $trace_infos.${item}
+          with_items: '{{ exporterKeys .trace_infos | toRawJson }}'
+```
+
+then:
+
+```text
+# HELP query_perf_seconds query stage duration in seconds
+# TYPE query_perf_seconds gauge
+query_perf_seconds{page="status",stage="dns_lookup"} 0.00123
+query_perf_seconds{page="status",stage="conn_time"} 0.00123
+query_perf_seconds{page="status",stage="tcp_con_time"} 0.00123
+query_perf_seconds{page="status",stage="tls_handshake"} 0.00123
+query_perf_seconds{page="status",stage="server_time"} 0.00123
+query_perf_seconds{page="status",stage="response_time"} 0.00123
+query_perf_seconds{page="status",stage="total_time"} 0.00123
+```
+
 ## 0.4.0 / 2025-03-22
 
 ### 2025-03-19 - not release
@@ -31,7 +155,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   - {"message":"ok","status": 1,"data": {"status":"ok"}}
   - {"message":"ok","status": 1,"data": {"loglevel": "&lt;loglevel&gt;"}}
 
-###  2025-01-15
+### 2025-01-15
 
 - fixed: changed **--dry-run** command line flag behavior when no target specified: only check config; do not try to collect first available target.
 - added: disable_warn: true|false in auth_config to disable warning messages from RESTY if auth is basic and connection is http.
@@ -44,17 +168,17 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
       disable_warn: true
   ```
 
-###  2025-01-11
+### 2025-01-11
 
 - fixed: config output in json format.
 - fixed: warn messages ("script_name not defined"), displayed with loglevel "debug"
 
-###  2025-01-08
+### 2025-01-08
 
 - fixed: now checks that each target has at least one collector defined; e.g.: failed if collector pattern matching doesn't correspond to any collector name.
 - fixed: allow "scope" directive to use $var_name format (like .var_name).
 
-###  2025-01-04
+### 2025-01-04
 
 - added "profile" for config and target. Now exporter can collect multiple apis with different "login" semantics. Before the config contains only one **httpapi_config** part that may define the "clear", "init", "login", "logout", "ping" scripts. The new version allows to define "profiles", and in each profile the "default scripts", so that a target can use a named profile :
 
@@ -95,7 +219,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   Then each target may set a profile name to use; by default if not set, the exporter will try to assign the profile "default" or the only one if there is only one profile defined in configuration, else the config check will failed.
   Each profile, may also set a "metric_prefix", so that "up", "collector_status", "scrape_duration" metrics have a distinct name for each profile!
 
-###  2024-12-14
+### 2024-12-14
 
 - added: parameter "health" to endpoint "/metrics", so that only "ping" script is performed and the metrics "up" with status returned. May be usefull to check if a target is responding; I use this feature in ansible playbook before to generate "file_sd_config" of scraping job for prometheus.
 - added: parsers feature to decode response in the query action. parser can be:
@@ -169,7 +293,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 - added cmd line --model_name to perform test with model and uri in dry-run mode
 - added out format for passwd_encrypt that can be cut/pasted into config file.
 - added InvalidLogin error cases: no cipher (auth_key not provided) or (invalid auth_key). For those cases if target is up, metrics for collectors status will return code 2; invalid_login
-- added GET /loglevel to retrieve current level, add POST /loglevel[/level] to set loglevel to level directly 
+- added GET /loglevel to retrieve current level, add POST /loglevel[/level] to set loglevel to level directly
 - added debug message for basic auth (auth_config.mode=basic) and bearer (auth_config.mode=token)
 - loglevel link in landing page
 - fixed typos
