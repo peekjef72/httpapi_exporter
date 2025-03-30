@@ -10,7 +10,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
 - added: global config parameter tls_version that allows to add old tls ciphers, because of golang change since 1.22: see [config](doc/config.md); update the netscaler default config file to use tls_version: all
 - code refactored to use [cast](github.com/spf13/cast) for type conversion in internal functions.
-- added: scripting language evolution to allow named var into expr : \$var_name.\${another_varname\[.attr1]}.\[attr2\]
+- added: scripting language evolution to allow named var into expr : `$var_name.${another_varname[.attr1]}[.attr2]`
 - changed: loglevel trace from warn to debug for metrics not found:
 
 e.g.:
