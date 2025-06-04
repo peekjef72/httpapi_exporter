@@ -1,0 +1,24 @@
+[Unit]
+Description=apache exporter for Prometheus
+Wants=network-online.target
+After=network-online.target
+StartLimitBurst=3
+StartLimitIntervalSec=150
+
+[Service]
+User=httpapi_exporter
+Group=httpapi_exporter
+WorkingDirectory=/etc/httpapi_exporter
+Restart=always
+RestartSec=2
+Type=simple
+
+ExecStart=/opt/httpapi_exporter/apache_exporter \
+        --log.level=warn \
+        --config.file=/etc/httpapi_exporter/apache/config.yml \
+        --web.listen-address=:9117
+
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

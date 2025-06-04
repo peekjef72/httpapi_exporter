@@ -13,12 +13,12 @@ import (
 // ***************************************************************************************
 
 type MetricAction struct {
-	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	Name    *Field         `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any          `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*Field       `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string         `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*Field       `yaml:"until,omitempty" json:"until,omitempty"`
 
 	mc           *MetricConfig
 	metricFamily *MetricFamily
@@ -33,11 +33,11 @@ func (a *MetricAction) Type() int {
 }
 
 func (a *MetricAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab)
+	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 		return ""
 	}
@@ -58,11 +58,11 @@ func (a *MetricAction) SetWidth(with []any) {
 	a.With = with
 }
 
-func (a *MetricAction) GetWhen() []*exporterTemplate {
+func (a *MetricAction) GetWhen() []*Field {
 	return a.When
 
 }
-func (a *MetricAction) SetWhen(when []*exporterTemplate) {
+func (a *MetricAction) SetWhen(when []*Field) {
 	a.When = when
 }
 
@@ -80,10 +80,10 @@ func (a *MetricAction) SetVars(vars [][]any) {
 	a.vars = vars
 }
 
-func (a *MetricAction) GetUntil() []*exporterTemplate {
+func (a *MetricAction) GetUntil() []*Field {
 	return a.Until
 }
-func (a *MetricAction) SetUntil(until []*exporterTemplate) {
+func (a *MetricAction) SetUntil(until []*Field) {
 	a.Until = until
 }
 
@@ -92,8 +92,8 @@ func (a *MetricAction) setBasicElement(
 	vars [][]any,
 	with []any,
 	loopVar string,
-	when []*exporterTemplate,
-	until []*exporterTemplate) error {
+	when []*Field,
+	until []*Field) error {
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
@@ -137,19 +137,19 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 	}
 	logger.Debug(
 		fmt.Sprintf("[Type: MetricAction] loop %s", loop_var_idx),
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
 	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (channel wrong type)\"",
+			panic(fmt.Sprintf("coll=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (channel wrong type)\"",
 				CollectorId(symtab, logger),
 				ScriptName(symtab, logger),
 				a.GetName(symtab, logger)))
 		}
 	} else {
-		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (channel not set)\"",
+		panic(fmt.Sprintf("coll=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (channel not set)\"",
 			CollectorId(symtab, logger),
 			ScriptName(symtab, logger),
 			a.GetName(symtab, logger)))
@@ -157,7 +157,7 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 
 	logger.Debug(
 		fmt.Sprintf("    metric_name: %s", a.metricFamily.Name()),
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 	a.metricFamily.Collect(symtab, logger, metric_channel)

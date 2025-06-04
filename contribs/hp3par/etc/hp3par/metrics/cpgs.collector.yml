@@ -104,18 +104,18 @@ scripts:
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.freeSpaceMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.freeSpaceMiB, "Mb" )'
 
             - metric_name: cpg_total_bytes
               help: avail byte of cpg (/cgps .totalSpaceMiB)
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.totalSpaceMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.totalSpaceMiB, "Mb" )'
 
             - metric_name: cpg_snapshot_used_bytes
               help: avail byte of cpg (/cgps .privateSpaceMiB.snapshot)
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.privateSpaceMiB.snapshot "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.privateSpaceMiB.snapshot, "Mb" )'

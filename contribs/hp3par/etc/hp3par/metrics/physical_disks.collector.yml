@@ -118,18 +118,18 @@ scripts:
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.totalMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.totalMiB, "Mb" )'
 
             - metric_name: physical_disk_free_bytes
               help: Free physical disk capacity in the system in bytes
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.freeMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.freeMiB, "Mb" )'
 
             - metric_name: physical_disk_failed_bytes
               help: Failed physical disk capacity in the system in bytes
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.failedMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.failedMiB, "Mb" )'

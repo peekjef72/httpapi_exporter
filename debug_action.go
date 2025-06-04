@@ -41,12 +41,12 @@ func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 
 // ****************************
 type DebugAction struct {
-	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	Name    *Field         `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any          `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*Field       `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string         `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*Field       `yaml:"until,omitempty" json:"until,omitempty"`
 
 	Debug *DebugActionConfig `yaml:"debug" json:"debug"`
 	vars  [][]any
@@ -57,11 +57,11 @@ func (a *DebugAction) Type() int {
 }
 
 func (a *DebugAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab)
+	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 		return ""
 	}
@@ -82,11 +82,11 @@ func (a *DebugAction) SetWidth(with []any) {
 	a.With = with
 }
 
-func (a *DebugAction) GetWhen() []*exporterTemplate {
+func (a *DebugAction) GetWhen() []*Field {
 	return a.When
 
 }
-func (a *DebugAction) SetWhen(when []*exporterTemplate) {
+func (a *DebugAction) SetWhen(when []*Field) {
 	a.When = when
 }
 
@@ -104,10 +104,10 @@ func (a *DebugAction) SetVars(vars [][]any) {
 	a.vars = vars
 }
 
-func (a *DebugAction) GetUntil() []*exporterTemplate {
+func (a *DebugAction) GetUntil() []*Field {
 	return a.Until
 }
-func (a *DebugAction) SetUntil(until []*exporterTemplate) {
+func (a *DebugAction) SetUntil(until []*Field) {
 	a.Until = until
 }
 
@@ -120,8 +120,8 @@ func (a *DebugAction) setBasicElement(
 	vars [][]any,
 	with []any,
 	loopVar string,
-	when []*exporterTemplate,
-	until []*exporterTemplate) error {
+	when []*Field,
+	until []*Field) error {
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
@@ -150,23 +150,23 @@ func (a *DebugAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	logger.Debug(
 		"[Type: DebugAction]",
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
-	str, err := a.Debug.msg.GetValueString(symtab)
+	str, err := a.Debug.msg.GetValueString(symtab, logger)
 	if err != nil {
 		str = a.Debug.MsgVal
 		logger.Warn(
 			fmt.Sprintf("invalid template for debug message '%s': %v", str, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
 	logger.Debug(
 		fmt.Sprintf("    message: %s", str),
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 

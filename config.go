@@ -15,6 +15,7 @@ import (
 	"text/template"
 	"time"
 
+	mytemplate "github.com/peekjef72/httpapi_exporter/template"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
@@ -69,6 +70,7 @@ type Config struct {
 	logger     *slog.Logger
 	// collectorName is a restriction: collectors set for a target are replaced by this only one.
 	collectorName string
+	collectors    map[string]*CollectorConfig
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -290,6 +292,13 @@ collectors:
 		}
 		if profile, found := c.Profiles[t.ProfileName]; !found {
 			if default_profile != nil {
+				var msg string
+				if t.ProfileName != "" {
+					msg = fmt.Sprintf("target '%s' profile set '%s' not found. reset to default.", t.Name, t.ProfileName)
+				} else {
+					msg = fmt.Sprintf("target '%s' not profile set. reset to default.", t.Name)
+				}
+				c.logger.Warn(msg, "profile", t.ProfileName)
 				t.profile = default_profile
 				t.ProfileName = default_profile_name
 			} else {
@@ -299,6 +308,8 @@ collectors:
 			t.profile = profile
 		}
 	}
+	// reserve collector ref;
+	c.collectors = colls
 
 	return checkOverflow(c.XXX, "config")
 }
@@ -310,6 +321,15 @@ func (c *Config) FindAuthConfig(auth_name string) *AuthConfig {
 		return nil
 	}
 	return auth
+}
+
+func (c *Config) FindCollector(collector_name string) *CollectorConfig {
+	var coll *CollectorConfig
+	coll, found := c.collectors[collector_name]
+	if !found {
+		return nil
+	}
+	return coll
 }
 
 type DumpProfile struct {
@@ -528,6 +548,7 @@ type GlobalConfig struct {
 	UpMetricHelp        string `yaml:"up_help,omitempty" json:"up_help,omitempty"`
 	ScrapeDurationHelp  string `yaml:"scrape_duration_help,omitempty" json:"scrape_duration_help,omitempty"`
 	CollectorStatusHelp string `yaml:"collector_status_help,omitempty" json:"collector_status_help,omitempty"`
+	QueryStatusHelp     string `yaml:"query_status_help,omitempty" json:"query_status_help,omitempty"`
 	WebListenAddresses  string `yaml:"web.listen-address,omitempty" json:"web.listen-address,omitempty"`
 	LogLevel            string `yaml:"log.level,omitempty" json:"log.level,omitempty"`
 	TLSVersion          string `yaml:"tls_version,omitempty" json:"tls_version,omitempty"`
@@ -552,6 +573,7 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	g.UpMetricHelp = upMetricHelp
 	g.ScrapeDurationHelp = scrapeDurationHelp
 	g.CollectorStatusHelp = collectorStatusHelp
+	g.QueryStatusHelp = queryStatusHelp
 	g.tls_version = 0
 
 	// Default tp 3
@@ -686,6 +708,8 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		if strings.ToLower(t.Host) == "template" {
 			t.targetType = TargetTypeModel
+		} else {
+			t.Host = check_env_var(t.Host)
 		}
 
 		if t.VerifySSLString != "" {
@@ -842,7 +866,7 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 	// build the default templates/funcs that my be used by all templates
 	if len(c.Templates) > 0 {
 		// c.customTemplate = template.New("default").Funcs(sprig.FuncMap())
-		c.customTemplate = (*exporterTemplate)(template.New("default").Funcs(mymap()))
+		c.customTemplate = (*exporterTemplate)(template.New("default").Funcs(mytemplate.Mymap()))
 		if c.customTemplate == nil {
 			return fmt.Errorf("for collector %s template is invalid", c.Name)
 		}
@@ -856,6 +880,8 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 			}
 		}
 	}
+	// build the js functions codes or required modules, from "jscode" to import
+	// then in all Fields
 
 	if c.CollectScripts != nil {
 		for collect_script_name, c_script := range c.CollectScripts {

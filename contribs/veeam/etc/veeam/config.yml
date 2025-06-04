@@ -52,7 +52,7 @@ profiles:
             # remove .login entry from symbols table
             # login: ~
           when:
-            - eq .results_status 201
+            - eq .status_code 201
         - name: analyze login response
           set_fact:
             # auth_token: ""
@@ -62,20 +62,20 @@ profiles:
               - name: "X-RestSvcSessionId"
                 action: delete
           when:
-            - or (eq .results_status 401) (eq .results_status 403)
+            - or (eq .status_code 401) (eq .status_code 403)
         - name: analyze login response not ok with retry
           set_fact:
             # auth_token: ""
             logged: false
             login_retry: "{{ add .login_retry 1 }}"
           when:
-            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
+            - and (and (ne .status_code 201) (ne .status_code 401)) (ne .status_code 403)
 
       login:
         - name: init login loop
           vars:
             login_retry: 0
-            results_status: 0
+            status_code: 0
           until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
 
           actions:

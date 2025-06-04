@@ -41,7 +41,7 @@ scripts:
           help: total active nodes in system
           type: gauge
           values:
-            _: '{{ len .onlineNodes }}'
+            _: 'js: onlineNodes.length'
 
   #**************************************************************************************************
   #* cpu usage : collect reports

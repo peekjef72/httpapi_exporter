@@ -126,7 +126,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 				}
 				e.logger.Debug(
 					fmt.Sprintf("target has panic-ed: %s", err.Error()),
-					"collid", target.Name(),
+					"coll", target.Name(),
 				)
 			}
 		}()
@@ -149,7 +149,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 
 	e.logger.Debug(
 		"exporter.Gather(): **** Target collect() launch is OVER ****",
-		"collid", e.cur_target.Name(),
+		"coll", e.cur_target.Name(),
 	)
 
 	// Gather.
@@ -182,7 +182,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 
 	e.logger.Debug(
 		"exporter.Gather(): **** Target channel collect metrics received from channel is OVER ****",
-		"collid", e.cur_target.Name(),
+		"coll", e.cur_target.Name(),
 	)
 
 	// No need to sort metric families, prometheus.Gatherers will do that for us when merging.

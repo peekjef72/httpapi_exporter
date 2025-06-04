@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"log/slog"
 	"reflect"
 	"strconv"
+
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 
 	"github.com/spf13/cast"
 
 	ttemplate "text/template"
+
+	mytemplate "github.com/peekjef72/httpapi_exporter/template"
 
 	"strings"
 )
@@ -24,18 +29,29 @@ func (tmpl *exporterTemplate) MarshalText() (text []byte, err error) {
 
 type Field struct {
 	raw     string
-	vartype bool
+	vartype int
 	tmpl    *exporterTemplate
+	// prog    *goja.Program
+	jscode *goja_modules.JSCode
 }
+
+const (
+	field_raw = iota
+	field_var
+	field_template
+	field_js
+)
 
 // create a new key or value Field that can be a GO template
 func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
 	var (
 		tmpl    *ttemplate.Template
 		err     error
-		vartype bool = false
+		vartype int = field_raw
+		jscode  *goja_modules.JSCode
 	)
 
+	name = strings.TrimSpace(name)
 	if strings.Contains(name, "{{") {
 		if customTemplate != nil {
 			ptr := (*ttemplate.Template)(customTemplate)
@@ -44,22 +60,36 @@ func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
 				return nil, fmt.Errorf("field template clone for %s is invalid: %s", name, err)
 			}
 		} else {
-			tmpl = ttemplate.New("field").Funcs(mymap())
+			tmpl = ttemplate.New("field").Funcs(mytemplate.Mymap())
 		}
 		tmpl, err = tmpl.Parse(name)
 		if err != nil {
 			return nil, fmt.Errorf("field template %s is invalid: %s", name, err)
 		}
-	} else if strings.Contains(name, "$") {
+		if tmpl != nil {
+			vartype = field_template
+		}
+	} else if strings.HasPrefix(name, "$") {
 		if name[0] == '$' {
 			name = name[1:]
 		}
-		vartype = true
+		vartype = field_var
+	} else if strings.HasPrefix(name, "js:") {
+		code := strings.TrimPrefix(name, "js:")
+
+		jscode, err = goja_modules.NewJSCode(code, mytemplate.Js_func_map())
+		if err != nil {
+			return nil, fmt.Errorf("field js code %s is invalid: %s", code, err)
+		}
+		if jscode != nil {
+			vartype = field_js
+		}
 	}
 	return &Field{
 		raw:     name,
 		vartype: vartype,
 		tmpl:    (*exporterTemplate)(tmpl),
+		jscode:  jscode,
 	}, nil
 }
 
@@ -91,12 +121,14 @@ func RawGetValueString(curval any) string {
 // else return raw value (simple string)
 func (f *Field) GetValueString(
 	item map[string]interface{},
+	logger *slog.Logger,
 ) (res string, err error) {
 	if f == nil {
 		return "", nil
 	}
 
-	if f.tmpl != nil {
+	switch f.vartype {
+	case field_template:
 		defer func() {
 			// res and err are named out parameters, so if we set value for them in defer
 			// set the returned values
@@ -121,17 +153,22 @@ func (f *Field) GetValueString(
 		tmp = strings.Trim(tmp, "\r\n ")
 		// unescape string
 		return html.UnescapeString(tmp), nil
-	} else {
-		if f.vartype {
-			data, err := getVar(item, f.raw)
-			if err != nil {
-				return "", err
-			}
-			return RawGetValueString(data), nil
-		} else {
-			val := f.raw
-			return RawGetValueString(val), nil
+	case field_var:
+		data, err := getVar(item, f.raw, logger)
+		if err != nil {
+			return "", err
 		}
+		return RawGetValueString(data), nil
+	case field_js:
+		val, err := f.jscode.Run(item, logger)
+		if err != nil {
+			return "", newVarError(error_var_invalid_javascript_code,
+				fmt.Sprintf("invalid javascript code execution: %s", err.Error()))
+		}
+		return RawGetValueString(val), nil
+	default:
+		val := f.raw
+		return RawGetValueString(val), nil
 	}
 }
 
@@ -140,14 +177,17 @@ func (f *Field) GetValueString(
 // else if the resulting value exists in item symbols table return it
 // else return raw value (simple float64 constant)
 func (f *Field) GetValueFloat(
-	item map[string]interface{}) (res float64, err error) {
+	item map[string]interface{},
+	logger *slog.Logger,
+) (res float64, err error) {
 	var str_value any
 
 	if f == nil {
 		return 0, nil
 	}
 
-	if f.tmpl != nil {
+	switch f.vartype {
+	case field_template:
 		defer func() {
 			// res and err are named out parameters, so if we set value for them in defer
 			// set the returned values
@@ -167,24 +207,61 @@ func (f *Field) GetValueFloat(
 				fmt.Sprintf("invalid template: %s", err.Error()))
 		}
 		str_value = html.UnescapeString(tmp_res.String())
-	} else {
-		if f.vartype {
-			data, err := getVar(item, f.raw)
-			if err != nil {
-				return 0, err
-			}
-			str_value = data
+	case field_var:
+		data, err := getVar(item, f.raw, logger)
+		if err != nil {
+			return 0, err
+		}
+		str_value = data
+	case field_js:
+		val, err := f.jscode.Run(item, logger)
+		if err != nil {
+			return 0, newVarError(error_var_invalid_javascript_code,
+				fmt.Sprintf("invalid javascript code execution: %s", err.Error()))
+		}
+		str_value = val
+	default:
+		val := f.raw
+		// check if value exists in symbol table
+		if curval, ok := item[val]; ok {
+			str_value = curval
 		} else {
-			val := f.raw
-			// check if value exists in symbol table
-			if curval, ok := item[val]; ok {
-				str_value = curval
-			} else {
-				str_value = val
-			}
+			str_value = val
 		}
 	}
 	return RawGetValueFloat(str_value), nil
+}
+
+// eval field as a boolean condition: return true|false or error if something bad!
+func (cond *Field) EvalCond(
+	symtab map[string]any,
+	logger *slog.Logger,
+) (res_cond bool, err error) {
+
+	res_cond = false
+	err = nil
+
+	if cond == nil {
+		return
+	}
+
+	switch cond.vartype {
+	case field_template:
+		var str_val string
+		if str_val, err = cond.GetValueString(symtab, logger); err != nil {
+			return
+		} else if str_val == "true" {
+			res_cond = true
+		}
+	default:
+		var val float64
+		if val, err = cond.GetValueFloat(symtab, logger); err != nil {
+			return
+		} else if val != 0 {
+			res_cond = true
+		}
+	}
+	return
 }
 
 func getMapKey(raw_value any, key string) any {
@@ -295,12 +372,18 @@ func getSliceIndice(raw_value any, indice int) any {
 	return res_value
 }
 
-func buildAttrWithIndice(symtab map[string]any, raw_value any, var_name, indice_str string) (any, error) {
+func buildAttrWithIndice(
+	symtab map[string]any,
+	raw_value any,
+	var_name,
+	indice_str string,
+	logger *slog.Logger,
+) (any, error) {
 	vDst := reflect.ValueOf(raw_value)
 	if vDst.Kind() == reflect.Map {
 		if indice_str[0] == '$' {
 			tmp_name, _ := extract_var_name(indice_str[1:])
-			raw_ind, err := getVar(symtab, tmp_name)
+			raw_ind, err := getVar(symtab, tmp_name, logger)
 			if err != nil {
 				return nil, err
 			} else {
@@ -317,7 +400,7 @@ func buildAttrWithIndice(symtab map[string]any, raw_value any, var_name, indice_
 
 		if indice_str[0] == '$' {
 			tmp_name, _ := extract_var_name(indice_str[1:])
-			raw_ind, err := getVar(symtab, tmp_name)
+			raw_ind, err := getVar(symtab, tmp_name, logger)
 			if err != nil {
 				return nil, err
 			} else {
@@ -352,12 +435,13 @@ func extract_var_name(name string) (string, int) {
 }
 
 const (
-	error_var_not_found             = iota + 1
-	error_var_invalid_type          = iota
-	error_var_invalid_template      = iota
-	error_var_invalid_json_output   = iota
-	error_var_mapkey_not_found      = iota
-	error_var_sliceindice_not_found = iota
+	error_var_not_found               = iota + 1
+	error_var_invalid_type            = iota
+	error_var_invalid_template        = iota
+	error_var_invalid_json_output     = iota
+	error_var_mapkey_not_found        = iota
+	error_var_sliceindice_not_found   = iota
+	error_var_invalid_javascript_code = iota
 )
 
 type varError struct {
@@ -395,7 +479,11 @@ func (e *varError) Code() int {
 }
 
 // ***************************************************************************************
-func getVar(symtab map[string]any, attr string) (any, error) {
+func getVar(
+	symtab map[string]any,
+	attr string,
+	logger *slog.Logger,
+) (any, error) {
 	var err error
 
 	tmp_symtab := symtab
@@ -410,7 +498,7 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 		// check if attr refers to an another variable name $X.[...].$var_name
 		if var_name[0] == '$' {
 			tmp_name, pos := extract_var_name(var_name[1:])
-			raw_value, err := getVar(symtab, tmp_name)
+			raw_value, err := getVar(symtab, tmp_name, logger)
 			if err != nil {
 				return nil, err
 			}
@@ -437,7 +525,7 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 		// try to find attribute name as key name of map element
 		if raw_value, ok := tmp_symtab[var_name]; ok {
 			if value, ok := raw_value.(*Field); ok {
-				raw_value, err = value.GetValueObject(symtab)
+				raw_value, err = value.GetValueObject(symtab, logger)
 				if err != nil {
 					return nil, err
 				}
@@ -445,7 +533,7 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 
 			// special case attribute name contains '[indice_str]'
 			if indice_str != "" {
-				raw_value, err = buildAttrWithIndice(symtab, raw_value, var_name, indice_str)
+				raw_value, err = buildAttrWithIndice(symtab, raw_value, var_name, indice_str, logger)
 				if err != nil {
 					return nil, err
 				}
@@ -531,6 +619,7 @@ func getVar(symtab map[string]any, attr string) (any, error) {
 func (f *Field) GetValueObject(
 	// item map[string]interface{}) ([]any, error) {
 	item any,
+	logger *slog.Logger,
 ) (res any, err error) {
 	res_slice := make([]any, 0)
 
@@ -538,7 +627,8 @@ func (f *Field) GetValueObject(
 		return res_slice, nil
 	}
 
-	if f.tmpl != nil {
+	switch f.vartype {
+	case field_template:
 		defer func() {
 			// res and err are named out parameters, so if we set value for them in defer
 			// set the returned values
@@ -571,22 +661,29 @@ func (f *Field) GetValueObject(
 			}
 		}
 		return data, nil
-	} else {
-		if f.vartype {
-			if symtab, ok := item.(map[string]any); ok {
-				data, err := getVar(symtab, f.raw)
-				if err != nil {
-					return res_slice, err
-				}
-
-				return data, nil
-			} else {
-				return nil, nil
+	case field_var:
+		if symtab, ok := item.(map[string]any); ok {
+			data, err := getVar(symtab, f.raw, logger)
+			if err != nil {
+				return res_slice, err
 			}
+
+			return data, nil
+		} else {
+			return nil, nil
 		}
-		// else it is a simple string `value`
-		return RawGetValueString(f.raw), nil
+	case field_js:
+		symtab := item.(map[string]any)
+
+		val, err := f.jscode.Run(symtab, logger)
+		if err != nil {
+			return res_slice, newVarError(error_var_invalid_javascript_code,
+				fmt.Sprintf("invalid javascript code execution: %s", err.Error()))
+		}
+		return val, nil
 	}
+	// else it is a simple string `value`
+	return RawGetValueString(f.raw), nil
 }
 
 func (f *Field) String() string {
@@ -594,15 +691,16 @@ func (f *Field) String() string {
 		return ""
 	}
 
-	if f.tmpl != nil {
+	switch f.vartype {
+	case field_template:
 		// f.tmpl.
 		return f.tmpl.Tree.Root.String()
-	} else {
-		if f.vartype {
-			return "$" + f.raw
-		}
+	case field_var:
+		return "$" + f.raw
+	case field_js:
 		return f.raw
 	}
+	return f.raw
 }
 
 func (f *Field) MarshalText() (text []byte, err error) {
@@ -611,18 +709,17 @@ func (f *Field) MarshalText() (text []byte, err error) {
 }
 
 func (f *Field) AddDefaultTemplate(customTemplate *exporterTemplate) error {
-	if f.tmpl != nil && customTemplate != nil {
-		if tmpl, err := AddDefaultTemplate(f.tmpl, customTemplate); err != nil {
-			f.tmpl = tmpl
-		} else {
+	if f.vartype == field_template && customTemplate != nil {
+		if _, err := AddDefaultTemplate(f, customTemplate); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func AddDefaultTemplate(dest_tmpl *exporterTemplate, customTemplate *exporterTemplate) (*exporterTemplate, error) {
-	if dest_tmpl != nil && customTemplate != nil {
+// func AddDefaultTemplate(dest_tmpl *exporterTemplate, customTemplate *exporterTemplate) (*exporterTemplate, error) {
+func AddDefaultTemplate(dest_cond *Field, customTemplate *exporterTemplate) (*Field, error) {
+	if dest_cond != nil && dest_cond.vartype == field_template && customTemplate != nil {
 		cc_tmpl, err := ((*ttemplate.Template)(customTemplate)).Clone()
 		if err != nil {
 			return nil, fmt.Errorf("field template clone for %s is invalid: %s", ((*ttemplate.Template)(customTemplate)).Name(), err)
@@ -633,13 +730,13 @@ func AddDefaultTemplate(dest_tmpl *exporterTemplate, customTemplate *exporterTem
 				continue
 			}
 
-			_, err = ((*ttemplate.Template)(dest_tmpl)).AddParseTree(tmpl.Name(), tmpl.Tree)
+			_, err = ((*ttemplate.Template)(dest_cond.tmpl)).AddParseTree(tmpl.Name(), tmpl.Tree)
 			if err != nil {
 				return nil, fmt.Errorf("field template %s is invalid: %s", tmpl.Name(), err)
 			}
 		}
 	}
-	return dest_tmpl, nil
+	return dest_cond, nil
 }
 
 type ResultElement struct {

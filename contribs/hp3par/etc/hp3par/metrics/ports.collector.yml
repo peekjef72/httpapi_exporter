@@ -13,10 +13,10 @@ collector_name: ports_statistics
 # metric_prefix: ""
 
 templates:
-  modeType: >-
-    {{- $modeDef := dict "1" "suspended" "2" "target" "3" "initiator" "4" "peer" }}
-    {{ $mode := . | toString }}
-    {{ pluck $mode $modeDef | first | default "undef" -}}
+  # modeType: >-
+  #   {{- $modeDef := dict "1" "suspended" "2" "target" "3" "initiator" "4" "peer" }}
+  #   {{ $mode := . | toString }}
+  #   {{ pluck $mode $modeDef | first | default "undef" -}}
 
   portType: '
     {{- $portTypeDef := dict 
@@ -38,6 +38,16 @@ templates:
     {{- $protocol := . | toString -}}
     {{- pluck $protocol $protocolDef | first | default "undef" -}}
 
+jscode:
+  - type: module
+    name: val2code
+    file: ./js/mod_val2code.js
+  - type: code
+    file: ./js/val2code.js
+  - type: code
+    source: >-
+      function test(code) {
+      }
 
 scripts:
   get port_status:
@@ -75,19 +85,52 @@ scripts:
         var_name: results
 
     - name: proceed ports config elements
-      loop: $resuls.members
+      loop: $results.members
       when:
         # don't collect unconfigure/unplug ports (free port)
-        - ne .item.type 3.0
+        - 'js: item.type != 3'
 
       actions:
         - name: build labels
           set_fact:
             key_labels:
-            source: Node-{{ .item.portPos.node | default "undef" | toString }}/Port-{{ .item.portPos.slot | default "undef" | toString }}/Card-{{ .item.portPos.cardPort | default "undef" | toString }}
-            target: Node-{{ .item.partnerPos.node | default "undef" | toString }}/Port-{{ .item.partnerPos.slot | default "undef" | toString}}/Card-{{ .item.partnerPos.cardPort | default "undef" | toString }}
-            label: '{{ .item.label | default "undef" }}'
-            mode: '{{ template "modeType" .item.mode }}'
+              source: >
+                js: 
+                  "Node-" + exporter.default( item.portPos.node, "undef" ) +
+                  "/Port-" + exporter.default( item.portPos.slot, "undef" ) +
+                  "/Card-" + exporter.default( item.portPos.cardPort, "undef" )
+            # source: Node-{{ .item.portPos.node | default "undef" | toString }}/Port-{{ .item.portPos.slot | default "undef" | toString }}/Card-{{ .item.portPos.cardPort | default "undef" | toString }}
+            # target: Node-{{ .item.partnerPos.node | default "undef" | toString }}/Port-{{ .item.partnerPos.slot | default "undef" | toString}}/Card-{{ .item.partnerPos.cardPort | default "undef" | toString }}
+            # label: '{{ .item.label | default "undef" }}'
+            # mode: '{{ template "modeType" .item.mode }}'
+              target: >
+                js: 
+                  "Node-" + exporter.default( item.partnerPos.node, "undef" ) +
+                  "/Port-" + exporter.default( item.partnerPos.slot, "undef" ) +
+                  "/Card-" + exporter.default( item.partnerPos.cardPort, "undef" )
+              label: 'js: exporter.default( item.label, "undef" )'
+              mode: >-
+                js:
+                  var ret = "undef"
+                  switch( item.mode ) {
+                    case 1:
+                    case "1":
+                      ret = "suspended"
+                      break
+                    case 2:
+                    case "2":
+                      ret = "target"
+                      break
+                    case 3:
+                    case "3":
+                      ret = "initiator"
+                      break
+                    case 4:
+                    case "4":
+                      ret = "peer"
+                      break
+                  }
+                  ret
             porttype: '{{ template "portType" .item.type }}'
             protocol: '{{ template "protocolType" .item.protocol }}'
 
@@ -106,7 +149,7 @@ scripts:
               type: gauge
               key_labels: $key_labels
               values: 
-                _: $item.failoverState
+                _: 'js: exporter.default( item.failoverState, 1)'
 
     # ports statistics
     # {
@@ -161,7 +204,12 @@ scripts:
         - name: build labels
           set_fact:
             key_labels:
-              source: Node-{{ .item.node | default "undef" | toString }}/Port-{{ .item.slot | default "undef" | toString }}/Card-{{ .item.cardPort | default "undef" | toString }}
+              source: >
+                js: 
+                  "Node-" + exporter.default( item.node, "undef" ) +
+                  "/Port-" + exporter.default( item.slot, "undef" ) +
+                  "/Card-" + exporter.default( item.cardPort, "undef" )
+              # source: Node-{{ .item.node | default "undef" | toString }}/Port-{{ .item.slot | default "undef" | toString }}/Card-{{ .item.cardPort | default "undef" | toString }}
               porttype: '{{ template "portType" .item.type }}'
               # porttype: '{{ $portTypeDef := dict "1" "HOST" "2" "disk" "3" "FREE" "4" "IPORT" "5" "RCFC" "6" "PEER" "7" "RCIP" "8" "ISCSI" "9" "CNA" "10" "FS"}}{{ $portType := .type | toString }}{{ pluck $portType $portTypeDef | first | default "undef" }}'
 
@@ -189,14 +237,14 @@ scripts:
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.KBytes.read "Kb" }}'
+                _: 'js: exporter.convertToBytes( item.KBytes.read, "Kb" )'
 
             - metric_name: port_write_bytes_per_second
               help: Number of kilobytes per second.
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.KBytes.write "Kb" }}'
+                _: 'js: exporter.convertToBytes( item.KBytes.write, "Kb" )'
 
             # read and write latency Service Time
             - metric_name: port_read_latency_second
@@ -204,14 +252,14 @@ scripts:
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ mulf .item.serviceTimeMS.read 1E-3}}'
+                _: 'js: item.serviceTimeMS.read * 1E-3'
 
             - metric_name: port_write_latency_second
               help: Write service time in millisecond statistic data.
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ mulf .item.serviceTimeMS.write 1E-3 }}'
+                _: 'js: item.serviceTimeMS.write * 1E-3'
 
             # busy percent
             - metric_name: port_busy_percent

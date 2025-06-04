@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -96,11 +97,13 @@ type Client struct {
 	sc     map[string]*YAMLScript
 
 	// maybe better to use target symtab with a mutex.lock
-	symtab            map[string]any
-	invalid_auth_code []int
+	symtab                          map[string]any
+	invalid_auth_code, valid_status []int
 
 	// to protect the data during exchange
 	content_mutex *sync.Mutex
+
+	ctx context.Context
 }
 
 func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Logger, gc *GlobalConfig) *Client {
@@ -112,6 +115,7 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Log
 		symtab:            map[string]any{},
 		invalid_auth_code: gc.invalid_auth_code,
 		tls_version:       gc.tls_version,
+		ctx:               context.TODO(),
 	}
 
 	params := &ClientInitParams{
@@ -159,7 +163,7 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	if tmp, err = copystructure.Copy(c.symtab); err != nil {
 		c.logger.Error(
 			"can't clone symbols table for new client",
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger))
 		return nil
 	}
@@ -203,12 +207,15 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	return cl
 }
 
-// set the played script name in client symtab (for logginf purpose mos of the time)
+// set the played script name in client symtab (for logging purpose most of the time)
 func (cl *Client) SetScriptName(name string) bool {
 	set := false
 	if cl.symtab != nil {
-		if script_name := GetMapValueString(cl.symtab, "__name__"); script_name == "" {
+		if name == "__delete__" {
+			delete(cl.symtab, "__name__")
+		} else if script_name := GetMapValueString(cl.symtab, "__name__"); script_name == "" {
 			cl.symtab["__name__"] = name
+			set = true
 		}
 	}
 	return set
@@ -220,7 +227,7 @@ func (c *Client) SetUrl(url string) string {
 		err := fmt.Errorf("http base uri not found")
 		c.logger.Error(
 			err.Error(),
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger))
 		return ""
 	}
@@ -232,9 +239,40 @@ func (c *Client) SetUrl(url string) string {
 	c.logger.Debug(
 		"uri set",
 		"uri", uri,
-		"collid", CollectorId(c.symtab, c.logger),
+		"coll", CollectorId(c.symtab, c.logger),
 		"script", ScriptName(c.symtab, c.logger))
 	return uri
+}
+
+// set the queries status for client
+func (c *Client) SetQueriesStatus(url string, status_code int, target_symtab map[string]any) {
+
+	var status map[string]any
+
+	if target_symtab != nil {
+		status = target_symtab
+	} else {
+		if _, ok := c.symtab["__queries_status"]; !ok {
+			c.symtab["__queries_status"] = make(map[string]int)
+		}
+		status = GetMapValueMap(c.symtab, "__queries_status")
+		if status == nil {
+			return
+		}
+	}
+	status[url] = status_code
+
+	c.logger.Debug(
+		fmt.Sprintf("set query_status for %s to %d", url, status[url]),
+		"coll", CollectorId(c.symtab, c.logger),
+		"script", ScriptName(c.symtab, c.logger))
+	if target_symtab == nil {
+		c.symtab["__queries_status"] = status
+	}
+}
+
+func (c *Client) SetContext(ctx context.Context) {
+	c.ctx = ctx
 }
 
 // unmarshall a default content in xml... I hope so
@@ -334,13 +372,13 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 		content_type := resp.Header().Get(contentTypeHeader)
 		switch parser {
 		case "json":
-			if strings.Contains(content_type, "application/json") {
+			if content_type == "" || strings.Contains(content_type, "application/json") {
 				// tmp := make([]byte, len(body))
 				// copy(tmp, body)
 				if err := json.Unmarshal(body, &data); err != nil {
 					c.logger.Error(
 						fmt.Sprintf("Fail to decode json results %v", err),
-						"collid", CollectorId(c.symtab, c.logger),
+						"coll", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger))
 				}
 			}
@@ -348,11 +386,11 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 			data = string(body)
 
 		case "prometheus":
-			if strings.Contains(content_type, "text/plain") {
+			if content_type == "" || strings.Contains(content_type, "text/plain") {
 				if tmp_data, err := ParsePrometheusResponse(body); err != nil {
 					c.logger.Error(
 						fmt.Sprintf("Fail to parse prometheus content %v", err),
-						"collid", CollectorId(c.symtab, c.logger),
+						"coll", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger))
 				} else {
 					data = tmp_data
@@ -363,21 +401,21 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 			if re, err := regexp.Compile("\r?\n"); err != nil {
 				c.logger.Error(
 					fmt.Sprintf("Fail to build text-lines decoder %v", err),
-					"collid", CollectorId(c.symtab, c.logger),
+					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger))
 			} else {
 				data = re.Split(string(body), -1)
 			}
 
 		case "xml":
-			if strings.Contains(content_type, "text/xml") {
+			if content_type == "" || strings.Contains(content_type, "text/xml") {
 				// tmp := make([]byte, len(body))
 				// copy(tmp, body)
 				var data_internal *Content
 				if err := xml.Unmarshal(body, &data_internal); err != nil {
 					c.logger.Error(
 						fmt.Sprintf("Fail to decode xml results %v", err),
-						"collid", CollectorId(c.symtab, c.logger),
+						"coll", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger))
 				}
 				data_tmp := make(map[string]any)
@@ -385,13 +423,13 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 				data = data_tmp
 			}
 		case "yaml":
-			if strings.Contains(content_type, "application/yaml") {
+			if content_type == "" || strings.Contains(content_type, "application/yaml") {
 				// tmp := make([]byte, len(body))
 				// copy(tmp, body)
 				if err := yaml.Unmarshal(body, &data); err != nil {
 					c.logger.Error(
 						fmt.Sprintf("Fail to decode yaml results %v", err),
-						"collid", CollectorId(c.symtab, c.logger),
+						"coll", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger))
 				}
 			}
@@ -414,15 +452,17 @@ func (c *Client) Execute(
 	any,
 	error) {
 
-	var err error
-	var data any
-	var query_retry int
-	var ok bool
+	var (
+		err         error
+		data        any
+		query_retry int
+		resp        *resty.Response
+	)
 
 	url := c.SetUrl(uri)
 	c.logger.Debug(
 		"querying httpapi",
-		"collid", CollectorId(c.symtab, c.logger),
+		"coll", CollectorId(c.symtab, c.logger),
 		"script", ScriptName(c.symtab, c.logger),
 		"method", method,
 		"url", url,
@@ -431,7 +471,7 @@ func (c *Client) Execute(
 	if body != nil {
 		c.logger.Debug(
 			"querying httpapi",
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
 			"method", method,
 			"url", url,
@@ -440,17 +480,12 @@ func (c *Client) Execute(
 	if len(params) > 0 {
 		c.logger.Debug(
 			"querying httpapi",
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
 			"method", method,
 			"url", url,
 			"params", params)
 	}
-
-	if query_retry, ok = GetMapValueInt(c.symtab, "queryRetry"); !ok {
-		query_retry = 1
-	}
-	var resp *resty.Response
 
 	req := c.client.NewRequest()
 	if body != nil {
@@ -459,37 +494,51 @@ func (c *Client) Execute(
 	if len(params) > 0 {
 		req.SetQueryParams(params)
 	}
+	if c.ctx != context.TODO() {
+		req.SetContext(c.ctx)
+	}
+
+	query_retry = 0
+	if tmp_query_retry, ok := GetMapValueInt(c.symtab, "queryRetry"); ok {
+		query_retry = tmp_query_retry
+	}
 
 	for i := 0; i <= query_retry; i++ {
 		resp, err = req.Execute(method, url)
 		if err == nil {
-			// check if retry and invalid auth to replat Ping() script
+			// check if retry and invalid auth to replay Ping() script
 			code := resp.StatusCode()
 			// if (i+1 < query_retry) && check_invalid_auth && slices.Contains(c.invalid_auth_code, code) {
-			if (i+1 < query_retry) && slices.Contains(c.invalid_auth_code, code) {
+			if slices.Contains(c.invalid_auth_code, code) {
 				c.logger.Debug(
 					"received invalid auth. start Ping()/Login()",
-					"collid", CollectorId(c.symtab, c.logger),
+					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger))
 
 				c.symtab["logged"] = false
 
 				return resp, data, ErrInvalidLogin
-
+			} else if !slices.Contains(c.valid_status, code) && i+1 < query_retry {
+				c.logger.Debug(
+					fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
+					"status_code", code,
+					"coll", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger))
 			} else {
+				c.logger.Debug(
+					fmt.Sprintf("query ok: after try %d", i+1),
+					"status_code", code,
+					"coll", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger))
 				data = c.getResponse(resp, parser)
-				// if parser == "xml" {
-				// } else if parser == "json" {
-				// 	data = c.getJSONResponse(resp)
-				// }
 				i = query_retry + 1
 			}
 			c.symtab["response_headers"] = resp.Header()
 			c.symtab["response_cookies"] = resp.Cookies()
 		} else {
 			c.logger.Debug(
-				fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
-				"collid", CollectorId(c.symtab, c.logger),
+				"query unsuccessfull",
+				"coll", CollectorId(c.symtab, c.logger),
 				"script", ScriptName(c.symtab, c.logger),
 				"errmsg", err)
 			code := resp.StatusCode()
@@ -523,7 +572,7 @@ func (cl *Client) proceedHeaders() error {
 				// ** get header name
 				switch header := r_header.(type) {
 				case *Field:
-					if head_name, err = header.GetValueString(cl.symtab); err != nil {
+					if head_name, err = header.GetValueString(cl.symtab, cl.logger); err != nil {
 						return err
 					}
 				case string:
@@ -532,7 +581,7 @@ func (cl *Client) proceedHeaders() error {
 
 				switch value := r_value.(type) {
 				case *Field:
-					if head_value, err = value.GetValueString(cl.symtab); err != nil {
+					if head_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 						return err
 					}
 				case string:
@@ -551,7 +600,7 @@ func (cl *Client) proceedHeaders() error {
 
 				switch value := r_value.(type) {
 				case *Field:
-					if head_value, err = value.GetValueString(cl.symtab); err != nil {
+					if head_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 						return err
 					}
 				case string:
@@ -574,7 +623,7 @@ func (cl *Client) proceedHeaders() error {
 						var key_name string
 						switch key_val := r_key.(type) {
 						case *Field:
-							if key_name, err = key_val.GetValueString(cl.symtab); err != nil {
+							if key_name, err = key_val.GetValueString(cl.symtab, cl.logger); err != nil {
 								return err
 							}
 						case string:
@@ -583,7 +632,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_name, err = value.GetValueString(cl.symtab); err != nil {
+								if head_name, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -595,7 +644,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "value" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_value, err = value.GetValueString(cl.symtab); err != nil {
+								if head_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -607,7 +656,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab); err != nil {
+								if action, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -631,7 +680,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_name, err = value.GetValueString(cl.symtab); err != nil {
+								if head_name, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -643,7 +692,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "value" {
 							switch value := r_value.(type) {
 							case *Field:
-								if head_value, err = value.GetValueString(cl.symtab); err != nil {
+								if head_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -654,7 +703,7 @@ func (cl *Client) proceedHeaders() error {
 						if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab); err != nil {
+								if action, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -719,7 +768,7 @@ func (cl *Client) proceedCookies() error {
 				// ** get header name
 				switch header := r_header.(type) {
 				case *Field:
-					if cookie_name, err = header.GetValueString(cl.symtab); err != nil {
+					if cookie_name, err = header.GetValueString(cl.symtab, cl.logger); err != nil {
 						return err
 					}
 				case string:
@@ -728,7 +777,7 @@ func (cl *Client) proceedCookies() error {
 
 				switch value := r_value.(type) {
 				case *Field:
-					if cookie_value, err = value.GetValueString(cl.symtab); err != nil {
+					if cookie_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 						return err
 					}
 				case string:
@@ -758,7 +807,7 @@ func (cl *Client) proceedCookies() error {
 						var key_name string
 						switch key_val := r_key.(type) {
 						case *Field:
-							if key_name, err = key_val.GetValueString(cl.symtab); err != nil {
+							if key_name, err = key_val.GetValueString(cl.symtab, cl.logger); err != nil {
 								return err
 							}
 						case string:
@@ -767,7 +816,7 @@ func (cl *Client) proceedCookies() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_name, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_name, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -777,7 +826,7 @@ func (cl *Client) proceedCookies() error {
 							// get value
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_value, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -787,7 +836,7 @@ func (cl *Client) proceedCookies() error {
 							// get domain
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_domain, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_domain, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -797,7 +846,7 @@ func (cl *Client) proceedCookies() error {
 							// get path
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_path, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_path, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -806,7 +855,7 @@ func (cl *Client) proceedCookies() error {
 						} else if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab); err != nil {
+								if action, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -846,7 +895,7 @@ func (cl *Client) proceedCookies() error {
 						if key_name == "name" {
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_name, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_name, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -856,7 +905,7 @@ func (cl *Client) proceedCookies() error {
 							// get value
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_value, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_value, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -866,7 +915,7 @@ func (cl *Client) proceedCookies() error {
 							// get domain
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_domain, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_domain, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -876,7 +925,7 @@ func (cl *Client) proceedCookies() error {
 							// get path
 							switch value := r_value.(type) {
 							case *Field:
-								if cookie_path, err = value.GetValueString(cl.symtab); err != nil {
+								if cookie_path, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -885,7 +934,7 @@ func (cl *Client) proceedCookies() error {
 						} else if key_name == "action" {
 							switch value := r_value.(type) {
 							case *Field:
-								if action, err = value.GetValueString(cl.symtab); err != nil {
+								if action, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
 									return err
 								}
 							case string:
@@ -938,12 +987,14 @@ type CallClientExecuteParams struct {
 	Timeout  time.Duration
 	Parser   string
 	Trace    bool
+	Status   bool
 	// Check_invalid_Auth bool
 }
 
 func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[string]any) error {
 	var (
-		payload any
+		payload     any
+		status_code int
 	)
 	if params.Payload == "" {
 		payload = nil
@@ -955,7 +1006,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		err := fmt.Errorf("http method not found")
 		c.logger.Error(
 			err.Error(),
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger))
 		return err
 	}
@@ -965,7 +1016,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		err := fmt.Errorf("http url not found")
 		c.logger.Error(
 			err.Error(),
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger))
 		return err
 	}
@@ -982,6 +1033,8 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	if params.Timeout != 0 {
 		old_values["timeout"] = fmt.Sprintf("%d", c.client.GetClient().Timeout)
 		c.client.SetTimeout(params.Timeout)
+	} else {
+		params.Timeout = c.client.GetClient().Timeout
 	}
 
 	auth_set, _ := GetMapValueBool(symtab, "auth_set")
@@ -1003,13 +1056,13 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 				ciphertext := passwd[len("/encrypted/"):]
 				c.logger.Debug(
 					"encrypted password detected",
-					"collid", CollectorId(c.symtab, c.logger),
+					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger),
 					"ciphertext", ciphertext)
 				auth_key := GetMapValueString(symtab, "auth_key")
 				c.logger.Debug(
 					"auth_key detected",
-					"collid", CollectorId(c.symtab, c.logger),
+					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger),
 					"auth_key", auth_key)
 				cipher, err := encrypt.NewAESCipher(auth_key)
@@ -1031,7 +1084,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 				passwd = ""
 				c.logger.Debug(
 					"basicauth Header set for request",
-					"collid", CollectorId(c.symtab, c.logger),
+					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger))
 			}
 			delete(symtab, "auth_key")
@@ -1046,7 +1099,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 				c.client.SetAuthToken(auth_token)
 				c.logger.Debug(
 					"token Hearder set for request",
-					"collid", CollectorId(c.symtab, c.logger),
+					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger))
 			}
 		}
@@ -1056,11 +1109,11 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		err := fmt.Errorf("ok_status not found")
 		c.logger.Error(
 			err.Error(),
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger))
 		return err
 	}
-	valid_status := params.OkStatus
+	c.valid_status = params.OkStatus
 
 	var_name := params.VarName
 
@@ -1072,36 +1125,56 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		return err
 	}
 
-	//******************
-	//* play the request
-	// resp, data, err := c.Execute(method, url, nil, payload, params.Check_invalid_Auth)
 	if params.Trace {
 		c.client.EnableTrace()
 	}
 
+	//******************
+	//* play the request
 	resp, data, err := c.Execute(method, url, nil, payload, params.Parser)
+
+	if resp != nil {
+		if err == ErrContextDeadLineExceeded {
+			status_code = http.StatusGatewayTimeout
+		} else {
+			status_code = resp.StatusCode()
+		}
+	} else {
+		status_code = http.StatusGatewayTimeout
+	}
+	// set status data for the query
+	if params.Status {
+		c.SetQueriesStatus(url, status_code, nil)
+	}
+	// blabla
+	// if params.Trace {
+	// 	c.logger.Debug(
+	// 		"query debug trace",
+	// 		"coll", CollectorId(c.symtab, c.logger),
+	// 		"script", ScriptName(c.symtab, c.logger),
+	// 		"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
+	// }
+
 	if err != nil {
 		return err
 	}
 	if params.Debug {
 		c.logger.Debug(
 			"query debug infos",
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
 			"url", symtab["uri"].(string),
 			"results", string(resp.Body()))
 		if params.Trace {
 			c.logger.Debug(
 				"query debug trace",
-				"collid", CollectorId(c.symtab, c.logger),
+				"coll", CollectorId(c.symtab, c.logger),
 				"script", ScriptName(c.symtab, c.logger),
 				"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
 		}
 	}
-	// * get returned status
-	code := resp.StatusCode()
 	// * set it to symbols table so user can access it
-	symtab["results_status"] = code
+	symtab["status_code"] = status_code
 
 	// if user asks for performance traces add info to symbols table
 	if params.Trace {
@@ -1116,17 +1189,17 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 		traces["total_time"] = tr.TotalTime.Seconds()
 		symtab["trace_infos"] = traces
 	}
-	if !slices.Contains(valid_status, code) {
+	if !slices.Contains(c.valid_status, status_code) {
 		symtab["query_status"] = false
 		c.logger.Info(
 			fmt.Sprintf("invalid response status: (%d not in %v)",
-				code, valid_status),
-			"collid", CollectorId(c.symtab, c.logger),
+				status_code, c.valid_status),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger))
 		c.logger.Debug(
 			fmt.Sprintf("invalid req headers: (%v) req cookies %v- response headers: (%v)",
 				c.client.Header, c.client.Cookies, resp.Header()),
-			"collid", CollectorId(c.symtab, c.logger),
+			"coll", CollectorId(c.symtab, c.logger),
 			"script", ScriptName(c.symtab, c.logger),
 		)
 
@@ -1143,7 +1216,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 				if err := mergo.Merge(&symtab, data, opts); err != nil {
 					c.logger.Error(
 						"merging results into symbols table",
-						"collid", CollectorId(c.symtab, c.logger),
+						"coll", CollectorId(c.symtab, c.logger),
 						"script", ScriptName(c.symtab, c.logger),
 						"errmsg", err)
 					return err
@@ -1384,7 +1457,7 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	if scheme == "https" {
 		cl.logger.Debug(
 			fmt.Sprintf("verify certificate set to %v", verifySSL),
-			"collid", CollectorId(cl.symtab, cl.logger),
+			"coll", CollectorId(cl.symtab, cl.logger),
 			"script", ScriptName(cl.symtab, cl.logger),
 		)
 		var ciphers []uint16
@@ -1412,7 +1485,7 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	} else {
 		cl.logger.Error(
 			fmt.Sprintf("invalid scheme for url '%s'", scheme),
-			"collid", CollectorId(cl.symtab, cl.logger),
+			"coll", CollectorId(cl.symtab, cl.logger),
 			"script", ScriptName(cl.symtab, cl.logger))
 		return nil
 	}
@@ -1467,6 +1540,10 @@ func (cl *Client) Login() (bool, error) {
 		delete(cl.symtab, "__method")
 
 		if err != nil {
+			// ** if wrong http code during login replace error with ErrInvalidLogin
+			if err == ErrInvalidQueryResult {
+				err = ErrInvalidLogin
+			}
 			return false, err
 		}
 		if err := cl.proceedHeaders(); err != nil {
@@ -1585,7 +1662,7 @@ func (cl *Client) Ping() (bool, error) {
 	if script, ok := cl.sc["ping"]; ok && script != nil {
 		logger.Debug(
 			fmt.Sprintf("starting script '%s'", script.name),
-			"collid", CollectorId(cl.symtab, logger),
+			"coll", CollectorId(cl.symtab, logger),
 			"script", ScriptName(cl.symtab, logger))
 		// cl.symtab["__client"] = cl.client
 
@@ -1602,7 +1679,7 @@ func (cl *Client) Ping() (bool, error) {
 		err := fmt.Errorf("no ping script found... can't connect")
 		logger.Error(
 			err.Error(),
-			"collid", CollectorId(cl.symtab, logger),
+			"coll", CollectorId(cl.symtab, logger),
 			"script", ScriptName(cl.symtab, logger))
 		return false, err
 	}

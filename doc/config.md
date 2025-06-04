@@ -24,8 +24,9 @@ global:
 profiles: # list of profile_configs
   # profile_config definition : map of profile names with  metric_prefix and scripts mapping.
   <profie_name>:
-    # all metrics of the profile will be named using the formula "[metric_prefix]_[metric_name]"
-    metric_prefix: <global_prefix> # optional
+    # global metrics ofthe profile will be named using the formula "[metric_prefix]_[metric_name]"
+    # so this affect the metric's names of: up, scrape_duration, query_status, collector_status
+    metric_prefix: <profile_global_metric_prefix> # optional
 
     # dictionnary of scripts definitions to handle connections to REST API
     # some script names are use internally to perform actions:
@@ -86,26 +87,33 @@ profiles: # list of profile_configs
         - name: init login loop
           vars:
             login_retry: 0
-            results_status: 0
-          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+            status_code: 0
+          until: 'js:  login_retry < queryRetry'
+          # with old gotemplate format
+          # until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
 
           actions:
             - name: login phase
               query:
                 url: /config/login
                 method: post
-                # obtain decrypted password from encrypted one from config
+                # obtain decrypted password from encrypted one set in config
                 #  (.password) and from query parameter auth_key (.auth_key)
-                # build a dict obj $login = { "username": "<user>", "password": "<decrypted_password>"}
-                # build a dict obj $data = { "login": $login }
+                # build a dict obj $data = { "username": "<user>", "password": "<decrypted_password>"}
                 # return json reprensation of $data as data of login query
                 data: >-
-                  {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-                  {{ $login := dict "username" .user "password" $tmp_pass }}
-                  {{ $data := dict "login" $login }}
-                  {{ $data | toRawJson }}
+                  js:
+                  var tmp_pass = exporter.decryptPass(password, auth_key),
+                  data = { "username": user, "password": tmp_pass };
+                  JSON.stringify(data)
+                # or with old gotemplate format
+                # data: >-
+                #   {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+                #   {{ $login := dict "username" .user "password" $tmp_pass }}
+                #   {{ $data := dict "login" $login }}
+                #   {{ $data | toRawJson }}
                 # tell the query command that code 201 is ok (default ok code is 200)
-                # if code is not OK, meaning result_status is not in ok_status list, the query status is false, and the query will be retried.
+                # if code is not OK, meaning status_code is not in ok_status list, the query status is false, and the query will be retried.
                 ok_status: 201
                 # store the result object in variable "login", so we can handle value in "login" object.
                 var_name: login
@@ -119,23 +127,30 @@ profiles: # list of profile_configs
           set_fact:
             cookies: 
               - name: "sessionid"
-                value: '{{ .login.sessionid }}'
+                value: $login.sessionid
             logged: true
-            login_retry: "{{ .queryRetry }}"
+            login_retry: $queryRetry
           when:
-            - eq .results_status 201
+            - "js: status_code == 200"
+            # or old gotemplate format
+            # - eq .status_code 201
         - name: analyze login response
           set_fact:
             logged: false
-            login_retry: "{{ .queryRetry  }}"
+            login_retry: $queryRetry
           when:
-            - or (eq .results_status 401) (eq .results_status 403)
+            - or (eq .status_code 401) (eq .status_code 403)
         - name: analyze login response not ok with retry
           set_fact:
             logged: false
-            login_retry: "{{ add .login_retry 1 }}"
+            login_retry: 'js: ++login_retry'
+            # or old gotemplate format
+            # login_retry: "{{ add .login_retry 1 }}"
+          # or old gotemplate format
           when:
-            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
+            - 'js: status_code != 200 && status_code != 401 && status_code != 403'
+          # when:
+          #   - and (and (ne .status_code 201) (ne .status_code 401)) (ne .status_code 403)
 
 # alternative to add profiles via config files: set a list of filepath accepting wildcards '*' (golang filegob ()) to "profiles".
 # the content of each file must be a profile_config (see above or contribs)
@@ -237,9 +252,11 @@ targets:
     # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]
     #   mode: <mode>
-    #   user: <login>
-    #   password: <password>
-    # profile: <profile_name> # by default use "default" or 
+    #   user: <login> | $env:ENV_VARNAME
+    #   password: <password> | $env:env_VARNAME
+
+    # the profile to use for the targer. by default use "default".
+    # profile: <profile_name>
 
     # list of collector names (not collector file names!) to compute for the target.
     # it should be a exact name or the regexp pattern
@@ -250,10 +267,13 @@ targets:
 
 # others targets
   - name: <target>
+    scheme: https
+    host: "fqdn | $env:HOSTNAME_ENV_VAR"
+    port: 443
     ...
 
   # or use a specific list of files (fileglob) for each target definition (easier way to active/remove a single target)
-  # each file define a target it the format target_config (see above).
+  # each file defines one target in the target_config format(see above).
   - targets_files: [ "/etc/httpapi_exporter/netscaler/targets/*.yml" ]
 
 ```

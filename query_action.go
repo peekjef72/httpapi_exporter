@@ -25,6 +25,7 @@ type QueryActionConfig struct {
 	Timeout    int                `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 	Parser     string             `yaml:"parser,omitempty" json:"parser,omitempty"`
 	Trace      ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
+	Status     ConvertibleBoolean `yaml:"status,omitempty" json:"status,omitempty"`
 
 	query    *Field
 	method   *Field
@@ -157,13 +158,13 @@ func buildStatus(raw_status any) []int {
 }
 
 type QueryAction struct {
-	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
-	Vars    [][]any             `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
-	Query   *QueryActionConfig  `yaml:"query" json:"query"`
+	Name    *Field             `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any              `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*Field           `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string             `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    [][]any            `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*Field           `yaml:"until,omitempty" json:"until,omitempty"`
+	Query   *QueryActionConfig `yaml:"query" json:"query"`
 
 	vars [][]any
 
@@ -177,11 +178,11 @@ func (a *QueryAction) Type() int {
 }
 
 func (a *QueryAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab)
+	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 		return ""
 	}
@@ -201,11 +202,11 @@ func (a *QueryAction) SetWidth(with []any) {
 	a.With = with
 }
 
-func (a *QueryAction) GetWhen() []*exporterTemplate {
+func (a *QueryAction) GetWhen() []*Field {
 	return a.When
 
 }
-func (a *QueryAction) SetWhen(when []*exporterTemplate) {
+func (a *QueryAction) SetWhen(when []*Field) {
 	a.When = when
 }
 
@@ -223,10 +224,10 @@ func (a *QueryAction) SetVars(vars [][]any) {
 	a.vars = vars
 }
 
-func (a *QueryAction) GetUntil() []*exporterTemplate {
+func (a *QueryAction) GetUntil() []*Field {
 	return a.Until
 }
-func (a *QueryAction) SetUntil(until []*exporterTemplate) {
+func (a *QueryAction) SetUntil(until []*Field) {
 	a.Until = until
 }
 
@@ -235,8 +236,8 @@ func (a *QueryAction) setBasicElement(
 	vars [][]any,
 	with []any,
 	loopVar string,
-	when []*exporterTemplate,
-	until []*exporterTemplate) error {
+	when []*Field,
+	until []*Field) error {
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
@@ -327,27 +328,27 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 
 	logger.Debug(
 		"[Type: QueryAction]",
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
-	query, err = a.Query.query.GetValueString(symtab)
+	query, err = a.Query.query.GetValueString(symtab, logger)
 	if err != nil {
 		query = a.Query.Query
 		logger.Warn(
 			fmt.Sprintf("invalid template for query '%s': %v", a.Query.Query, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
 	if a.Query.data != nil {
-		payload, err = a.Query.data.GetValueString(symtab)
+		payload, err = a.Query.data.GetValueString(symtab, logger)
 		if err != nil {
 			payload = a.Query.Data
 			logger.Warn(
 				fmt.Sprintf("invalid template for data '%s': %v", a.Query.Data, err),
-				"collid", CollectorId(symtab, logger),
+				"coll", CollectorId(symtab, logger),
 				"script", ScriptName(symtab, logger),
 				"name", a.GetName(symtab, logger))
 		}
@@ -355,57 +356,57 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		payload = ""
 	}
 
-	method, err = a.Query.method.GetValueString(symtab)
+	method, err = a.Query.method.GetValueString(symtab, logger)
 	if err != nil {
 		method = strings.ToUpper(a.Query.Method)
 		logger.Warn(
 			fmt.Sprintf("invalid template for method '%s': %v", a.Query.Method, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
-	var_name, err = a.Query.var_name.GetValueString(symtab)
+	var_name, err = a.Query.var_name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for var_name '%s': %v", a.Query.VarName, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
-	auth_mode, err = a.Query.auth_mode.GetValueString(symtab)
+	auth_mode, err = a.Query.auth_mode.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.mode '%s': %v", a.Query.AuthConfig.Mode, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
-	user, err = a.Query.user.GetValueString(symtab)
+	user, err = a.Query.user.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.user '%s': %v", a.Query.AuthConfig.Username, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
-	passwd, err = a.Query.passwd.GetValueString(symtab)
+	passwd, err = a.Query.passwd.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.password '%s': %v", a.Query.AuthConfig.Password, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
 
-	auth_token, err = a.Query.token.GetValueString(symtab)
+	auth_token, err = a.Query.token.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid template for auth_config.token '%s': %v", a.Query.AuthConfig.Token, err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 	}
@@ -416,6 +417,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 		Url:      query,
 		Debug:    bool(a.Query.Debug),
 		Trace:    bool(a.Query.Trace),
+		Status:   bool(a.Query.Status),
 		VarName:  var_name,
 		OkStatus: a.Query.ok_status,
 		AuthMode: auth_mode,
@@ -428,7 +430,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 
 	logger.Debug(
 		fmt.Sprintf("    query: '%s' - method: '%s' - target_var: '%s'", query, method, a.Query.VarName),
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
@@ -440,14 +442,14 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 					case ErrContextDeadLineExceeded:
 						logger.Warn(
 							fmt.Sprintf("internal method returns error: '%v'", err),
-							"collid", CollectorId(symtab, logger),
+							"coll", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
 							"name", a.GetName(symtab, logger),
-							"timeout", fmt.Sprintf("%v", a.Query.Timeout))
+							"timeout", params.Timeout.String())
 					default:
 						logger.Warn(
 							fmt.Sprintf("internal method returns error: '%v'", err),
-							"collid", CollectorId(symtab, logger),
+							"coll", CollectorId(symtab, logger),
 							"script", ScriptName(symtab, logger),
 							"name", a.GetName(symtab, logger))
 					}
@@ -457,7 +459,7 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	} else {
 		logger.Warn(
 			"internal method to play not found",
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 	}
 	return err

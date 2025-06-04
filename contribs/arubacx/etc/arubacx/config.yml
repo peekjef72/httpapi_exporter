@@ -38,32 +38,32 @@ profiles:
               - name: "id"
                 value: '{{ getCookie .response_cookies "id" }}'
             logged: true
-            login_retry: "{{ .queryRetry }}"
+            login_retry: $queryRetry
             # remove .login entry from symbols table
             # login: ~
           when:
-            - eq .results_status 200
+            - 'js: status_code == 200'
         - name: analyze login response
           set_fact:
             # session_id: ''
             logged: false
-            login_retry: "{{ .queryRetry }}"
+            login_retry: $queryRetry
           when:
-            - or (eq .results_status 401) (eq .results_status 403)
+            - 'js: status_code == 401 || status_code == 403'
         - name: analyze login response not ok with retry
           set_fact:
             # auth_token: ""
             logged: false
-            login_retry: "{{ add .login_retry 1 }}"
+            login_retry: 'js: ++login_retry'
           when:
-            - and (and (ne .results_status 200) (ne .results_status 401)) (ne .result_status 403)
+            - 'js: status_code != 200 && status_code != 401 && status_code != 403'
 
       login:
         - name: init login loop
           vars:
             login_retry: 0
-            results_status: 0
-          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+            status_code: 0
+          until: 'js: login_retry < queryRetry'
 
           actions:
             - name: login phase
@@ -77,7 +77,7 @@ profiles:
                   # {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
                   # username={{ queryEscape .user }}&password={{ queryEscape $tmp_pass }}
                 data: >-
-                  username={{ queryEscape .user }}&password={{ queryEscape .password }}
+                  js: "username=" + exporter.queryEscape( user ) + "&password=" + exporter.queryEscape( password )
                 ok_status: 200
                 # don't store the value
                 var_name: _
@@ -111,17 +111,19 @@ profiles:
           set_fact:
             config:
               ts_next_check: 0
-          when: not ( exists .config )
-          # when: gt (len .config ) 0
+          when: 'js: typeof config === 'undefined'
 
         - name: set config cache vars
-          when: 
-            - exists .config
-            - GT ( unixEpoch now ) .config.ts_next_check
+          when: >-
+            js:
+              typeof config !== 'undefined' && 
+                config.ts_next_check <= Math.floor(new Date().getTime() / 1000) 
           set_fact:
-            _ : '
-                {{- $_ := exporterSet .config "interfaces" (list) -}}
-                {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch) -}}'
+            _ : >-
+                config.interfaces = []
+                config.ts_next_check = Math.floor(new Date().getTime() / 1000) + exporter.getDurationSecond( configCacheDuration )
+                // return unused value
+                true
 
       # script called to reset all login infos after the ping script has received an invalid_auth_code.
       # remove cookie id and set var logged to false

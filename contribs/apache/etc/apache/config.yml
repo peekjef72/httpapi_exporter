@@ -1,0 +1,30 @@
+# Global defaults.
+global:
+  scrape_timeout: 5s
+  # Subtracted from Prometheus' scrape_timeout to give us some headroom and prevent Prometheus from timing out first.
+  scrape_timeout_offset: 500ms
+  # Minimum interval between collector runs: by default (0s) collectors are executed on every scrapee.
+  min_interval: 0s
+  # all unsuccessful queries will be retried this number of times
+  query_retry: 3
+
+profiles_file_config:
+  - "profiles/*_profile.yml"
+
+# The targets to monitor and the collectors to execute on it.
+targets:
+  # default target is used as a pattern for exporter queries with target name not defined locally.
+  - name: default
+    scheme: https
+    host: set_later
+    port: 443
+    verifySSL: false
+    profile: apache
+    collectors:
+      - ~ apache_.*
+
+  - targets_files: [ "targets/*.yml" ]
+
+# Collector files specifies a list of globs. One collector definition is read from each matching file.
+collector_files:
+  - "metrics/*.collector.yml"

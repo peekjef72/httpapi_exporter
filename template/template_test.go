@@ -1,4 +1,4 @@
-package main
+package template
 
 import (
 	"fmt"
@@ -47,7 +47,7 @@ func TestFuncExporterSet(t *testing.T) {
 				{{ $tmp := exporterSet .data "info" $info }}
                 {{ .data | toRawJson }}`
 
-	tmpl := ttemplate.New("test").Funcs(mymap())
+	tmpl := ttemplate.New("test").Funcs(Mymap())
 
 	tmpl, err = tmpl.Parse(template_str)
 	assert.Nil(t, err, fmt.Errorf("test template %s is invalid: %s", template_str, err))
@@ -95,7 +95,7 @@ func TestFuncExporterDecryptPass(t *testing.T) {
 	template_str := `{{ $tmp_pass := exporterDecryptPass .password .auth_key }}
                   {{ $data := dict "password" $tmp_pass }}
                   {{ $data | toRawJson }}`
-	tmpl := ttemplate.New("test").Funcs(mymap())
+	tmpl := ttemplate.New("test").Funcs(Mymap())
 
 	tmpl, err = tmpl.Parse(template_str)
 	assert.Nil(t, err, fmt.Errorf("test template %s is invalid: %s", template_str, err))
@@ -156,7 +156,7 @@ func TestFuncExporterRegexExtract(t *testing.T) {
 func TestTemplateExporterRegexExtract(t *testing.T) {
 	var err error
 	template_str := `{{ index ( exporterRegexExtract "^status:\\s*(.*)$" .res) 1 }}`
-	tmpl := ttemplate.New("test").Funcs(mymap())
+	tmpl := ttemplate.New("test").Funcs(Mymap())
 
 	tmpl, err = tmpl.Parse(template_str)
 	assert.Nil(t, err, fmt.Errorf("test template %s is invalid: %s", template_str, err))

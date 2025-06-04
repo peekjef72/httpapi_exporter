@@ -20,11 +20,11 @@ type Collector interface {
 	SetClient(*Client)
 	GetClient() *Client
 	GetName() (id string)
-	GetId() (id string)
 	GetStatus() int
 	SetStatus(status int)
 	SetLogger(*slog.Logger)
 	SetSetStats(Target)
+	SetQueriesStatus(client *Client, queries_status map[string]any, status int)
 }
 
 // collector implements Collector. It wraps a collection of queries, metrics and the database to collect them from.
@@ -56,13 +56,15 @@ func NewCollector(
 	logger *slog.Logger,
 	cc *CollectorConfig,
 	constLabels []*dto.LabelPair,
-	collect_script []*YAMLScript) (Collector, error) {
+	collect_script []*YAMLScript,
+) (Collector, error) {
 
 	// var mfs []*MetricFamily
 
 	logContext = append(logContext, "collector", cc.Name)
 	// mfs := make([]*MetricFamily,)
 	for _, scr := range collect_script {
+		// populate MetricFamily with context for all metrics actions
 		for _, ma := range scr.metricsActions {
 			for _, act := range ma.Actions {
 				if act.Type() == metric_action {
@@ -79,10 +81,9 @@ func NewCollector(
 					act.SetMetricFamily(mf)
 				}
 			}
-			// for _, mc := range ma.GetMetrics() {
-			// }
 		}
 	}
+
 	c := collector{
 		config: cc,
 		// queries:    queries,
@@ -114,12 +115,26 @@ func (c *collector) GetClient() (client *Client) {
 // obtain pointer to client
 func (c *collector) SetClient(client *Client) {
 	c.client = client
+	if c.client != nil {
+		c.SetQueriesStatus(c.client, c.client.symtab, 0)
+	}
 }
 
-// GetId implement GetId for collector
-// obtain collector id for log purpose
-func (c *collector) GetId() string {
-	return c.config.id
+// func (c *collector) SetQueriesStatus(client *Client, status int) {
+func (c *collector) SetQueriesStatus(client *Client, queries_status map[string]any, status int) {
+	// populate symtab for all query actions with [query_]status set to 0
+	for _, sc := range c.collect_script {
+		for _, act := range sc.queryActions {
+			if act.Type() == query_action {
+				if bool(act.Query.Status) {
+					if act.Query.query.vartype == field_raw {
+						url := act.Query.query.raw
+						client.SetQueriesStatus(url, status, queries_status)
+					}
+				}
+			}
+		}
+	}
 }
 
 // GetName implement GetName for collector
@@ -190,7 +205,7 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 	for _, scr := range c.collect_script {
 		c.logger.Debug(
 			fmt.Sprintf("starting script '%s/%s'", c.config.Name, scr.name),
-			"collid", CollectorId(c.client.symtab, c.logger))
+			"coll", CollectorId(c.client.symtab, c.logger))
 		if err := scr.Play(c.client.symtab, false, c.logger); err != nil {
 			switch err {
 			case ErrInvalidLogin:
@@ -202,7 +217,7 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 			default:
 				c.logger.Warn(
 					err.Error(),
-					"collid", CollectorId(c.client.symtab, c.logger),
+					"coll", CollectorId(c.client.symtab, c.logger),
 					"script", ScriptName(c.client.symtab, c.logger))
 				coll_ch <- MsgQuit
 				status = CollectorStatusError
@@ -220,14 +235,14 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		c.logger.Debug(
 			"MsgDone sent to channel.",
 			"coll_channel_length", fmt.Sprintf("%d", len(coll_ch)),
-			"collid", CollectorId(c.client.symtab, c.logger),
+			"coll", CollectorId(c.client.symtab, c.logger),
 			"script", ScriptName(c.client.symtab, c.logger))
 	}
 
 	// clean up
 	c.logger.Debug(
 		fmt.Sprintf("removing from symtab metric,coll channels vars for '%s'", c.config.Name),
-		"collid", CollectorId(c.client.symtab, c.logger))
+		"coll", CollectorId(c.client.symtab, c.logger))
 
 	delete(c.client.symtab, "__metric_channel")
 	delete(c.client.symtab, "__coll_channel")
@@ -262,7 +277,7 @@ type cachingCollector struct {
 
 // SetClient implement SetClient()for cachingCollector
 func (cc *cachingCollector) SetClient(client *Client) {
-	cc.rawColl.client = client
+	cc.rawColl.SetClient(client)
 }
 
 // SetClient implement SetClient for cachingCollector
@@ -274,11 +289,6 @@ func (cc *cachingCollector) GetClient() (client *Client) {
 // obtain collector name for collector_status metric
 func (cc *cachingCollector) GetName() (id string) {
 	return cc.rawColl.config.Name
-}
-
-// GetId implement GetId for cachingCollector
-func (cc *cachingCollector) GetId() (id string) {
-	return cc.rawColl.config.id
 }
 
 // GetStatus implement GetStatus for cachingCollector
@@ -299,6 +309,10 @@ func (cc *cachingCollector) SetLogger(logger *slog.Logger) {
 
 func (cc *cachingCollector) SetSetStats(target Target) {
 	cc.rawColl.SetSetStats(target)
+}
+
+func (cc *cachingCollector) SetQueriesStatus(client *Client, queries_status map[string]any, status int) {
+	cc.rawColl.SetQueriesStatus(client, queries_status, status)
 }
 
 // Collect implements Collector.

@@ -12,13 +12,13 @@ import (
 // ***************************************************************************************
 
 type PlayScriptAction struct {
-	Name                 *Field              `yaml:"name,omitempty" json:"name,omitempty"`
-	With                 []any               `yaml:"with,omitempty" json:"with,omitempty"`
-	When                 []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
-	LoopVar              string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
-	Vars                 [][]any             `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Until                []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
-	PlayScriptActionName string              `yaml:"play_script" json:"play_script"`
+	Name                 *Field   `yaml:"name,omitempty" json:"name,omitempty"`
+	With                 []any    `yaml:"with,omitempty" json:"with,omitempty"`
+	When                 []*Field `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar              string   `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars                 [][]any  `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until                []*Field `yaml:"until,omitempty" json:"until,omitempty"`
+	PlayScriptActionName string   `yaml:"play_script" json:"play_script"`
 
 	playScriptAction *YAMLScript
 	vars             [][]any
@@ -32,11 +32,11 @@ func (a *PlayScriptAction) Type() int {
 }
 
 func (a *PlayScriptAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab)
+	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 		return ""
 	}
@@ -57,11 +57,11 @@ func (a *PlayScriptAction) SetWidth(with []any) {
 	a.With = with
 }
 
-func (a *PlayScriptAction) GetWhen() []*exporterTemplate {
+func (a *PlayScriptAction) GetWhen() []*Field {
 	return a.When
 
 }
-func (a *PlayScriptAction) SetWhen(when []*exporterTemplate) {
+func (a *PlayScriptAction) SetWhen(when []*Field) {
 	a.When = when
 }
 
@@ -79,10 +79,10 @@ func (a *PlayScriptAction) SetVars(vars [][]any) {
 	a.vars = vars
 }
 
-func (a *PlayScriptAction) GetUntil() []*exporterTemplate {
+func (a *PlayScriptAction) GetUntil() []*Field {
 	return a.Until
 }
-func (a *PlayScriptAction) SetUntil(until []*exporterTemplate) {
+func (a *PlayScriptAction) SetUntil(until []*Field) {
 	a.Until = until
 }
 
@@ -91,8 +91,8 @@ func (a *PlayScriptAction) setBasicElement(
 	vars [][]any,
 	with []any,
 	loopVar string,
-	when []*exporterTemplate,
-	until []*exporterTemplate) error {
+	when []*Field,
+	until []*Field) error {
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
@@ -125,7 +125,7 @@ func (a *PlayScriptAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 func (a *PlayScriptAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 	logger.Debug(
 		fmt.Sprintf("[Type: PlayScriptAction] Name: %s", a.GetName(symtab, logger)),
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 

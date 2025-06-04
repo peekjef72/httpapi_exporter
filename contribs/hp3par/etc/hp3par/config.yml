@@ -42,36 +42,36 @@ profiles:
             # auth_token: "{{ .login.key }}"
             headers: 
               - name: "x-hp3par-wsapi-sessionkey"
-                value: "{{ .login.key }}"
+                value: $login.key
             logged: true
-            login_retry: "{{ .queryRetry }}"
+            login_retry: $queryRetry
           when:
-            - eq .results_status 201
+            - eq .status_code 201
             - hasKey .login "key"
         - name: analyze login response
           set_fact:
             # auth_token: ""
             logged: false
-            login_retry: "{{ .queryRetry  }}"
+            login_retry: $queryRetry
             headers: 
               - name: "x-hp3par-wsapi-sessionkey"
                 action: delete
           when:
-            - or (eq .results_status 401) (eq .results_status 403)
+            - 'js: status_code == 401 || status_code == 403'
         - name: analyze login response not ok with retry
           set_fact:
             # auth_token: ""
             logged: false
-            login_retry: "{{ add .login_retry 1 }}"
+            login_retry: 'js: ++login_retry'
           when:
-            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
+            - 'js: status_code != 201 && status_code != 401 && status_code != 403'
 
       login:
         - name: init login loop
           vars:
             login_retry: 0
-            results_status: 0
-          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+            status_code: 0
+          until: 'js: login_retry < queryRetry'
 
           actions:
             - name: login phase
@@ -79,10 +79,14 @@ profiles:
                 url: /credentials
                 method: post
                 data: >-
-                  {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-                  {{ $data := dict "user" .user "password" $tmp_pass }}
-                  {{ $data | toRawJson }}
-                # headers:
+                  js:
+                    var tmp_pass = exporter.decryptPass(password, auth_key),
+                    data = { "user": user, "password": tmp_pass };
+                    JSON.stringify(data)
+                # data: >-
+                #   {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
+                #   {{ $data := dict "user" .user "password" $tmp_pass }}
+                #   {{ $data | toRawJson }}
                 ok_status: 201
                 var_name: login
             - name: analyze login response

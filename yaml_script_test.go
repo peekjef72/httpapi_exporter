@@ -851,7 +851,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndice(t *testing.T) {
 		}
 	}
 
-	test_name = `mymap.${test_var[0]}[1]`
+	test_name = `$mymap.${test_var[0]}[1]`
 	name, err = NewField(test_name, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())

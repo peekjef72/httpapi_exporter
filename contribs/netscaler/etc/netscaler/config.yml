@@ -39,35 +39,30 @@ profiles:
           set_fact:
             cookies: 
               - name: "sessionid"
-                value: '{{ .login.sessionid }}'
+                value: $login.sessionid
             logged: true
-            # session_id: '{{ .login.sessionid }}'
-            login_retry: "{{ .queryRetry }}"
-            # remove .login entry from symbols table
-            # login: ~
+            login_retry: $queryRetry
           when:
-            - eq .results_status 201
+            - 'js: status_code == 201'
         - name: analyze login response
           set_fact:
-            # session_id: ''
             logged: false
-            login_retry: "{{ .queryRetry  }}"
+            login_retry: $queryRetry
           when:
-            - or (eq .results_status 401) (eq .results_status 403)
+            - 'js: (status_code == 401) || (status_code == 403)'
         - name: analyze login response not ok with retry
           set_fact:
-            # auth_token: ""
             logged: false
-            login_retry: "{{ add .login_retry 1 }}"
+            login_retry: 'js: ++login_retry'
           when:
-            - and (and (ne .results_status 201) (ne .results_status 401)) (ne .result_status 403)
+            - 'js: (status_code != 201) && (status_code != 401) && (status_code != 403)'
 
       login:
         - name: init login loop
           vars:
             login_retry: 0
-            results_status: 0
-          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+            status_code: 0
+          until: 'js: login_retry < queryRetry'
 
           actions:
             - name: login phase
@@ -75,12 +70,16 @@ profiles:
                 url: /config/login
                 method: post
                 data: >-
-                  {{ $tmp_pass := exporterDecryptPass .password .auth_key }}
-                  {{ $login := dict "username" .user "password" $tmp_pass }}
-                  {{ $data := dict "login" $login }}
-                  {{ $data | toRawJson }}
+                  js:
+                    var passwd = exporter.decryptPass( password, auth_key ),
+                        data = {
+                          "login": {
+                            "username": user, 
+                            "password": passwd,
+                          }
+                        };
+                    JSON.stringify(data)
                 ok_status: 201
-                # don't store the value
                 var_name: login
             - name: analyze login response
               play_script: auth_check
@@ -96,23 +95,28 @@ profiles:
             ok_status: 200
             # to catch and store the result and use it later...
             var_name: nsversion
+            status: true
 
         - name: set config cache vars
           set_fact:
             config:
               ts_next_check: 0
-          when: not ( exists .config )
-          # when: gt (len .config ) 0
+          when: 'js: typeof config === 'undefined'
+
         - name: set config cache vars
-          when: 
-            - exists .config
-            - GT ( unixEpoch now ) .config.ts_next_check
+          when: >-
+            js:
+              typeof config !== 'undefined' && 
+                config.ts_next_check <= Math.floor(new Date().getTime() / 1000) 
           set_fact:
-            _ : '
-                {{- $_ := exporterSet .config "svclb" (dict)  -}}
-                {{- $_ := exporterSet .config "svcgrplb" (dict)  -}}
-                {{- $_ := exporterSet .config "cluster" (dict)  -}}
-                {{- $_ := exporterSet .config "ts_next_check" (now | mustDateModify .configCacheDuration | unixEpoch)  -}}'
+            _ : >-
+              js:
+                config.svclb = []
+                config.svcgrplb = []
+                config.cluster = []
+                config.ts_next_check = Math.floor(new Date().getTime() / 1000) + exporter.getDurationSecond( configCacheDuration )
+                // return unused value
+                true
 
       # script called to reset all login infos after the ping script has received an invalid_auth_code.
       # remove cookie sessionid and set var logged to false
@@ -139,6 +143,7 @@ targets:
     scheme: https
     host: template
     port: 443
+    profile: netscaler
     auth_name: prometheus_encrypted
     # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]

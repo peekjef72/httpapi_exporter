@@ -15,12 +15,12 @@ import (
 
 type MetricsAction struct {
 	// BaseAction
-	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
-	Vars    map[string]any      `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	Name    *Field         `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any          `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*Field       `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string         `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    map[string]any `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*Field       `yaml:"until,omitempty" json:"until,omitempty"`
 
 	Metrics      []*MetricConfig `yaml:"metrics" json:"metrics"`                                 // metrics defined by this collector
 	Scope        string          `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
@@ -38,11 +38,11 @@ func (a *MetricsAction) Type() int {
 }
 
 func (a *MetricsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab)
+	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 		return ""
 	}
@@ -63,11 +63,11 @@ func (a *MetricsAction) SetWidth(with []any) {
 	a.With = with
 }
 
-func (a *MetricsAction) GetWhen() []*exporterTemplate {
+func (a *MetricsAction) GetWhen() []*Field {
 	return a.When
 
 }
-func (a *MetricsAction) SetWhen(when []*exporterTemplate) {
+func (a *MetricsAction) SetWhen(when []*Field) {
 	a.When = when
 }
 
@@ -85,10 +85,10 @@ func (a *MetricsAction) SetVars(vars [][]any) {
 	a.vars = vars
 }
 
-func (a *MetricsAction) GetUntil() []*exporterTemplate {
+func (a *MetricsAction) GetUntil() []*Field {
 	return a.Until
 }
-func (a *MetricsAction) SetUntil(until []*exporterTemplate) {
+func (a *MetricsAction) SetUntil(until []*Field) {
 	a.Until = until
 }
 
@@ -97,8 +97,8 @@ func (a *MetricsAction) setBasicElement(
 	vars [][]any,
 	with []any,
 	loopVar string,
-	when []*exporterTemplate,
-	until []*exporterTemplate) error {
+	when []*Field,
+	until []*Field) error {
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
@@ -128,6 +128,36 @@ func (a *MetricsAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 	return nil
 }
 
+const (
+	error_scope_not_found = iota
+	error_scope_invalid_type
+)
+
+type scopeError struct {
+	code    int
+	message string
+}
+
+type ScopeError interface {
+	Code() int
+	Error() string
+}
+
+func newScopeError(code int, msg string) *scopeError {
+	return &scopeError{
+		code:    code,
+		message: msg,
+	}
+}
+
+func (e *scopeError) Error() string {
+	return fmt.Sprintf("SetScopeError %d: %s", e.code, e.message)
+}
+
+func (e *scopeError) Code() int {
+	return e.code
+}
+
 // ***************************************************************************************
 // specific behavior for the MetricsAction
 func SetScope(scope string, symtab map[string]any) (map[string]any, error) {
@@ -148,11 +178,11 @@ func SetScope(scope string, symtab map[string]any) (map[string]any, error) {
 			case map[string]any:
 				tmp_symtab = cur_value
 			default:
-				err = fmt.Errorf("can't set scope: '%s' has invalid type", var_name)
+				err = newScopeError(error_scope_invalid_type, fmt.Sprintf("can't set scope: identifier '%s' has invalid type", var_name))
 			}
 			// }
 		} else {
-			err = fmt.Errorf("can't set scope: '%s' not found", var_name)
+			err = newScopeError(error_scope_invalid_type, fmt.Sprintf("can't set scope: identifier '%s' not found", var_name))
 		}
 	}
 	return tmp_symtab, err
@@ -167,7 +197,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 
 	logger.Debug(
 		fmt.Sprintf("[Type: MetricsAction] Name: %s - %d metrics_name to set", a.GetName(symtab, logger), len(a.Metrics)),
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 	)
 
@@ -177,7 +207,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 	if !ok || (ok && !query_status) {
 		logger.Debug(
 			fmt.Sprintf("[Type: MetricsAction] Name: %s - previous query has invalid status skipping", a.GetName(symtab, logger)),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger),
 			"name", a.GetName(symtab, logger))
 		return ErrInvalidQueryResult
@@ -185,13 +215,13 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 
 	if r_val, ok := symtab["__metric_channel"]; ok {
 		if metric_channel, ok = r_val.(chan<- Metric); !ok {
-			panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (metric channel wrong type)\"",
+			panic(fmt.Sprintf("coll=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (metric channel wrong type)\"",
 				CollectorId(symtab, logger),
 				ScriptName(symtab, logger),
 				a.GetName(symtab, logger)))
 		}
 	} else {
-		panic(fmt.Sprintf("collid=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (metric channel not set)\"",
+		panic(fmt.Sprintf("coll=\"%s\" script=\"%s\" name=\"%s\" msg=\"invalid context (metric channel not set)\"",
 			CollectorId(symtab, logger),
 			ScriptName(symtab, logger),
 			a.GetName(symtab, logger)))
@@ -206,7 +236,7 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 		if err != nil {
 			logger.Warn(
 				err.Error(),
-				"collid", CollectorId(symtab, logger),
+				"coll", CollectorId(symtab, logger),
 				"script", ScriptName(symtab, logger),
 				"name", a.GetName(symtab, logger))
 		}
@@ -218,6 +248,11 @@ func (a *MetricsAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 			delete(tmp_symtab, "__name__")
 			delete(tmp_symtab, "__collector_id")
 			delete(tmp_symtab, "root")
+			// logger.Debug(
+			// 	"[Type: MetricsAction] remove root from symtab",
+			// 	"coll", CollectorId(symtab, logger),
+			// 	"script", ScriptName(symtab, logger),
+			// 	"name", a.GetName(symtab, logger))
 		}()
 	}
 	for _, cur_act := range a.Actions {

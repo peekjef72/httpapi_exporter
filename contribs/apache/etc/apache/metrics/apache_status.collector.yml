@@ -1,0 +1,346 @@
+---
+###
+## 
+## status contains:
+# localhost
+# ServerVersion: Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
+# ServerMPM: event
+# Server Built: Jan 29 2025 12:20:58
+# CurrentTime: Thursday, 29-May-2025 12:10:18 CEST
+# RestartTime: Sunday, 25-May-2025 22:02:29 CEST
+# ParentServerConfigGeneration: 1
+# ParentServerMPMGeneration: 0
+# ServerUptimeSeconds: 310069
+# ServerUptime: 3 days 14 hours 7 minutes 49 seconds
+# Load1: 1.11
+# Load5: 0.88
+# Load15: 0.70
+# Total Accesses: 13950
+# Total kBytes: 51791
+# Total Duration: 520607
+# CPUUser: 106.49
+# CPUSystem: 109.56
+# CPUChildrenUser: 0
+# CPUChildrenSystem: 0
+# CPULoad: .069678
+# Uptime: 310069
+# ReqPerSec: .04499
+# BytesPerSec: 171.039
+# BytesPerReq: 3801.72
+# DurationPerReq: 37.3195
+# BusyWorkers: 1
+# GracefulWorkers: 0
+# IdleWorkers: 99
+# Processes: 4
+# Stopping: 0
+# ConnsTotal: 2
+# ConnsAsyncWriting: 0
+# ConnsAsyncKeepAlive: 0
+# ConnsAsyncClosing: 0
+# Scoreboard: _______________________________________________________________________________________________W____............................................................................................................................................................................................................................................................................................................
+# TLSSessionCacheStatus
+# CacheType: SHMCB
+# CacheSharedMemory: 512000
+# CacheCurrentEntries: 16
+# CacheSubcaches: 32
+# CacheIndexesPerSubcaches: 88
+# CacheTimeLeftOldestAvg: 154
+# CacheTimeLeftOldestMin: 37
+# CacheTimeLeftOldestMax: 299
+# CacheIndexUsage: 0%
+# CacheUsage: 0%
+# CacheStoreCount: 20394
+# CacheReplaceCount: 0
+# CacheExpireCount: 20378
+# CacheDiscardCount: 0
+# CacheRetrieveHitCount: 0
+# CacheRetrieveMissCount: 0
+# CacheRemoveHitCount: 1
+# CacheRemoveMissCount: 0
+###
+#
+
+collector_name: apache_status
+# no cache
+# min_interval: 0s
+metric_prefix: apache
+
+scripts:
+  analyze_status:
+    - name: analyze data
+      set_fact:
+        # build a variable "results" that is a map/dictionnary
+        # containing key/value pairs from server-status response
+        # the "results" var is obtained by a javascript code
+        #   looping on each line of status var obtained in the 'ping' query action,
+        #   then spliting on separator ':'
+        # As a result the "results" variable will be used to build metrics.
+        results: >-
+          js:
+            var results = {};
+            // console.log("status: " +status.length);
+            for( var i=0; i< status.length; i++) {
+              var line = status[i], res;
+              res = line.split(':', 2);
+              if( res.length > 1 ) {
+                results[res[0].trim()] = res[1].trim();
+                // console.log("results['" + res[0] +'"]= ' + res[1]);
+              }
+            }
+            results
+
+    - name: proceed elements
+      scope: none
+      vars:
+        mpm: >-
+          js:
+            var mpm = "UNKNOWN";
+            if( results["ServerMPM"] != undefined) {
+              mpm = results["ServerMPM"]
+            }
+            mpm
+      metrics:
+        # apache version
+          # ServerVersion: Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
+        - metric_name: version
+          type: gauge
+          help: apache version value x + y/100 + z/10000 labeled by version(x.y.z)
+          key_labels:
+            version: $version["text"]
+          values:
+            _: $version["value"]
+          vars:
+            version: >-
+              js:
+                var regVersion = /Apache\/(\d+)\.(\d+)\.(\d+) /, 
+                  version = 0, rev = 0, build = 0, vers = {};
+                var matches = results["ServerVersion"].match(regVersion);
+                if( matches ) {
+                  version = matches[1]
+                  rev = matches[2]
+                  build = matches[3]
+                  vers["value"] = Math.round( (parseInt(version) + parseInt(rev)/100 + parseInt(build)/1E5) * 1E5) / 1E5
+                  vers["text"] = `${matches[1]}.${matches[2]}.${matches[3]}`
+                }
+                vers
+
+        # apache info
+          # ServerMPM: event
+        - metric_name: info
+          type: gauge
+          help: apache dummy value labeled by full version(text) and mpm type.
+          key_labels:
+            version: $results["ServerVersion"]
+            mpm: $mpm
+          values:
+            _: 1
+
+        # apache restart generation
+          # ParentServerConfigGeneration: 1
+          # ParentServerMPMGeneration: 0
+        - metric_name: generation
+          type: gauge
+          help: Apache restart generation
+          key_labels:
+            interval: $gen.label
+          values:
+            _: $gen.value
+          loop: >-
+            js: [
+                { "label": "config", "value": results["ParentServerConfigGeneration"] },
+                { "label": "mpm", "value": results["ParentServerMPMGeneration"] },
+              ]
+          loop_var: gen
+
+        # apache load
+          # Load1: 1.11
+          # Load5: 0.88
+          # Load15: 0.70
+        - metric_name: load
+          help: "Apache server load"
+          type: gauge
+          key_labels:
+            interval: $load.label
+          values:
+            _: $load.value
+          loop: >-
+            js: [
+                { "label": "1min", "value": results["Load1"] },
+                { "label": "5min", "value": results["Load5"] },
+                { "label": "15min", "value": results["Load15"] },
+              ]
+          loop_var: load
+        # apache total count accesses
+          # Total Accesses: 13950
+        - metric_name: accesses_total
+          type: counter
+          help: Current total apache accesses
+          values:
+            _: $results["Total Accesses"]
+
+        # apache total sent kbytes
+          # Total kBytes: 51791
+        - metric_name: sent_kilobytes_total
+          type: counter
+          help: Current total kbytes sent
+          values:
+            _: $results["Total kBytes"]
+
+        # apache req total duration
+          # Total Duration: 520607
+        - metric_name: duration_ms_total
+          type: counter
+          help: Total duration of all registered requests in ms
+          values:
+            _: $results["Total Duration"]
+
+        # apache cpu total time spent
+        - metric_name: cpu_time_ms_total
+          type: counter
+          help: Apache CPU time in ms labeled by type (user,system)
+          key_labels:
+            type: $cpu.label
+          values:
+            _: $cpu.value
+          loop: >-
+            js: 
+              var cpu_user = 0, cpu_system = 0;
+              if( results["CPUUser"] != undefined ) {
+                cpu_user += results["CPUUser"]
+              }
+              if( results["CPUChildrenUser"] != undefined ) {
+                cpu_user += results["CPUChildrenUser"]
+              }
+              if( results["CPUSystem"] != undefined ) {
+                cpu_system += results["CPUSystem"]
+              }
+              if( results["CPUChildrenUser"] != undefined ) {
+                cpu_system += results["CPUChildrenSystem"]
+              }
+              [
+                { "label": "user", "value": 1000 * cpu_user },
+                { "label": "system", "value": 1000 * cpu_system },
+              ]
+          loop_var: cpu
+        # apache cpu load
+        - metric_name: cpuload
+          type: gauge
+          help: The current percentage CPU used by each worker and in total by all workers combined
+          values:
+            _: $results["CPULoad"]
+        # apache uptime
+        - metric_name: uptime_seconds_total
+          type: counter
+          help: Current uptime in seconds
+          values:
+            _: $results["Uptime"]
+
+        # apache workers busy/idle
+          # BusyWorkers: 1
+          # GracefulWorkers: 0
+          # IdleWorkers: 99
+        - metric_name: workers
+          type: counter
+          help: Apache workers count by statuses (idle/graceful/busy)
+          key_labels:
+            state: $workers.label
+          values:
+            _: $workers.value
+          loop: >-
+            js: [
+                { "label": "busy", "value": results["BusyWorkers"] },
+                { "label": "idle", "value": results["IdleWorkers"] },
+                { "label": "graceful", "value": results["GracefulWorkers"] },
+              ]
+          loop_var: workers
+
+        # apache processes
+          # Processes: 4
+          # Stopping: 0
+        - metric_name: processes
+          type: counter
+          help: Apache processr count by statuses (all/stopping)
+          key_labels:
+            state: $procs.label
+          values:
+            _: $procs.value
+          loop: >-
+            js: [
+                { "label": "all", "value": results["Processes"] },
+                { "label": "stopping", "value": results["Stopping"] },
+              ]
+          loop_var: procs
+
+        # apache connections (total/writing/keepalive/closing)
+          # ConnsTotal: 2
+          # ConnsAsyncWriting: 0
+          # ConnsAsyncKeepAlive: 0
+          # ConnsAsyncClosing: 0
+        - metric_name: processes
+          type: counter
+          help: Apache connection count by status (total/writing/keepalive/closing)
+          key_labels:
+            state: $conns.label
+          values:
+            _: $conns.value
+          loop: >-
+            js: [
+                { "label": "total", "value": results["ConnsTotal"] },
+                { "label": "writing", "value": results["ConnsAsyncWriting"] },
+                { "label": "keepalive", "value": results["ConnsAsyncKeepAlive"] },
+                { "label": "closing", "value": results["ConnsAsyncClosing"] },
+              ]
+          loop_var: conns
+
+        # apache scoreboards
+          # Scoreboard: _______________________________________________________________________________________________W____............................................................................................................................................................................................................................................................................................................
+        - metric_name: scoreboard
+          type: gauge
+          help: Apache scoreboard count by status (idle/startup/read/reply/keepalive/dns/closing/logging/graceful_stop/idle_cleanupopen_slot)
+          key_labels:
+            state: $score.label
+          values:
+            _: $score.value
+          loop: >-
+            js:
+              var scoreboardLabelMap = {
+                "_": "idle",
+                "S": "startup",
+                "R": "read",
+                "W": "reply",
+                "K": "keepalive",
+                "D": "dns",
+                "C": "closing",
+                "L": "logging",
+                "G": "graceful_stop",
+                "I": "idle_cleanup",
+                ".": "open_slot",
+              }
+              var scores = {};
+              for( const label of Object.values(scoreboardLabelMap) ) {
+                  scores[label] = 0
+              }
+              for( const char of results["Scoreboard"]) {
+                if( scoreboardLabelMap[char] != undefined ) {
+                  scores[scoreboardLabelMap[char]] ++
+                }
+              }
+              var res = []
+              for( const [label, value] of Object.entries(scores)) {
+                res.push( { 'label': label, 'value': value } )
+              }
+              res
+          loop_var: score
+
+        # valorize performance metrics for the /server-status url.
+        - metric_name: query_perf_seconds
+          help: "query /server-status duration in seconds"
+          type: gauge
+          key_labels:
+            stage: $item
+            page: /server-status
+          values:
+            _: $trace_infos.${item}
+          # with_items: '{{ exporterKeys .trace_infos | toRawJson }}'
+          with_items: >
+            js: Object.keys( trace_infos )

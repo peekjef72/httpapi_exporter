@@ -10,15 +10,15 @@ collector_name: volumes_statistics
 # use global metric_prefix
 # metric_prefix: ""
 
-templates:
+# templates:
   # severity: |-
   #   {{ $sev := . | toString }}
   #   {{ $severityDef := dict 1 "fatal" 2 "critical" 3 "major" 4 "minor" 5 "degraded" 6 "info" 7 "debug" 99 "unknown" }}
   #   {{ pluck $sev $severityDef | first | default "undef" }}
-  provisioningType: |-
-    {{ $type := . | toString }}
-    {{ $typeDef := dict 1 "FULL" 2 "TPVV" 3 "SNP" 4 "PEER" 5 "UNKNOWN" 6 "TDVV" 7 "DSS" }}
-    {{ pluck $type $typeDef | first | default "undef" }}
+  # provisioningType: |-
+  #   {{ $type := . | toString }}
+  #   {{ $typeDef := dict 1 "FULL" 2 "TPVV" 3 "SNP" 4 "PEER" 5 "UNKNOWN" 6 "TDVV" 7 "DSS" }}
+  #   {{ pluck $type $typeDef | first | default "undef" }}
 
 scripts:
   get volumes:
@@ -127,19 +127,62 @@ scripts:
     - name: proceed volumes elements
       loop: $results.members
       # loop: item
-      when:
-        # only base volume
-        - .item.copyType | int | eq 1
-        # not a system volume
-        - not .item.policies.system
-        # not a system maintained deduplication storage
-        - .item.provisioningType | int | eq 7 | not
+      when: >-
+        js:
+          // ** only base volume
+          (item.copyType == 1)
+          // ** not a system volume
+          && !(item.policies.system)
+          // ** not a system maintained deduplication storage
+          && (item.provisioningType != 7 )
+      # when: >-
+      #   # only base volume
+      #   - .item.copyType | int | eq 1
+      #   # not a system volume
+      #   - not .item.policies.system
+      #   # not a system maintained deduplication storage
+      #   - .item.provisioningType | int | eq 7 | not
+
       actions:
         - name: build labels
           set_fact:
             key_labels: 
               name: $item.name
-              provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+              # provisionningtype: '{{ template "provisioningType" .item.provisioningType }}'
+              provisionningtype: >-
+                js:
+                  var ret = "undef"
+                  switch(item.provisioningType) {
+                    case 1:
+                    case "1":
+                      ret = "FULL"
+                      break
+                    case 2:
+                    case "2":
+                      ret = "TPVV"
+                      break
+                    case 3:
+                    case "3":
+                      ret = "SNP"
+                      break
+                    case 4:
+                    case "4":
+                      ret = "PEER"
+                      break
+                    case 5:
+                    case "5":
+                      ret = "UNKNOWN"
+                      break
+                    case 6:
+                    case "6":
+                      ret = "TDVV"
+                      break
+                    case 7:
+                    case "7":
+                      ret = "DSS"
+                      break
+                  }
+                  ret
 
         - name: build metrics
           scope: none
@@ -149,23 +192,31 @@ scripts:
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.sizeMiB "Mb" }}'
+                # _: '{{ convertToBytes .item.sizeMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.sizeMiB, "Mb" )'
 
             - metric_name: volume_used_bytes
               help: volume usage in bytes
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.totalUsedMiB "Mb" }}'
+                _: 'js: exporter.convertToBytes( item.totalUsedMiB, "Mb" )'
+                # _: '{{ convertToBytes .item.totalUsedMiB "Mb" }}'
 
             - metric_name: volume_available_bytes
               help: volume available bytes
               type: gauge
               key_labels: $key_labels
               values:
+                # _: >-
+                #   {{ $avail := subf .item.sizeMiB .item.totalUsedMiB .item.totalReservedMiB }}
+                #   {{ convertToBytes $avail "Mb" }}
                 _: >-
-                  {{ $avail := subf .item.sizeMiB .item.totalUsedMiB .item.totalReservedMiB }}
-                  {{ convertToBytes $avail "Mb" }}
+                  js:
+                    exporter.convertToBytes( 
+                      (item.sizeMiB - (item.totalUsedMiB + item.totalReservedMiB)), "Mb"
+                    )
+
 
             - metric_name: volume_compaction_ratio
               help: The compaction ratio indicates the overall amount of storage space saved with 3PAR thin technology.
@@ -252,33 +303,37 @@ scripts:
 
             # read and write bytes per seconds
             - metric_name: volume_read_bytes_per_second
-              help: Number of kilobytes per second.
+              help: Number of bytes per second.
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.KBytes.read "Kb"}}'
+                _: 'js: exporter.convertToBytes( item.KBytes.read, "kb" )'
+                # _: '{{ convertToBytes .item.KBytes.read "Kb"}}'
 
             - metric_name: volume_write_bytes_per_second
-              help: Number of kilobytes per second.
+              help: Number of bytes per second.
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ convertToBytes .item.KBytes.write "Kb" }}'
+                _: 'js: exporter.convertToBytes( item.KBytes.write, "kb" )'
+                # _: '{{ convertToBytes .item.KBytes.write "Kb" }}'
 
             # read and write latency Service Time
             - metric_name: volume_read_latency_second
-              help: Number of kilobytes per second.
+              help: Read service time in second statistic data.
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ mulf .item.serviceTimeMS.read 1E-3}}'
+                _: 'js: item.serviceTimeMS.read * 1E-3'
+                # _: '{{ mulf .item.serviceTimeMS.read 1E-3}}'
 
             - metric_name: volume_write_latency_second
               help: Write service time in second statistic data.
               type: gauge
               key_labels: $key_labels
               values:
-                _: '{{ mulf .item.serviceTimeMS.write 1E-3 }}'
+                _: 'js: item.serviceTimeMS.write * 1E-3'
+                # _: '{{ mulf .item.serviceTimeMS.write 1E-3 }}'
 
             # busy percent
             - metric_name: volume_busy_percent

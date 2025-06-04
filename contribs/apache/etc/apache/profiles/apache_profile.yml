@@ -1,0 +1,25 @@
+  apache:
+    # all metrics will be named "[metric_prefix]_[metric_name]"
+    metric_prefix: "apache"
+    scripts:
+      init: ~
+      login: ~
+      logout: ~
+
+      # method call to determine if a target is responding; will call login() if necessary
+      ping:
+        - name: check if API is replying
+          query:
+            url: /server-status?auto
+            method: GET
+            # headers:
+            ok_status: 200
+            var_name: status
+            debug: true
+            parser: text-lines
+            trace: true
+        - name: analyze login response ok
+          set_fact:
+            logged: true
+          when:
+            - "js: status_code == 200"

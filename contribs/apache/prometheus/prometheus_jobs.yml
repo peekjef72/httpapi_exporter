@@ -1,0 +1,39 @@
+#--------- Start prometheus apache exporter direct ---------#
+  - job_name: "apache"
+    metrics_path: /metrics
+    file_sd_configs:
+      - files: [ "/etc/prometheus/apache_nodes/*.yml" ]
+
+    # or static configs...
+    # static_configs:
+    #   - targets: [ 1.2.3.4 ]
+    #     labels:
+    #       __param_auth_key: "__shared__auth_passphrase__"
+    #       host: "apache.server.dom:9117"
+    #       # optional labels for dashboard
+    #       application: "APACHE"
+    #       environment: "DEV"
+
+#--------- End prometheus arubacx exporter direct ---------#
+
+# or via pushprox_proxy
+#--------- Start prometheus apache exporter proxy ---------#
+  - job_name: "apache"
+    proxy_url: "http://pushprox_proxy:9101/"
+    scrape_interval: 60s
+    scrape_timeout: 5s
+    file_sd_configs:
+      - files: [ "/etc/prometheus/apache_nodes/*.yml" ]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: host
+      - source_labels: [host]
+        target_label: host
+        regex: 'https?:(.*)'
+        replacement: "${1}"
+      - source_labels: [__tmp_collector_host]
+        target_label: __address__
+
+#--------- End prometheus arubacx exporter proxy ---------#

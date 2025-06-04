@@ -117,27 +117,82 @@ func NewMetricFamily(
 
 // Collect is the equivalent of prometheus.Collector.Collect() but takes a Query output map to populate values from.
 func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metric) {
-	var set_root bool = false
+	var (
+		set_root bool = false
+	)
 	// reset logcontxt for MetricFamily: remove previous errors if any
 	mf.logContext = make([]any, 2)
 	mf.logContext[0] = "metric"
 	mf.logContext[1] = mf.config.Name
 
-	item, ok := rawdatas.(map[string]any)
+	symtab, ok := rawdatas.(map[string]any)
 	if !ok {
 		err := fmt.Errorf("metric %s symbols table undefined", mf.config.Name)
 		logger.Warn(err.Error())
 		ch <- NewInvalidMetric(mf.logContext, err)
 		return
 	}
-	symtab := item
+	//	symtab := item
+	logger.Debug("metric.Collect() check scope",
+		"coll", CollectorId(symtab, logger),
+		"script", ScriptName(symtab, logger),
+	)
+	root_symtab := symtab
+	// set default scope to "loop_var" entry: item[item["loop_var"]]
+	if mf.config.Scope == "" || mf.config.Scope != "none" {
+		var (
+			err   error
+			scope string
+		)
+		if mf.config.Scope == "" {
+			if loop_var, ok := symtab["loop_var"].(string); ok {
+				if loop_var == "empty_item" {
+					loop_var = "item"
+				}
+				scope = loop_var
+			}
+		} else {
+			scope = mf.config.Scope
+		}
+		if scope != "" {
+			logger.Debug(fmt.Sprintf("metric.Collect() scope set to '%s'", scope))
+			symtab, err = SetScope(scope, symtab)
+			if err != nil {
+				err = fmt.Errorf("metric %s: %s", mf.name, err.Error())
+				logger.Warn(err.Error(),
+					"coll", CollectorId(root_symtab, logger),
+					"script", ScriptName(root_symtab, logger),
+				)
+				// only stop if scope is not found!
+				if sc_err, ok := err.(ScopeError); ok {
+					if sc_err.Code() == error_scope_not_found {
+						ch <- NewInvalidMetric(mf.logContext, err)
+						return
+					}
+				}
+				// else try to continue... recover error.
+			}
+			// set root entry in symtab if not already exists.
+			// don't allow several levels of root
+			if _, found := symtab["root"]; !found {
+				symtab["root"] = rawdatas
+				set_root = true
+			}
+		}
+	} else {
+		logger.Debug("metric.Collect() scope set to 'none'",
+			"coll", CollectorId(root_symtab, logger),
+			"script", ScriptName(root_symtab, logger),
+		)
+	}
+
 	if mf.name == "" {
-		name, err := mf.config.name.GetValueString(item)
+		name, err := mf.config.name.GetValueString(symtab, logger)
 		if err != nil {
 			err := fmt.Errorf("metric %s can't get metric name", mf.config.Name)
 			logger.Warn(err.Error(),
-				"collid", CollectorId(symtab, logger),
-				"script", ScriptName(symtab, logger),
+				"coll", CollectorId(root_symtab, logger),
+				"script", ScriptName(root_symtab, logger),
 			)
 			ch <- NewInvalidMetric(mf.logContext, err)
 			return
@@ -146,12 +201,12 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		}
 	}
 	if mf.help == "" {
-		help, err := mf.config.help.GetValueString(item)
+		help, err := mf.config.help.GetValueString(symtab, logger)
 		if err != nil {
 			err := fmt.Errorf("metric %s can't get metric help", mf.name)
 			logger.Warn(err.Error(),
-				"collid", CollectorId(symtab, logger),
-				"script", ScriptName(symtab, logger),
+				"coll", CollectorId(root_symtab, logger),
+				"script", ScriptName(root_symtab, logger),
 			)
 			ch <- NewInvalidMetric(mf.logContext, err)
 			return
@@ -160,51 +215,10 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		}
 	}
 	mf.logContext[1] = mf.name
-	logger.Debug("metric.Collect() check scope",
-		"collid", CollectorId(symtab, logger),
-		"script", ScriptName(symtab, logger),
-	)
-	// set default scope to "loop_var" entry: item[item["loop_var"]]
-	if mf.config.Scope == "" {
-		if loop_var, ok := item["loop_var"].(string); ok {
-			if loop_var == "empty_item" {
-				loop_var = "item"
-			}
-			if datas, ok := item[loop_var].(map[string]any); ok {
-				item = datas
-				item["root"] = rawdatas
-				set_root = true
-			}
-			logger.Debug(fmt.Sprintf("metric.Collect() scope set to %s", loop_var),
-				"collid", CollectorId(symtab, logger),
-				"script", ScriptName(symtab, logger),
-			)
-		}
-	} else if mf.config.Scope != "none" {
-		var err error
-		logger.Debug(fmt.Sprintf("metric.Collect() scope set to %s", mf.config.Scope))
-		item, err = SetScope(mf.config.Scope, item)
-		if err != nil {
-			err = fmt.Errorf("metric %s can't set scope: %s", mf.name, err)
-			logger.Warn(err.Error(),
-				"collid", CollectorId(symtab, logger),
-				"script", ScriptName(symtab, logger),
-			)
-			ch <- NewInvalidMetric(mf.logContext, err)
-			return
-		}
-		item["root"] = rawdatas
-		set_root = true
-	} else {
-		logger.Debug("metric.Collect() scope set to 'none'",
-			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
-		)
-	}
 
 	// build the labels family with the content of the var(*Field)
 	if len(mf.labels) == 0 && mf.config.key_labels != nil {
-		if labelsmap_raw, err := ValorizeValue(item, mf.config.key_labels, logger, mf.name, true); err == nil {
+		if labelsmap_raw, err := ValorizeValue(symtab, mf.config.key_labels, logger, mf.name, true); err == nil {
 			if key_labels_map, ok := labelsmap_raw.(map[string]any); ok {
 				label_len := len(key_labels_map)
 				if len(mf.config.Values) > 1 {
@@ -217,8 +231,8 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 					mf.labels[i], err = NewLabel(key, RawGetValueString(val_raw), mf.name, "key_label", nil)
 					if err != nil {
 						logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
-							"collid", CollectorId(symtab, logger),
-							"script", ScriptName(symtab, logger),
+							"coll", CollectorId(root_symtab, logger),
+							"script", ScriptName(root_symtab, logger),
 						)
 						continue
 					}
@@ -229,23 +243,23 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 					mf.labels[i], err = NewLabel(mf.config.ValueLabel, "", mf.name, "value_label", nil)
 					if err != nil {
 						logger.Warn(fmt.Sprintf("invalid templatefor value_label for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
-							"collid", CollectorId(symtab, logger),
-							"script", ScriptName(symtab, logger),
+							"coll", CollectorId(root_symtab, logger),
+							"script", ScriptName(root_symtab, logger),
 						)
 						// 	return nil, err
 					}
 				}
 			} else {
 				logger.Warn("invalid type need map[string][string]", "type_error", reflect.TypeOf(labelsmap_raw),
-					"collid", CollectorId(symtab, logger),
-					"script", ScriptName(symtab, logger),
+					"coll", CollectorId(root_symtab, logger),
+					"script", ScriptName(root_symtab, logger),
 				)
 			}
 		} else {
 			logger.Warn(
 				fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
-				"collid", CollectorId(symtab, logger),
-				"script", ScriptName(symtab, logger),
+				"coll", CollectorId(root_symtab, logger),
+				"script", ScriptName(root_symtab, logger),
 			)
 		}
 	}
@@ -259,9 +273,9 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		if label == nil {
 			continue
 		}
-		if item != nil {
+		if symtab != nil {
 			if label.Key != nil {
-				labelNames[i], err = label.Key.GetValueString(item)
+				labelNames[i], err = label.Key.GetValueString(symtab, logger)
 				if err != nil {
 					err = fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err)
 					logger.Warn(err.Error())
@@ -271,12 +285,12 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 			}
 
 			if label.Value != nil {
-				labelValues[i], err = label.Value.GetValueString(item)
+				labelValues[i], err = label.Value.GetValueString(symtab, logger)
 				if err != nil {
 					err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
 					logger.Warn(err.Error(),
-						"collid", CollectorId(symtab, logger),
-						"script", ScriptName(symtab, logger),
+						"coll", CollectorId(root_symtab, logger),
+						"script", ScriptName(root_symtab, logger),
 					)
 					ch <- NewInvalidMetric(mf.logContext, err)
 					return
@@ -295,26 +309,26 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 		// fill the label value for value_label with the current name of the value if there is a label !
 		if len(mf.config.Values) > 1 {
-			labelValues[len(labelValues)-1], err = label.Key.GetValueString(item)
+			labelValues[len(labelValues)-1], err = label.Key.GetValueString(symtab, logger)
 			if err != nil {
 				err = fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err)
 				logger.Warn(err.Error(),
-					"collid", CollectorId(symtab, logger),
-					"script", ScriptName(symtab, logger),
+					"coll", CollectorId(root_symtab, logger),
+					"script", ScriptName(root_symtab, logger),
 				)
 				ch <- NewInvalidMetric(mf.logContext, err)
 				return
 			}
 		}
-		f_value, err = label.Value.GetValueFloat(item)
+		f_value, err = label.Value.GetValueFloat(symtab, logger)
 		if err != nil {
 			warn := true
 			if var_err, ok := err.(VarError); ok {
 				if var_err.Code() == error_var_not_found {
 					warn = false
 					logger.Debug(err.Error(),
-						"collid", CollectorId(symtab, logger),
-						"script", ScriptName(symtab, logger),
+						"coll", CollectorId(root_symtab, logger),
+						"script", ScriptName(root_symtab, logger),
 					)
 				}
 			}
@@ -322,8 +336,8 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 			if warn {
 				err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
 				logger.Warn(err.Error(),
-					"collid", CollectorId(symtab, logger),
-					"script", ScriptName(symtab, logger),
+					"coll", CollectorId(root_symtab, logger),
+					"script", ScriptName(root_symtab, logger),
 				)
 				ch <- NewInvalidMetric(mf.logContext, err)
 			}
@@ -331,13 +345,18 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		}
 		logger.Debug(
 			fmt.Sprintf("metric.Collect() send metric to channel (len labelNames: %d lenlabelValue: %d)", len(labelNames), len(labelValues)),
-			"collid", CollectorId(symtab, logger),
-			"script", ScriptName(symtab, logger),
+			"coll", CollectorId(root_symtab, logger),
+			"script", ScriptName(root_symtab, logger),
 		)
 		ch <- NewMetric(&mf, f_value, labelNames, labelValues)
 	}
 	if set_root {
-		delete(item, "root")
+		delete(symtab, "root")
+		// logger.Debug(
+		// 	"[metric.Collect()] remove root from symtab",
+		// 	"coll", CollectorId(symtab, logger),
+		// 	"script", ScriptName(symtab, logger),
+		// )
 	}
 }
 

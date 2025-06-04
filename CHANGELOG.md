@@ -4,12 +4,77 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.1 / 2025-03-30 - not release
+## 0.4.1 / 2025-06-04
+
+- added: new contrib [apache_exporter configuration](./contribs/apache/README.md). a good example to introduce javascript code to build metrics.
+
+### 2025-05-25 - not release
+
+- added: support for env vars in target_config [see issue #1](https://github.com/peekjef72/httpapi_exporter/issues/1) :
+
+e.g.:
+
+```yaml
+targets:
+  - name: my_target
+    scheme: https
+    host: $env:MY_HOST_ENV_VAR_NAME
+    port: 443
+```
+
+### 2025-05-16 - not release
+
+- changed: internal "scope" directive: add error and debug msg.
+- added: new parameter 'collector' to '/metrics' entry point. Collect only the specified collector(s). May be use to collect specific metrics in a particular prometheus job.
+
+### 2025-05-07 - not release
+
+#### BREAKING CHANGE
+
+- renamed: variable `results_code` to `status_code`
+  => update all config profiles !
+- changed: in log line renamed 'collid' to 'coll' and use collector name instead of a sequential number.
+
+### 2025-05-06 - not release
+
+- added: support for `javascript code` in each field, as an alternative to gotemplate. This part is still in development (see examples)
+
+- added: new metric named "query_status" (prefixed by metric_prefix) and labeled by url query stage. The goal is to provide a always generated value for each queried url with the http status code as value. The generation is conditionned by the status attribute from each query action and the default value is false.
+
+```yaml
+  - name: check api url
+    query:
+      url: /api/health
+      method: GET
+      status: true
+      trace: true
+```
+
+will provide:
+
+```text
+# HELP xxx_query_status query http status label by phase(url): http return code
+# TYPE xxx_query_status gauge
+xxx_query_status{phase="/api/health"} 200
+# HELP xxx_query_perf_seconds query stage duration in seconds
+# TYPE xxx_query_perf_seconds gauge
+xxx_query_perf_seconds{page="/status",stage="conn_time"} 0.004550086
+xxx_query_perf_seconds{page="/status",stage="dns_lookup"} 4.3538e-05
+xxx_query_perf_seconds{page="/status",stage="response_time"} 4.5354e-05
+xxx_query_perf_seconds{page="/status",stage="server_time"} 0.000361965
+xxx_query_perf_seconds{page="/status",stage="tcp_con_time"} 0.000111871
+xxx_query_perf_seconds{page="/status",stage="tls_handshake"} 0.004329272
+xxx_query_perf_seconds{page="/status",stage="total_time"} 0.004912388
+
+```
+
+If the request timeouts, the status code is 504.
+If the request is not perfomed (target is down), the status code is 0.
 
 ### 2025-03-26 - not release
 
 - added: global config parameter tls_version that allows to add old tls ciphers, because of golang change since 1.22: see [config](doc/config.md); update the netscaler default config file to use tls_version: all
-- code refactored to use [cast](github.com/spf13/cast) for type conversion in internal functions.
+- code refactored to use [cast](http://github.com/spf13/cast) for type conversion in internal functions.
 - added: scripting language evolution to allow named var into expr : `$var_name.${another_varname[.attr1]}[.attr2]`
 - changed: loglevel trace from warn to debug for metrics not found:
 
@@ -27,7 +92,7 @@ e.g.:
   
   The same behavior is implemented for variables used in `loop` or `with_items` action.
 
-### BREAKING CHANGE
+#### BREAKING CHANGE
 
 - remove feature that allows to set a single text not preceded by $ sign as value for key_labels or values:
 

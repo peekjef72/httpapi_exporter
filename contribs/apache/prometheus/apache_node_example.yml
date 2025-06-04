@@ -1,0 +1,20 @@
+- targets: [ "apache_node_1:9117" ]
+  labels:
+    # the target itself using apache_exporter default template
+    __param_target: "http://apache_node_1:80"
+    # if you have activated password encrypted passphrass
+    # __param_auth_key: __shared__auth_passphrase__
+    # or use a custom template call my_template
+    #__param_model: my_template
+    host: "apache_node_1:80"
+    #custom labels…
+    application: "APACHE"
+    environment: "DEV"
+
+# using pushprox_proxy/pushprox_client and no specific 
+# name defined on exporter (use default template)
+- targets: [ "https://apache_node_1:443" ]
+  labels:
+    __tmp_collector_host: "apache_node_1:9117"
+    application: "APACHE"
+    environment: "PROD"

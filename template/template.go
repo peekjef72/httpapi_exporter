@@ -1,4 +1,4 @@
-package main
+package template
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"time"
 
 	"strings"
 	ttemplate "text/template"
@@ -489,7 +490,26 @@ func exporterRegexExtract(regex_pat string, search_str string) ([]string, error)
 	}
 }
 
-func mymap() ttemplate.FuncMap {
+func default_func(check, def string) string {
+	if check == "" {
+		return def
+	}
+	return check
+}
+
+func js_getDurationSecond(duration_str string) (int, error) {
+	sec := 0
+	d, err := time.ParseDuration(duration_str)
+	if err != nil {
+		err := fmt.Errorf("can't extract duration from string: %s", err.Error())
+		return sec, err
+	}
+	sec = int(d.Seconds())
+
+	return sec, nil
+}
+
+func Mymap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["convertBoolToInt"] = convertBoolToInt
@@ -516,4 +536,25 @@ func mymap() ttemplate.FuncMap {
 	sprig_map["exporterRegexExtract"] = exporterRegexExtract
 
 	return sprig_map
+}
+
+func Js_func_map() map[string]any {
+	js_map := make(map[string]any)
+	js_map["convertToBytes"] = convertToBytes
+	js_map["convertBoolToInt"] = convertBoolToInt
+
+	js_map["default"] = default_func
+	js_map["decryptPass"] = exporterDecryptPass
+
+	//js_map["exists"] = exists
+
+	js_map["getHeader"] = getHeader
+	js_map["getCookie"] = getCookie
+
+	js_map["lookupAddr"] = exportLookupAddr
+
+	js_map["queryEscape"] = QueryEscape
+	js_map["getDurationSecond"] = js_getDurationSecond
+
+	return js_map
 }

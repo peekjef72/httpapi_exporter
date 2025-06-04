@@ -13,12 +13,12 @@ import (
 // ***************************************************************************************
 
 type SetStatsAction struct {
-	Name    *Field              `yaml:"name,omitempty" json:"name,omitempty"`
-	With    []any               `yaml:"with,omitempty" json:"with,omitempty"`
-	When    []*exporterTemplate `yaml:"when,omitempty" json:"when,omitempty"`
-	LoopVar string              `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
-	Vars    [][]any             `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Until   []*exporterTemplate `yaml:"until,omitempty" json:"until,omitempty"`
+	Name    *Field   `yaml:"name,omitempty" json:"name,omitempty"`
+	With    []any    `yaml:"with,omitempty" json:"with,omitempty"`
+	When    []*Field `yaml:"when,omitempty" json:"when,omitempty"`
+	LoopVar string   `yaml:"loop_var,omitempty" json:"loop_var,omitempty"`
+	Vars    [][]any  `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Until   []*Field `yaml:"until,omitempty" json:"until,omitempty"`
 
 	SetStats map[string]any `yaml:"set_stats" json:"set_stats"`
 
@@ -31,11 +31,11 @@ func (a *SetStatsAction) Type() int {
 }
 
 func (a *SetStatsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
-	str, err := a.Name.GetValueString(symtab)
+	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
 		logger.Warn(
 			fmt.Sprintf("invalid action name: %v", err),
-			"collid", CollectorId(symtab, logger),
+			"coll", CollectorId(symtab, logger),
 			"script", ScriptName(symtab, logger))
 		return ""
 	}
@@ -56,11 +56,11 @@ func (a *SetStatsAction) SetWidth(with []any) {
 	a.With = with
 }
 
-func (a *SetStatsAction) GetWhen() []*exporterTemplate {
+func (a *SetStatsAction) GetWhen() []*Field {
 	return a.When
 
 }
-func (a *SetStatsAction) SetWhen(when []*exporterTemplate) {
+func (a *SetStatsAction) SetWhen(when []*Field) {
 	a.When = when
 }
 
@@ -77,10 +77,10 @@ func (a *SetStatsAction) GetVars() [][]any {
 func (a *SetStatsAction) SetVars(vars [][]any) {
 	a.vars = vars
 }
-func (a *SetStatsAction) GetUntil() []*exporterTemplate {
+func (a *SetStatsAction) GetUntil() []*Field {
 	return a.Until
 }
-func (a *SetStatsAction) SetUntil(until []*exporterTemplate) {
+func (a *SetStatsAction) SetUntil(until []*Field) {
 	a.Until = until
 }
 
@@ -89,8 +89,8 @@ func (a *SetStatsAction) setBasicElement(
 	vars [][]any,
 	with []any,
 	loopVar string,
-	when []*exporterTemplate,
-	until []*exporterTemplate) error {
+	when []*Field,
+	until []*Field) error {
 	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
 }
 
@@ -127,7 +127,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 
 	logger.Debug(
 		"[Type: SetStatsAction]",
-		"collid", CollectorId(symtab, logger),
+		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
 
@@ -137,7 +137,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 			return errors.New("set_fact: invalid key value")
 		}
 		if key, ok := pair[0].(*Field); ok {
-			key_name, err = key.GetValueString(symtab)
+			key_name, err = key.GetValueString(symtab, logger)
 			if err == nil {
 				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
 					return err
@@ -145,7 +145,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 				if value_name == nil {
 					logger.Debug(
 						fmt.Sprintf("    %s is nil: not set into set_stats", key_name),
-						"collid", CollectorId(symtab, logger),
+						"coll", CollectorId(symtab, logger),
 						"script", ScriptName(symtab, logger),
 						"name", a.GetName(symtab, logger))
 				} else {
@@ -155,14 +155,14 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 						if key_name != "_" {
 							logger.Debug(
 								fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name),
-								"collid", CollectorId(symtab, logger),
+								"coll", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
 								"name", a.GetName(symtab, logger))
 							if err := SetSymTab(dst_symtab, key_name, value_name); err != nil {
 								logger.Warn(
 									fmt.Sprintf("error setting map value for key '%s'", key_name),
 									"errmsg", err,
-									"collid", CollectorId(symtab, logger),
+									"coll", CollectorId(symtab, logger),
 									"script", ScriptName(symtab, logger),
 									"name", a.GetName(symtab, logger))
 								continue
@@ -171,7 +171,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 						} else {
 							logger.Debug(
 								"    result discard (key >'_')",
-								"collid", CollectorId(symtab, logger),
+								"coll", CollectorId(symtab, logger),
 								"script", ScriptName(symtab, logger),
 								"name", a.GetName(symtab, logger))
 						}

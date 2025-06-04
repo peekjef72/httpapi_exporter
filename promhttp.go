@@ -75,6 +75,31 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 			return
 		}
 
+		// set a specific collector_name for target
+		if len(params["collector"]) > 0 {
+			// to store anc check name unicity
+			colls := make(map[string]*CollectorConfig, len(params["collector"]))
+			for _, collector_name := range params["collector"] {
+				if _, ok := colls[collector_name]; !ok {
+					coll := exporter.Config().FindCollector(collector_name)
+					if coll != nil {
+						exporter.Config().logger.Debug(fmt.Sprintf("adding specific collector %s", collector_name),
+							"target", target.Name())
+						// target.SetSymbol("collector_name", collector_name)
+					} else {
+						err := fmt.Errorf("collector name '%s' not found", collector_name)
+						HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
+						return
+					}
+					colls[collector_name] = coll
+				}
+			}
+			if err := target.SetSpecificCollectorConfig(colls); err != nil {
+				HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
+				return
+			}
+		}
+
 		// set authentication for target if one is specified and it differs from target internal
 		auth_name := params.Get("auth_name")
 		if auth_name != "" && target.Config().AuthName != auth_name {
@@ -149,6 +174,7 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 
 func contextFor(req *http.Request, exporter Exporter, target Target) (context.Context, context.CancelFunc) {
 	timeout := time.Duration(0)
+	timeout_with_offset := timeout
 	configTimeout := time.Duration(target.Config().ScrapeTimeout)
 	// If a timeout is provided in the Prometheus header, use it.
 	if v := req.Header.Get("X-Prometheus-Scrape-Timeout-Seconds"); v != "" {
@@ -158,6 +184,7 @@ func contextFor(req *http.Request, exporter Exporter, target Target) (context.Co
 				fmt.Sprintf("Failed to parse timeout (`%s`) from Prometheus header: %s", v, err.Error()))
 		} else {
 			timeout = time.Duration(timeoutSeconds * float64(time.Second))
+			timeout_with_offset = timeout
 
 			// Subtract the timeout offset, unless the result would be negative or zero.
 			timeoutOffset := time.Duration(exporter.Config().Globals.TimeoutOffset)
@@ -166,7 +193,7 @@ func contextFor(req *http.Request, exporter Exporter, target Target) (context.Co
 					fmt.Sprintf("global.scrape_timeout_offset (`%s`) is greater than Prometheus' scraping timeout (`%s`), ignoring",
 						timeoutOffset, timeout))
 			} else {
-				timeout -= timeoutOffset
+				timeout_with_offset -= timeoutOffset
 			}
 		}
 	}
@@ -174,15 +201,19 @@ func contextFor(req *http.Request, exporter Exporter, target Target) (context.Co
 	// If the configured scrape timeout is more restrictive, use that instead.
 	if configTimeout > 0 && (timeout <= 0 || configTimeout < timeout) {
 		timeout = configTimeout
+		timeout_with_offset = timeout
 	}
 
+	// no timeout at all, so set deadline to now by convention
 	if timeout <= 0 {
 		target.SetDeadline(time.Time{})
 		return context.Background(), func() {}
 	}
+
 	exporter.Logger().Debug(
-		fmt.Sprintf("launching exporter.Gather() with timeout `%s`", timeout))
-	target.SetDeadline(time.Now().Add(timeout))
+		fmt.Sprintf("launching exporter.Gather() for target '%s' with timeout `%s`", target.Name(), timeout_with_offset))
+	target.SetTimeout(timeout)
+	target.SetDeadline(time.Now().Add(timeout_with_offset))
 
 	return context.WithDeadline(context.Background(), target.GetDeadline())
 	// return context.WithTimeout(context.Background(), timeout)

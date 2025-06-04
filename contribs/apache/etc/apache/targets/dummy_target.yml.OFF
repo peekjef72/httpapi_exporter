@@ -1,0 +1,11 @@
+name: apachehost
+scheme: https
+host: "1.2.3.4"
+port: 443
+# proxy: ""
+# verifySSL: false
+# custom constant labels add to all metrics
+#labels:
+  # - name: value
+collectors:
+  - ~ apache_*

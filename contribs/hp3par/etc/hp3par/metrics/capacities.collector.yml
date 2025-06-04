@@ -82,11 +82,17 @@ scripts:
         # debug: yes
     - name: collect capacity
       # build a list of results each typed by each disk type
+      # {{ $v1 := dict "type" "FC" "result" .results.FCCapacity }}
+      # {{ $v2 := dict "type" "NL" "result" .results.NLCapacity }}
+      # {{ $v3 := dict "type" "SSD" "result" .results.SSDCapacity }}
+      # {{ list $v1 $v2 $v3 | toRawJson }}
       loop: |-
-        {{ $v1 := dict "type" "FC" "result" .results.FCCapacity }}
-        {{ $v2 := dict "type" "NL" "result" .results.NLCapacity }}
-        {{ $v3 := dict "type" "SSD" "result" .results.SSDCapacity }}
-        {{ list $v1 $v2 $v3 | toRawJson }}
+        js:
+          [
+            { "type": "FC", "result": results.FCCapacity },
+            { "type": "NL", "result": results.NLCapacity },
+            { "type": "SSD", "result": results.SSDCapacity },
+          ]
       # restrict symtab to current item
       scope: item
       metrics:
@@ -96,7 +102,8 @@ scripts:
           key_labels:
             type: _
           values:
-            _: '{{ convertToBytes .result.totalMiB "Mb" }}' # convert MiB to bytes
+            _: 'js: exporter.convertToBytes( result.totalMiB, "Mb" )'
+            # _: '{{ convertToBytes .result.totalMiB "Mb" }}' # convert MiB to bytes
 
 
         - metric_name: capacity_free_bytes
@@ -105,4 +112,5 @@ scripts:
           key_labels:
             type: _
           values:
-            _: '{{ convertToBytes .result.freeMiB "Mb" }}' # convert MiB to bytes
+            _: 'js: exporter.convertToBytes( result.freeMiB, "Mb" )'
+            # _: '{{ convertToBytes .result.freeMiB "Mb" }}' # convert MiB to bytes

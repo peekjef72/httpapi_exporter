@@ -1,0 +1,72 @@
+---
+
+##
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/configuration/vpn/vpnvserver_staserver_binding
+### statistics for vpnvserver_staserver_binding
+## url: https://developer-docs.netscaler.com/en-us/adc-nitro-api/current-release/statistics/vpn/vpnvserver
+##
+
+collector_name: netscaler_vpn_staserver_metrics
+
+templates:
+  MemberStatus: '
+    {{- $groupMemberStatusDef := dict
+          "DOWN"   "0" 
+          "UP"     "1"
+    -}}
+    {{- pluck . $groupMemberStatusDef | first | default "0" -}}'
+
+
+scripts:
+  get stat_staserver:
+    - name: collect stat lbvserver
+      query:
+        url: /config/vpnvserver_staserver_binding?bulkbindings=yes
+        var_name: results
+        # debug: true
+        # status: true
+
+    # response payload
+    # {
+    #     "errorcode": 0,
+    #     "message": "Done",
+    #     "severity": "NONE",
+    #     "vpnvserver_staserver_binding": [
+    #         {
+    #             "name": "_XD_193.207.1.16_443",
+    #             "staserver": "http://svctxxa1.arc.dassault-avion.fr:50196",
+    #             "staauthid": "STA0A00C1CF0132",
+    #             "stastate": "UP",
+    #             "stateflag": "536938508",
+    #             "acttype": "8",
+    #             "staaddresstype": "IPV4"
+    #         },
+    #         { ...
+    #         },
+    #     ]
+    # }
+    - name: proceed elements
+      loop: $results.vpnvserver_staserver_binding
+      when:
+        - exporterHasKey .item "name"
+      actions:
+        #**************************************************
+        # set vpn_vserver metrics
+        - name: set vars
+          set_fact:
+            key_labels:
+              name: $item.name
+              staserver: $item.staserver
+              staauthid: $item.staauthid
+
+        - name: set metrics
+          metric_prefix: citrixadc_vpn_staserver
+          scope: none
+          metrics:
+            - metric_name: status
+              help: "Current state of service (0 DOWN / 1 UP)"
+              type: gauge
+              key_labels: $key_labels
+              values:
+                _: '{{ template "MemberStatus" .item.stastate }}'
+

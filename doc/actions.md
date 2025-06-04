@@ -8,12 +8,12 @@ All actions are gathered in a script; So a script is a list of actions, and to e
 
 Each command depends on the base command that have common features that can be use as desired. The base command is a loop of actions to execute. So each action can be a loop that execute its action as many time as specifed; by default it is executed one time: single element loop.
 
-- **name**: the name of the action, it is used to determine which action is run when the script in debug mode.
+- **name**: the name of the action, it is used to determine which action is run when the script is in debug mode.
 - **vars**: a list of local variables to define for the execution of the command
-- **when**: a boolean condition to check before running the action: if condition is true action is run else not! By default if no **when** is specified action is run.
+- **when**: a boolean condition (or a list of conditions) to check before running the action: if condition is true action is run else not! By default if no **when** is specified action is run. If a list of conditions is specified all must be verified : a list of cond is equivalent to a one line cond separated by AND
 
 - **until**: a boolean condition to check in loop context; the loop will continue until the condition is evaluated to false.
-- **with_items** or **loop**: the list of element to loop on. It var is not a list, a temporary list containing the variable is used to loop on, sd the loop will run only one time.
+- **with_items** or **loop**: the list of element to loop on. If var is not a list, a temporary list containing the variable is used to loop on, so the loop will run only one time.
 - **loop_var**: the name of the variable to use for the loop element, by default is it "**item**"
 
 ## block or subactions

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"reflect"
 	"sort"
 	"sync"
@@ -29,6 +30,8 @@ const (
 	scrapeDurationHelp  = "How long it took to scrape the target in seconds"
 	collectorStatusName = "collector_status"
 	collectorStatusHelp = "collector scripts status 0: error - 1: ok - 2: Invalid login 3: Timeout"
+	queryStatusName     = "query_status"
+	queryStatusHelp     = "query http status label by phase(url): http return code"
 )
 
 // Target collects SQL metrics from a single sql.DB instance. It aggregates one or more Collectors and it looks much
@@ -45,24 +48,37 @@ type Target interface {
 	SetLogger(*slog.Logger)
 	Lock()
 	Unlock()
+	GetSpecificCollector() []Collector
+	SetSpecificCollectorConfig(coll map[string]*CollectorConfig) error
+	SetTimeout(time.Duration)
 }
 
 // target implements Target. It wraps a httpAPI, which is initially nil but never changes once instantianted.
 type target struct {
-	name                string
-	config              *TargetConfig
-	client              *Client
-	collectors          []Collector
-	httpAPIScript       map[string]*YAMLScript
+	name       string
+	config     *TargetConfig
+	client     *Client
+	collectors []Collector
+	// httpAPIScript       map[string]*YAMLScript
 	upDesc              MetricDesc
 	scrapeDurationDesc  MetricDesc
 	collectorStatusDesc MetricDesc
-	logContext          []interface{}
+	queryStatusDesc     MetricDesc
+
+	logContext []any
 
 	logger   *slog.Logger
 	deadline time.Time
 
 	has_ever_logged bool
+
+	// user specific collector reference
+	collector_config    map[string]*CollectorConfig
+	specific_collectors []Collector
+
+	// to store query_status results
+	queries_status map[string]any
+
 	// to protect the data during exchange
 	content_mutex *sync.Mutex
 }
@@ -105,6 +121,18 @@ func Msg2Text(msg int) string {
 	return ret
 }
 
+func build_ConstantLabels(labels map[string]string) []*dto.LabelPair {
+	constLabelPairs := make([]*dto.LabelPair, 0, len(labels))
+	for n, v := range labels {
+		constLabelPairs = append(constLabelPairs, &dto.LabelPair{
+			Name:  proto.String(n),
+			Value: proto.String(v),
+		})
+	}
+	sort.Sort(labelPairSorter(constLabelPairs))
+	return constLabelPairs
+}
+
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
 // An empty target name means the exporter is running in single target mode: no synthetic metrics will be exported.
 func NewTarget(
@@ -118,14 +146,13 @@ func NewTarget(
 		logContext = append(logContext, "target", tpar.Name)
 	}
 
-	constLabelPairs := make([]*dto.LabelPair, 0, len(tpar.Labels))
-	for n, v := range tpar.Labels {
-		constLabelPairs = append(constLabelPairs, &dto.LabelPair{
-			Name:  proto.String(n),
-			Value: proto.String(v),
-		})
-	}
-	sort.Sort(labelPairSorter(constLabelPairs))
+	constLabelPairs := build_ConstantLabels(tpar.Labels)
+
+	queryStatusDesc := NewAutomaticMetricDesc(logContext,
+		profile.MetricPrefix+"_"+queryStatusName,
+		gc.QueryStatusHelp,
+		prometheus.GaugeValue, constLabelPairs,
+		"phase")
 
 	collectors := make([]Collector, 0, len(tpar.collectors))
 	for _, cc := range tpar.collectors {
@@ -142,9 +169,15 @@ func NewTarget(
 		collectors = append(collectors, c)
 	}
 
-	upDesc := NewAutomaticMetricDesc(logContext, profile.MetricPrefix+"_"+upMetricName, gc.UpMetricHelp, prometheus.GaugeValue, constLabelPairs)
-	scrapeDurationDesc :=
-		NewAutomaticMetricDesc(logContext, profile.MetricPrefix+"_"+scrapeDurationName, gc.ScrapeDurationHelp, prometheus.GaugeValue, constLabelPairs)
+	upDesc := NewAutomaticMetricDesc(logContext,
+		profile.MetricPrefix+"_"+upMetricName,
+		gc.UpMetricHelp,
+		prometheus.GaugeValue, constLabelPairs)
+
+	scrapeDurationDesc := NewAutomaticMetricDesc(logContext,
+		profile.MetricPrefix+"_"+scrapeDurationName,
+		gc.ScrapeDurationHelp,
+		prometheus.GaugeValue, constLabelPairs)
 
 	collectorStatusDesc := NewAutomaticMetricDesc(logContext,
 		profile.MetricPrefix+"_"+collectorStatusName,
@@ -153,23 +186,70 @@ func NewTarget(
 		"collectorname")
 
 	t := target{
-		name:                tpar.Name,
-		config:              tpar,
-		client:              newClient(tpar, profile.Scripts, logger, gc),
-		collectors:          collectors,
-		httpAPIScript:       profile.Scripts,
+		name:       tpar.Name,
+		config:     tpar,
+		client:     newClient(tpar, profile.Scripts, logger, gc),
+		collectors: collectors,
+		// httpAPIScript:       profile.Scripts,
 		upDesc:              upDesc,
 		scrapeDurationDesc:  scrapeDurationDesc,
 		collectorStatusDesc: collectorStatusDesc,
+		queryStatusDesc:     queryStatusDesc,
 		logContext:          logContext,
 		logger:              logger,
 		content_mutex:       &sync.Mutex{},
+		queries_status:      make(map[string]any),
 	}
 	if t.client == nil {
 		return nil, errors.New("internal http client undefined")
 	}
 	// shared content mutex between target and client
 	t.client.content_mutex = t.content_mutex
+
+	t.client.SetScriptName("init")
+	t.client.symtab["__collector_id"] = t.name
+	// populate symtab for all query actions with [query_]status set 0 http_code (uninitialized)
+	for _, c := range t.collectors {
+		c.SetQueriesStatus(t.client, t.queries_status, 0)
+	}
+
+	for _, scr := range t.config.profile.Scripts {
+		// some default script may be defined to null (login, clear, logout...)
+		if scr == nil {
+			continue
+		}
+		// populate MetricFamily with context for all metrics actions
+		for _, ma := range scr.metricsActions {
+			for _, act := range ma.Actions {
+				if act.Type() == metric_action {
+					mc := act.GetMetric()
+					if mc == nil {
+						return nil, errors.New("MetricAction nil received")
+					}
+					mf, err := NewMetricFamily(logContext, mc, constLabelPairs, nil)
+					if err != nil {
+						return nil, err
+					}
+					//			ma.metricFamilies = append(ma.metricFamilies, mf)
+					// mfs = append(mfs, mf)
+					act.SetMetricFamily(mf)
+				}
+			}
+		}
+		// populate symtab for all query actions with [query_]status set to 0
+		for _, act := range scr.queryActions {
+			if act.Type() == query_action {
+				if bool(act.Query.Status) {
+					if act.Query.query.vartype == field_raw {
+						url := act.Query.query.raw
+						t.queries_status[url] = 0
+					}
+				}
+			}
+		}
+	}
+	t.client.SetScriptName("__delete__")
+	delete(t.client.symtab, "__collector_id")
 
 	return &t, nil
 }
@@ -232,6 +312,11 @@ func (t *target) SetDeadline(tt time.Time) {
 	t.deadline = tt
 }
 
+// Setter for timeout
+func (t *target) SetTimeout(timeout time.Duration) {
+	t.client.client.SetTimeout(timeout)
+}
+
 func (t *target) SetLogger(logger *slog.Logger) {
 	t.content_mutex.Lock()
 	t.logger = logger
@@ -250,6 +335,88 @@ func (t *target) Unlock() {
 	t.content_mutex.Unlock()
 }
 
+func (t *target) GetSpecificCollector() []Collector {
+	if t.collector_config != nil {
+		return t.specific_collectors
+	}
+	return nil
+}
+
+func (t *target) buildCollector(logger *slog.Logger,
+	coll_config *CollectorConfig,
+	constLabelPairs []*dto.LabelPair,
+) (coll Collector, err error) {
+	if constLabelPairs == nil {
+		constLabelPairs = build_ConstantLabels(t.config.Labels)
+	}
+	cscrl := make([]*YAMLScript, len(coll_config.CollectScripts))
+	i := 0
+	for _, cs := range coll_config.CollectScripts {
+		cscrl[i] = cs
+		i++
+	}
+	coll, err = NewCollector(t.logContext, logger, coll_config, constLabelPairs, cscrl)
+
+	return
+}
+func (t *target) SetSpecificCollectorConfig(colls map[string]*CollectorConfig) error {
+	t.collector_config = colls
+
+	if len(colls) > 0 {
+		coll_list := make([]Collector, 0, len(colls))
+		var (
+			constLabelPairs []*dto.LabelPair
+			err             error
+		)
+		t.content_mutex.Lock()
+		logger := t.logger
+		t.content_mutex.Unlock()
+
+		for coll_name, coll_config := range colls {
+			// there was no previous specific collectors... build list
+			if t.specific_collectors == nil {
+				coll, err := t.buildCollector(logger, coll_config, constLabelPairs)
+				if err != nil {
+					return err
+				}
+				coll_list = append(coll_list, coll)
+				// else has previous, need to check if name found in list
+			} else {
+				for _, coll := range t.specific_collectors {
+					if coll.GetName() != coll_name {
+						coll, err = t.buildCollector(logger, coll_config, constLabelPairs)
+						if err != nil {
+							return err
+						}
+					}
+					coll_list = append(coll_list, coll)
+				}
+			}
+		}
+		if len(coll_list) > 0 {
+			t.specific_collectors = coll_list
+		} else {
+			t.specific_collectors = nil
+		}
+	}
+	return nil
+
+}
+
+func (t *target) SetQueriesStatus(code int) {
+	queries_status := t.queries_status
+	if queries_status == nil {
+		queries_status = make(map[string]any)
+	}
+	for url, raw_status := range queries_status {
+		if _, ok := raw_status.(int); ok {
+			queries_status[url] = code
+		}
+	}
+	t.queries_status = queries_status
+
+}
+
 // Collect implements Target.
 func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only bool) {
 
@@ -261,6 +428,8 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 		wg_coll     sync.WaitGroup
 		targetUp    bool
 		err         error
+		colls       []Collector
+		colls_init  bool = false
 	)
 
 	// wait for all collectors are over
@@ -276,7 +445,20 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 	leave_loop := false
 	t.client.symtab["__collector_id"] = t.name
+	t.client.symtab["__metric_channel"] = met_ch
+	t.client.symtab["__coll_channel"] = collectChan
 	msg_done_count := 0
+	t.client.SetContext(ctx)
+
+	// determine list of collectors: required in any cases to send status
+	if !health_only {
+		if colls = t.GetSpecificCollector(); colls != nil {
+			t.SetSpecificCollectorConfig(nil)
+		} else {
+			colls = t.collectors
+		}
+		t.SetQueriesStatus(0)
+	}
 
 	for msg := range collectChan {
 		switch msg {
@@ -287,14 +469,31 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			t.content_mutex.Unlock()
 			logger.Debug(
 				"target: received MsgLogin",
-				"collid", fmt.Sprintf("ping/%s", t.name))
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			if msg == MsgLogin && !has_logged {
 				t.client.Clear()
 				if status, err := t.client.Login(); err != nil {
 					t.logger.Error(
 						err.Error(),
-						"collid", fmt.Sprintf("ping/%s", t.name),
+						"coll", fmt.Sprintf("ping/%s", t.name),
 						"script", "ping/login")
+					c_status := CollectorStatusError
+					c_query_status := http.StatusInternalServerError
+					if err == ErrInvalidLogin || err == ErrInvalidLoginNoCipher || err == ErrInvalidLoginInvalidCipher {
+						c_status = CollectorStatusInvalidLogin
+						c_query_status = http.StatusForbidden
+					} else if err == ErrContextDeadLineExceeded {
+						c_status = CollectorStatusTimeout
+						c_query_status = http.StatusGatewayTimeout
+					}
+
+					t.client.SetScriptName("login")
+					for _, c := range colls {
+						c.SetStatus(c_status)
+						c.SetQueriesStatus(t.client, t.queries_status, c_query_status)
+					}
+					t.client.SetScriptName("__delete__")
+
 					collectChan <- MsgQuit
 				} else {
 					if status {
@@ -312,7 +511,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			t.content_mutex.Unlock()
 			logger.Debug(
 				"target: received MsgPing",
-				"collid", fmt.Sprintf("ping/%s", t.name))
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			// If using a single target connection, collectors will likely run sequentially anyway. But we might have more.
 			wg_coll.Add(1)
 			go func(t *target, met_ch chan<- Metric, coll_ch chan<- int) {
@@ -321,7 +520,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			}(t, met_ch, collectChan)
 			logger.Debug(
 				"target: ping send MsgWait",
-				"collid", fmt.Sprintf("ping/%s", t.name))
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			collectChan <- MsgWait
 
 		case MsgQuit:
@@ -330,17 +529,18 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			t.content_mutex.Unlock()
 			logger.Debug(
 				"target: ping received MsgQuit",
-				"collid", fmt.Sprintf("ping/%s", t.name))
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			leave_loop = true
 
-		case MsgTimeout:
-			t.content_mutex.Lock()
-			logger := t.logger
-			t.content_mutex.Unlock()
-			logger.Debug(
-				"target: ping received MsgTimeout",
-				"collid", t.name)
-			leave_loop = true
+		// case not possible because timeout occurs during wait not in "standalone"
+		// case MsgTimeout:
+		// 	t.content_mutex.Lock()
+		// 	logger := t.logger
+		// 	t.content_mutex.Unlock()
+		// 	logger.Debug(
+		// 		"target: ping received MsgTimeout",
+		// 		"coll", t.name)
+		// 	leave_loop = true
 
 		case MsgWait:
 			t.content_mutex.Lock()
@@ -348,14 +548,14 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			t.content_mutex.Unlock()
 			logger.Debug(
 				"start waiting for ping is over",
-				"collid", fmt.Sprintf("ping/%s", t.name))
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			wg_coll.Wait()
 			t.content_mutex.Lock()
 			logger = t.logger
 			t.content_mutex.Unlock()
 			logger.Debug(
 				"after waiting for ping is over",
-				"collid", fmt.Sprintf("ping/%s", t.name))
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			need_login := false
 			// repopulate collect channel with already received message.
 			for range msg_done_count {
@@ -368,16 +568,36 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			case MsgLogin:
 				logger.Debug(
 					"target ping wait: received MsgLogin",
-					"collid", fmt.Sprintf("ping/%s", t.name))
+					"coll", fmt.Sprintf("ping/%s", t.name))
 				need_login = true
 			case MsgDone:
 				logger.Debug(
 					"target ping wait: received MsgDone",
-					"collid", fmt.Sprintf("ping/%s", t.name))
+					"coll", fmt.Sprintf("ping/%s", t.name))
+			case MsgTimeout:
+				logger.Debug(
+					"target ping wait: received MsgTimeout",
+					"coll", fmt.Sprintf("ping/%s", t.name))
+				t.client.SetScriptName("ping")
+				for _, c := range colls {
+					c.SetStatus(CollectorStatusTimeout)
+					c.SetQueriesStatus(t.client, t.queries_status, http.StatusGatewayTimeout)
+				}
+				t.client.SetScriptName("__delete__")
+
 			default:
 				logger.Debug(
 					fmt.Sprintf("target ping wait: received msg =[%s] from collector", Msg2Text(submsg)),
-					"collid", fmt.Sprintf("ping/%s", t.name))
+					"coll", fmt.Sprintf("ping/%s", t.name))
+				if err != nil {
+					// status_code, _ := GetMapValueInt(t.client.symtab, "status_code")
+					t.client.SetScriptName("ping")
+					for _, c := range colls {
+						c.SetStatus(CollectorStatusError)
+						// c.SetQueriesStatus(t.client, status_code)
+					}
+					t.client.SetScriptName("__delete__")
+				}
 			}
 			if need_login {
 				collectChan <- MsgLogin
@@ -395,18 +615,20 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 		}
 	}
 	delete(t.client.symtab, "__collector_id")
+	delete(t.client.symtab, "__metric_channel")
+	delete(t.client.symtab, "__coll_channel")
 
-	if err != nil {
-		met_ch <- NewInvalidMetric(t.logContext, err)
-		targetUp = false
-	}
+	// if err != nil {
+	// 	met_ch <- NewInvalidMetric(t.logContext, err)
+	// 	targetUp = false
+	// }
 	if t.name != "" {
 		t.content_mutex.Lock()
 		logger := t.logger
 		t.content_mutex.Unlock()
 		logger.Debug(
 			"target: send metric up result",
-			"collid", t.name)
+			"coll", t.name)
 		// Export the target's `up` metric as early as we know what it should be.
 		met_ch <- NewMetric(t.upDesc, boolToFloat64(targetUp), nil, nil)
 	}
@@ -444,7 +666,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					fmt.Sprintf("target: received MsgLogin / check has_logged: %v", has_logged),
-					"collid", t.name)
+					"coll", t.name)
 				// check if we have already logged to target ?
 				t.client.symtab["__collector_id"] = t.name
 				if msg == MsgLogin && !has_logged {
@@ -457,10 +679,9 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 					if status, err := t.client.Login(); err != nil {
 						collectChan <- MsgQuit
 						if err == ErrInvalidLogin || err == ErrInvalidLoginNoCipher || err == ErrInvalidLoginInvalidCipher {
-							for _, c := range t.collectors {
+							for _, c := range colls {
 								c.SetStatus(CollectorStatusInvalidLogin)
 							}
-
 						}
 					} else {
 						if status {
@@ -480,18 +701,21 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					"target: received MsgCollect",
-					"collid", t.name)
-				wg_coll.Add(len(t.collectors))
+					"coll", t.name)
+
+				wg_coll.Add(len(colls))
+
 				logger.Debug(
-					fmt.Sprintf("target: send %d collector(s)", len(t.collectors)),
-					"collid", t.name)
+					fmt.Sprintf("target: send %d collector(s)", len(colls)),
+					"coll", t.name)
 
 				t.client.symtab["__coll_channel"] = collectChan
 
-				for _, c := range t.collectors {
-					t.client.symtab["__collector_id"] = fmt.Sprintf("%s#%s", t.name, c.GetId())
+				for _, c := range colls {
+					t.client.symtab["__collector_id"] = c.GetName()
 					// have to build a new client copy to allow multi connection to target
 					c_client := t.client.Clone(t.config)
+					c_client.SetContext(ctx)
 					c.SetClient(c_client)
 
 					// If using a single target connection, collectors will likely run sequentially anyway. But we might have more.
@@ -516,19 +740,29 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 								}
 								logger.Debug(
 									fmt.Sprintf("collector has panic-ed: %s", err.Error()),
-									"collid", t.name)
+									"coll", t.name)
 							}
 						}()
 						defer func() {
+							// for all query actions of collector set http status_code to 504 Gateway Timeout
+							// if queries_status := GetMapValueMap(c.GetClient().symtab, "__queries_status"); status != nil {
+							// 	for url, raw_status := range queries_status {
+							// 		if _, ok := raw_status.(int); ok {
+							// 			queries_status[url] = http.StatusGatewayTimeout
+							// 		}
+							// 	}
+							// }
+							collector.SetQueriesStatus(collector.GetClient(), t.queries_status, http.StatusGatewayTimeout)
 							cancel()
 							wg_coll.Done()
 						}()
 						collector.Collect(coll_ctx, met_ch, collectChan)
 					}(c, t.GetDeadline())
 				}
+				colls_init = true
 				logger.Debug(
 					"target: send MsgWait",
-					"collid", t.name)
+					"coll", t.name)
 				delete(t.client.symtab, "__collector_id")
 
 				collectChan <- MsgWait
@@ -539,7 +773,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					"target: received MsgTimeout",
-					"collid", t.name)
+					"coll", t.name)
 
 				if !has_quitted {
 					close(collectChan)
@@ -552,7 +786,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					"target: received MsgQuit",
-					"collid", t.name)
+					"coll", t.name)
 
 				if !has_quitted {
 					close(collectChan)
@@ -565,7 +799,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					"start waiting for all collectors are over",
-					"collid", t.name)
+					"coll", t.name)
 
 				wg_coll.Wait()
 				t.content_mutex.Lock()
@@ -573,7 +807,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					"after waiting for all collectors is over",
-					"collid", t.name)
+					"coll", t.name)
 				need_login := false
 
 				// repopulate collect channel with already received messages.
@@ -581,14 +815,14 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 					collectChan <- MsgDone
 				}
 				// we have received len(t.collectors) msgs from collectors
-				for i := range t.collectors {
+				for i := range colls {
 					logger.Debug(
-						fmt.Sprintf("target wait: reading msg channel for collector '%s'", t.collectors[i].GetName()),
-						"collid", t.name)
+						fmt.Sprintf("target wait: reading msg channel for collector '%s'", colls[i].GetName()),
+						"coll", t.name)
 					if len(collectChan) == 0 {
 						logger.Warn(
-							fmt.Sprintf("target wait: msg channel for collector '%s' is empty. STOPPING", t.collectors[i].GetName()),
-							"collid", t.name)
+							fmt.Sprintf("target wait: msg channel for collector '%s' is empty. STOPPING", colls[i].GetName()),
+							"coll", t.name)
 						collectChan <- MsgQuit
 						break
 					}
@@ -599,12 +833,12 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 					case MsgLogin:
 						logger.Debug(
 							"target wait: received MsgLogin",
-							"collid", t.name)
+							"coll", t.name)
 						need_login = true
 					default:
 						logger.Debug(
-							fmt.Sprintf("target wait: received msg for collector '%s': '%s'", t.collectors[i].GetName(), Msg2Text(submsg)),
-							"collid", t.name)
+							fmt.Sprintf("target wait: received msg for collector '%s': '%s'", colls[i].GetName(), Msg2Text(submsg)),
+							"coll", t.name)
 					}
 				}
 				if need_login {
@@ -614,7 +848,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 					if logged, ok := GetMapValueBool(t.client.symtab, "logged"); ok && logged {
 						logger.Debug(
 							fmt.Sprintf("target: MsgLogin check has_logged: %v", logged),
-							"collid", t.name)
+							"coll", t.name)
 					}
 				} else {
 					collectChan <- MsgQuit
@@ -627,14 +861,14 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				t.content_mutex.Unlock()
 				logger.Debug(
 					"target: MsgDone received too early",
-					"collid", t.name)
+					"coll", t.name)
 				msg_done_count += 1
 
 			}
 		}
 		t.logger.Debug(
 			"goroutine target collector controler is over",
-			"collid", t.name)
+			"coll", t.name)
 
 		// Drain collectChan in case of premature return.
 		defer func() {
@@ -649,18 +883,19 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 	logger := t.logger
 	t.content_mutex.Unlock()
 	logger.Debug("collectors have stopped")
+	t.client.SetContext(context.TODO())
 
 	if t.name != "" {
-		// And exporter a `collector execution status` metric for each collector once we're done scraping.
+		// Add to exporter a `collector execution status` metric for each collector once we're done scraping.
 		if targetUp {
 			labels_name := make([]string, 1)
 			labels_name[0] = "collectorname"
 			labels_value := make([]string, 1)
-			for _, c := range t.collectors {
+			for _, c := range colls {
 				labels_value[0] = c.GetName()
 				logger.Debug(
-					fmt.Sprintf("target collector['%s'] collid=[%s] has status=%d", labels_value[0], c.GetId(), c.GetStatus()),
-					"collid", t.name)
+					fmt.Sprintf("target collector['%s'] coll=[%s] has status=%d", labels_value[0], c.GetName(), c.GetStatus()),
+					"coll", t.name)
 
 				met_ch <- NewMetric(t.collectorStatusDesc, float64(c.GetStatus()), labels_name, labels_value)
 
@@ -668,8 +903,49 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				c.SetSetStats(t)
 			}
 		}
-		// And exporter a `scrape duration` metric once we're done scraping.
+		// Add to exporter a `scrape duration` metric once we're done scraping.
 		met_ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9, nil, nil)
+	}
+
+	// Add to exporter the `query status http code` metric once we're done scraping.
+	// metrics may have duplicate because some query are made by target and results
+	// may be "cloned" into collector symtab.
+	q_status := make(map[string]int)
+	for _, c := range colls {
+		if colls_init {
+			client := c.GetClient()
+			if client != nil {
+				if status := GetMapValueMap(client.symtab, "__queries_status"); status != nil {
+					for url, raw_status := range status {
+						status_code := raw_status.(int)
+						if old_status_code, found := q_status[url]; !found || old_status_code == 0 {
+							q_status[url] = status_code
+						}
+					}
+				}
+				c.SetClient(nil)
+			}
+		} else {
+			// when target is not up! collectors haven't be initialized: use target status
+			for url, raw_status := range t.queries_status {
+				if _, found := q_status[url]; !found {
+					q_status[url] = raw_status.(int)
+				}
+			}
+		}
+	}
+	if len(q_status) > 0 {
+		labels_name := make([]string, 1)
+		labels_name[0] = "phase"
+		labels_value := make([]string, 1)
+		for url, status_code := range q_status {
+			labels_value[0] = url
+			t.logger.Debug(
+				fmt.Sprintf("query status['%s'] has status=%d", labels_value[0], status_code),
+				"coll", t.name)
+
+			met_ch <- NewMetric(t.queryStatusDesc, float64(status_code), labels_name, labels_value)
+		}
 	}
 }
 
@@ -683,12 +959,15 @@ func (t *target) ping(coll_ch chan<- int) (bool, error) {
 			if t.has_ever_logged {
 				t.logger.Error(
 					err.Error(),
-					"collid", fmt.Sprintf("ping/%s", t.name))
+					"coll", fmt.Sprintf("ping/%s", t.name))
 			}
 			coll_ch <- MsgLogin
 		case ErrContextDeadLineExceeded:
 			coll_ch <- MsgTimeout
 		default:
+			t.logger.Error(
+				err.Error(),
+				"coll", fmt.Sprintf("ping/%s", t.name))
 			coll_ch <- MsgQuit
 		}
 	} else {
