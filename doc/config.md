@@ -239,7 +239,7 @@ auth_configs:
 # The targets to monitor and the collectors to execute on it.
 targets:
   # target "default" is used as a pattern for all targets name not defined locally. => exporter is used in "proxy" mode.
-  # list of target_config-s
+  # list of target_configs
 
   - name: default
     scheme: https

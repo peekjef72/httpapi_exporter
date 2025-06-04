@@ -119,6 +119,7 @@ Parameters to scrape a target:
 - **auth_name**: the name of authentication config to use to access to a target.
 - if target is not defined locally (so it is dynamically defined), you can set the authentication parameters to use for that target using those specified in the auth_name config.
 - **model**: the name of model target to use to build dynamic target. If not specified it looks for target named "default". This parameter is used only at the first call for the dynamic target creation.
+- **collector**: the name or names, if parameter is specified several times, of the collector to collect. May be used to perform a distinct scrapping of the standard configuration, for the target.
 
 **examples**:
 
