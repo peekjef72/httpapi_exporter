@@ -479,10 +479,11 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 						"script", "ping/login")
 					c_status := CollectorStatusError
 					c_query_status := http.StatusInternalServerError
-					if err == ErrInvalidLogin || err == ErrInvalidLoginNoCipher || err == ErrInvalidLoginInvalidCipher {
+					switch err {
+					case ErrInvalidLogin, ErrInvalidLoginNoCipher, ErrInvalidLoginInvalidCipher:
 						c_status = CollectorStatusInvalidLogin
 						c_query_status = http.StatusForbidden
-					} else if err == ErrContextDeadLineExceeded {
+					case ErrContextDeadLineExceeded:
 						c_status = CollectorStatusTimeout
 						c_query_status = http.StatusGatewayTimeout
 					}

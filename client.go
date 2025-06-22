@@ -665,9 +665,10 @@ func (cl *Client) proceedHeaders() error {
 						}
 					}
 					if head_name != "" && head_value != "" {
-						if action == "add" {
+						switch action {
+						case "add":
 							cl.client.SetHeader(head_name, head_value)
-						} else if action == "delete" || action == "remove" {
+						case "delete", "remove":
 							cl.client.Header.Del(head_name)
 						}
 					}
@@ -712,9 +713,10 @@ func (cl *Client) proceedHeaders() error {
 						}
 					}
 					if head_name != "" && head_value != "" {
-						if action == "add" {
+						switch action {
+						case "add":
 							cl.client.SetHeader(head_name, head_value)
-						} else if action == "delete" || action == "remove" {
+						case "delete", "remove":
 							cl.client.Header.Del(head_name)
 						}
 					}
@@ -813,7 +815,8 @@ func (cl *Client) proceedCookies() error {
 						case string:
 							key_name = key_val
 						}
-						if key_name == "name" {
+						switch key_name {
+						case "name":
 							switch value := r_value.(type) {
 							case *Field:
 								if cookie_name, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
@@ -822,7 +825,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_name = value
 							}
-						} else if key_name == "value" {
+						case "value":
 							// get value
 							switch value := r_value.(type) {
 							case *Field:
@@ -832,7 +835,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_value = value
 							}
-						} else if key_name == "domain" {
+						case "domain":
 							// get domain
 							switch value := r_value.(type) {
 							case *Field:
@@ -842,7 +845,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_domain = value
 							}
-						} else if key_name == "path" {
+						case "path":
 							// get path
 							switch value := r_value.(type) {
 							case *Field:
@@ -852,7 +855,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_path = value
 							}
-						} else if key_name == "action" {
+						case "action":
 							switch value := r_value.(type) {
 							case *Field:
 								if action, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
@@ -892,7 +895,8 @@ func (cl *Client) proceedCookies() error {
 					cookie_domain = ""
 					cookie_max_age = -1
 					for key_name, r_value := range headers {
-						if key_name == "name" {
+						switch key_name {
+						case "name":
 							switch value := r_value.(type) {
 							case *Field:
 								if cookie_name, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
@@ -901,7 +905,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_name = value
 							}
-						} else if key_name == "value" {
+						case "value":
 							// get value
 							switch value := r_value.(type) {
 							case *Field:
@@ -911,7 +915,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_value = value
 							}
-						} else if key_name == "domain" {
+						case "domain":
 							// get domain
 							switch value := r_value.(type) {
 							case *Field:
@@ -921,7 +925,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_domain = value
 							}
-						} else if key_name == "path" {
+						case "path":
 							// get path
 							switch value := r_value.(type) {
 							case *Field:
@@ -931,7 +935,7 @@ func (cl *Client) proceedCookies() error {
 							case string:
 								cookie_path = value
 							}
-						} else if key_name == "action" {
+						case "action":
 							switch value := r_value.(type) {
 							case *Field:
 								if action, err = value.GetValueString(cl.symtab, cl.logger); err != nil {
@@ -1039,7 +1043,8 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 
 	auth_set, _ := GetMapValueBool(symtab, "auth_set")
 	if !auth_set {
-		if auth_mode == "basic" {
+		switch auth_mode {
+		case "basic":
 			user := GetMapValueString(symtab, "user")
 			if params.Username != "" {
 				old_values["user"] = user
@@ -1088,7 +1093,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 					"script", ScriptName(c.symtab, c.logger))
 			}
 			delete(symtab, "auth_key")
-		} else if auth_mode == "token" {
+		case "token":
 			auth_token := GetMapValueString(symtab, "auth_token")
 			if params.Token != "" {
 				old_values["auth_token"] = auth_token
@@ -1454,7 +1459,8 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	cl.symtab["timeout"] = params.ScrapeTimeout
 	cl.symtab["queryRetry"] = query_retry
 
-	if scheme == "https" {
+	switch scheme {
+	case "https":
 		cl.logger.Debug(
 			fmt.Sprintf("verify certificate set to %v", verifySSL),
 			"coll", CollectorId(cl.symtab, cl.logger),
@@ -1478,11 +1484,11 @@ func (cl *Client) Init(params *ClientInitParams) error {
 			config.CipherSuites = ciphers
 		}
 		cl.client = resty.New().SetTLSClientConfig(config)
-	} else if scheme == "http" {
+	case "http":
 		cl.client = resty.New()
 		// remove waring message in basic auth mode and http, according to use config
 		cl.client.SetDisableWarn(bool(params.AuthConfig.DisableWarn))
-	} else {
+	default:
 		cl.logger.Error(
 			fmt.Sprintf("invalid scheme for url '%s'", scheme),
 			"coll", CollectorId(cl.symtab, cl.logger),

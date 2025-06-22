@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.2 / 2025-06-xx
+
+### 0.4.2 / 2025-06-09  - not release
+
+- upgrade to go 1.24.4
+- updaded: minor updates: convert if to switch.
+
+### 0.4.2 / 2025-06-09 - not release
+
+- fixed: apache contrib: proccesses count
+- fixed: js script integration: error with empty catch part in try/catch statements.
+
 ## 0.4.1 / 2025-06-04
 
 - added: new contrib [apache_exporter configuration](./contribs/apache/README.md). a good example to introduce javascript code to build metrics.

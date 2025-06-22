@@ -71,12 +71,13 @@ type ctxValue struct {
 }
 
 func newRoute(op int, path string, handler http.HandlerFunc) *route {
-	if op == OpEgals {
+	switch op {
+	case OpEgals:
 		return &route{path, nil, handler}
-	} else if op == OpMatch {
+	case OpMatch:
 		return &route{"", regexp.MustCompile("^" + path + "$"), handler}
 
-	} else {
+	default:
 		return nil
 	}
 

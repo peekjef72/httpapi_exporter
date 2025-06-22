@@ -1083,11 +1083,12 @@ type ConvertibleBoolean bool
 
 func (bit *ConvertibleBoolean) UnmarshalJSON(data []byte) error {
 	asString := strings.ToLower(string(data))
-	if asString == "1" || asString == "true" || asString == "yes" || asString == "on" {
+	switch asString {
+	case "1", "true", "yes", "on":
 		*bit = true
-	} else if asString == "0" || asString == "false" || asString == "no" || asString == "off" {
+	case "0", "false", "no", "off":
 		*bit = false
-	} else {
+	default:
 		return fmt.Errorf("boolean unmarshal error: invalid input %s", asString)
 	}
 	return nil

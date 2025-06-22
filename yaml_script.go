@@ -725,14 +725,15 @@ type tmpActions []map[string]yaml.Node
 
 func build_WithItems(raw yaml.Node) ([]any, error) {
 	var listElmt []any
-	if raw.Tag == "!!str" {
+	switch raw.Tag {
+	case "!!str":
 		with_field, err := NewField(raw.Value, nil)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for var name (set_fact) %q: %s", raw.Value, err)
 		}
 		listElmt = make([]any, 1)
 		listElmt[0] = with_field
-	} else if raw.Tag == "!!map" {
+	case "!!map":
 		var (
 			raw_mapElmt map[string]any
 			mapElmt     map[any]any
@@ -747,7 +748,7 @@ func build_WithItems(raw yaml.Node) ([]any, error) {
 		}
 		listElmt = make([]any, 1)
 		listElmt[0] = mapElmt
-	} else if raw.Tag == "!!seq" {
+	case "!!seq":
 		var (
 			str_listElmt []any
 			err          error
@@ -759,7 +760,7 @@ func build_WithItems(raw yaml.Node) ([]any, error) {
 		if listElmt, err = buildSliceField(str_listElmt); err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		listElmt = make([]any, 0)
 	}
 	return listElmt, nil
@@ -769,14 +770,15 @@ func build_Cond(script *YAMLScript, raw yaml.Node) ([]*Field, error) {
 	var listElmt []string
 	var cond_var []*Field
 
-	if raw.Tag == "!!str" {
+	switch raw.Tag {
+	case "!!str":
 		listElmt = make([]string, 1)
 		listElmt[0] = raw.Value
-	} else if raw.Tag == "!!seq" {
+	case "!!seq":
 		if err := raw.Decode(&listElmt); err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		listElmt = make([]string, 0)
 	}
 	if len(listElmt) > 0 {
