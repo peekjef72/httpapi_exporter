@@ -168,7 +168,9 @@ func getIdentifierFromStatement(stmt ast.Statement, identifiers map[string]strin
 
 	case *ast.TryStatement:
 		getIdentifierFromStatement(val.Body, identifiers, token)
-		getIdentifierFromStatement(val.Catch, identifiers, token)
+		if val.Catch != nil {
+			getIdentifierFromStatement(val.Catch, identifiers, token)
+		}
 		if val.Finally != nil {
 			getIdentifierFromStatement(val.Finally, identifiers, token)
 		}

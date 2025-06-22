@@ -206,17 +206,18 @@ scripts:
             js: 
               var cpu_user = 0, cpu_system = 0;
               if( results["CPUUser"] != undefined ) {
-                cpu_user += results["CPUUser"]
+                cpu_user += parseFloat(results["CPUUser"])
               }
               if( results["CPUChildrenUser"] != undefined ) {
-                cpu_user += results["CPUChildrenUser"]
+                cpu_user += parseFloat(results["CPUChildrenUser"])
               }
               if( results["CPUSystem"] != undefined ) {
-                cpu_system += results["CPUSystem"]
+                cpu_system += parseFloat(results["CPUSystem"])
               }
               if( results["CPUChildrenUser"] != undefined ) {
-                cpu_system += results["CPUChildrenSystem"]
+                cpu_system += parseFloat(results["CPUChildrenSystem"])
               }
+
               [
                 { "label": "user", "value": 1000 * cpu_user },
                 { "label": "system", "value": 1000 * cpu_system },
@@ -276,8 +277,8 @@ scripts:
           # ConnsAsyncWriting: 0
           # ConnsAsyncKeepAlive: 0
           # ConnsAsyncClosing: 0
-        - metric_name: processes
-          type: counter
+        - metric_name: connections
+          type: gauge
           help: Apache connection count by status (total/writing/keepalive/closing)
           key_labels:
             state: $conns.label
