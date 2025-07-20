@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/spf13/cast"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -15,10 +16,11 @@ import (
 type MetricDesc interface {
 	Name() string
 	Help() string
-	ValueType() prometheus.ValueType
+	ValueType() dto.MetricType
 	ConstLabels() []*dto.LabelPair
 	// Labels() []string
 	LogContext() []interface{}
+	Config() *MetricConfig
 }
 
 //
@@ -50,8 +52,8 @@ func NewMetricFamily(
 
 	logContext = append(logContext, "metric", mc.Name)
 
-	if len(mc.Values) == 0 {
-		logContext = append(logContext, "errmsg", "NewMetricFamily(): multiple values but no value label")
+	if mc.valueType != dto.MetricType_HISTOGRAM && len(mc.Values) == 0 {
+		logContext = append(logContext, "errmsg", "NewMetricFamily(): no value defined")
 		return nil, fmt.Errorf("%s", logContext...)
 	}
 	if len(mc.Values) > 1 && len(mc.ValueLabel) == 0 {
@@ -141,8 +143,9 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 	// set default scope to "loop_var" entry: item[item["loop_var"]]
 	if mf.config.Scope == "" || mf.config.Scope != "none" {
 		var (
-			err   error
-			scope string
+			err            error
+			scope          string
+			implicit_scope bool = false
 		)
 		if mf.config.Scope == "" {
 			if loop_var, ok := symtab["loop_var"].(string); ok {
@@ -150,6 +153,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 					loop_var = "item"
 				}
 				scope = loop_var
+				implicit_scope = true
 			}
 		} else {
 			scope = mf.config.Scope
@@ -157,7 +161,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		if scope != "" {
 			logger.Debug(fmt.Sprintf("metric.Collect() scope set to '%s'", scope))
 			symtab, err = SetScope(scope, symtab)
-			if err != nil {
+			if err != nil && !implicit_scope {
 				err = fmt.Errorf("metric %s: %s", mf.name, err.Error())
 				logger.Warn(err.Error(),
 					"coll", CollectorId(root_symtab, logger),
@@ -208,8 +212,9 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				"coll", CollectorId(root_symtab, logger),
 				"script", ScriptName(root_symtab, logger),
 			)
-			ch <- NewInvalidMetric(mf.logContext, err)
-			return
+			// don't remove metric it can't obtain help !
+			// ch <- NewInvalidMetric(mf.logContext, err)
+			// return
 		} else {
 			mf.help = help
 		}
@@ -219,16 +224,28 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 	// build the labels family with the content of the var(*Field)
 	if len(mf.labels) == 0 && mf.config.key_labels != nil {
 		if labelsmap_raw, err := ValorizeValue(symtab, mf.config.key_labels, logger, mf.name, true); err == nil {
-			if key_labels_map, ok := labelsmap_raw.(map[string]any); ok {
-				label_len := len(key_labels_map)
+			t_labels := reflect.ValueOf(labelsmap_raw)
+			if t_labels.Kind() == reflect.Map {
+				label_len := t_labels.Len()
+				// }
+				// if key_labels_map, ok := labelsmap_raw.(map[string]any); ok {
+				// 	label_len := len(key_labels_map)
 				if len(mf.config.Values) > 1 {
 					label_len++
 				}
 				mf.labels = make([]*Label, label_len)
 
 				i := 0
-				for key, val_raw := range key_labels_map {
-					mf.labels[i], err = NewLabel(key, RawGetValueString(val_raw), mf.name, "key_label", nil)
+				iter := t_labels.MapRange()
+				for iter.Next() {
+					raw_key := iter.Key().Interface()
+					raw_value := iter.Value()
+					// for key, val_raw := range key_labels_map {
+					// mf.labels[i], err = NewLabel(key, RawGetValueString(val_raw), mf.name, "key_label", nil)
+					mf.labels[i], err = NewLabel(
+						RawGetValueString(raw_key),
+						RawGetValueString(raw_value),
+						mf.name, "key_label", nil)
 					if err != nil {
 						logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
 							"coll", CollectorId(root_symtab, logger),
@@ -303,52 +320,98 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		i++
 	}
 
-	for _, label := range mf.valueslabels {
-		var f_value float64
-		var err error
-
-		// fill the label value for value_label with the current name of the value if there is a label !
-		if len(mf.config.Values) > 1 {
-			labelValues[len(labelValues)-1], err = label.Key.GetValueString(symtab, logger)
+	if mf.config.valueType == dto.MetricType_HISTOGRAM {
+		switch mf.config.histogram.Type {
+		case HistogramTypeExternal:
+			met, _ := NewHistogramMetric(&mf, labelNames, labelValues, nil)
+			h_var, err := ValorizeValue(symtab, mf.config.histogram.Histogram_var, logger, mf.name, false)
 			if err != nil {
-				err = fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err)
-				logger.Warn(err.Error(),
-					"coll", CollectorId(root_symtab, logger),
-					"script", ScriptName(root_symtab, logger),
-				)
 				ch <- NewInvalidMetric(mf.logContext, err)
-				return
+			} else {
+
+				if err := met.SetValue(h_var); err != nil {
+					ch <- NewInvalidMetric(mf.logContext, err)
+				}
+				ch <- met
+			}
+		case HistogramTypeStatic:
+			// if mf.config.histogram.Histogram == nil {
+			// 	mf.config.histogram.Histogram = prometheus.NewHistogramVec(
+			// 		prometheus.HistogramOpts{
+			// 			Name:    "set_later",
+			// 			Help:    "set_later",
+			// 			Buckets: *mf.config.histogram.Buckets,
+			// 		}, []string{})
+			// }
+			// try to find a previously existing HistogramVec
+			var histogram *prometheus.HistogramVec
+			if r_val, ok := root_symtab["__histogram"]; ok {
+				if histo, ok := r_val.(*prometheus.HistogramVec); ok {
+					histogram = histo
+				}
+			}
+			met, histo := NewHistogramMetric(&mf, labelNames, labelValues, histogram)
+			if histo != histogram {
+				root_symtab["__histogram"] = histo
+			}
+			f_value, err := mf.config.histogram.Histogram_value.GetValueFloat(symtab, logger)
+			if err != nil {
+				ch <- NewInvalidMetric(mf.logContext, err)
+			} else {
+				if err := met.SetValue(f_value); err != nil {
+					ch <- NewInvalidMetric(mf.logContext, err)
+				}
+				ch <- met
 			}
 		}
-		f_value, err = label.Value.GetValueFloat(symtab, logger)
-		if err != nil {
-			warn := true
-			if var_err, ok := err.(VarError); ok {
-				if var_err.Code() == error_var_not_found {
-					warn = false
-					logger.Debug(err.Error(),
+	} else {
+		for _, label := range mf.valueslabels {
+			var f_value float64
+			var err error
+
+			// fill the label value for value_label with the current name of the value if there is a label !
+			if len(mf.config.Values) > 1 {
+				labelValues[len(labelValues)-1], err = label.Key.GetValueString(symtab, logger)
+				if err != nil {
+					err = fmt.Errorf("invalid template label name metric{ name: %s, key: %s} : %s", mf.name, label.Key.String(), err)
+					logger.Warn(err.Error(),
 						"coll", CollectorId(root_symtab, logger),
 						"script", ScriptName(root_symtab, logger),
 					)
+					ch <- NewInvalidMetric(mf.logContext, err)
+					return
 				}
 			}
-			// do not complain in logs if metric was not found.
-			if warn {
-				err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
-				logger.Warn(err.Error(),
-					"coll", CollectorId(root_symtab, logger),
-					"script", ScriptName(root_symtab, logger),
-				)
-				ch <- NewInvalidMetric(mf.logContext, err)
+			f_value, err = label.Value.GetValueFloat(symtab, logger)
+			if err != nil {
+				warn := true
+				if var_err, ok := err.(VarError); ok {
+					if var_err.Code() == error_var_not_found {
+						warn = false
+						logger.Debug(err.Error(),
+							"coll", CollectorId(root_symtab, logger),
+							"script", ScriptName(root_symtab, logger),
+						)
+					}
+				}
+				// do not complain in logs if metric was not found.
+				if warn {
+					err = fmt.Errorf("invalid template label value metric{ name: %s, value: %s} : %s", mf.name, label.Value.String(), err)
+					logger.Warn(err.Error(),
+						"coll", CollectorId(root_symtab, logger),
+						"script", ScriptName(root_symtab, logger),
+					)
+					ch <- NewInvalidMetric(mf.logContext, err)
+				}
+				return
 			}
-			return
+			logger.Debug(
+				fmt.Sprintf("metric.Collect() send metric to channel (len labelNames: %d lenlabelValue: %d)", len(labelNames), len(labelValues)),
+				"coll", CollectorId(root_symtab, logger),
+				"script", ScriptName(root_symtab, logger),
+			)
+			ch <- NewMetric(&mf, f_value, labelNames, labelValues)
 		}
-		logger.Debug(
-			fmt.Sprintf("metric.Collect() send metric to channel (len labelNames: %d lenlabelValue: %d)", len(labelNames), len(labelValues)),
-			"coll", CollectorId(root_symtab, logger),
-			"script", ScriptName(root_symtab, logger),
-		)
-		ch <- NewMetric(&mf, f_value, labelNames, labelValues)
 	}
 	if set_root {
 		delete(symtab, "root")
@@ -379,7 +442,7 @@ func (mf MetricFamily) Help() string {
 }
 
 // ValueType implements MetricDesc.
-func (mf MetricFamily) ValueType() prometheus.ValueType {
+func (mf MetricFamily) ValueType() dto.MetricType {
 	return mf.config.ValueType()
 }
 
@@ -393,6 +456,11 @@ func (mf MetricFamily) LogContext() []interface{} {
 	return mf.logContext
 }
 
+// Config implements MetricDesc.
+func (mf MetricFamily) Config() *MetricConfig {
+	return mf.config
+}
+
 //
 // automaticMetricDesc
 //
@@ -401,7 +469,7 @@ func (mf MetricFamily) LogContext() []interface{} {
 type automaticMetricDesc struct {
 	name        string
 	help        string
-	valueType   prometheus.ValueType
+	valueType   dto.MetricType
 	labels      []string
 	constLabels []*dto.LabelPair
 	logContext  []interface{}
@@ -409,7 +477,7 @@ type automaticMetricDesc struct {
 
 // NewAutomaticMetricDesc creates a MetricDesc for automatically generated metrics.
 func NewAutomaticMetricDesc(
-	logContext []interface{}, name, help string, valueType prometheus.ValueType, constLabels []*dto.LabelPair, labels ...string) MetricDesc {
+	logContext []interface{}, name, help string, valueType dto.MetricType, constLabels []*dto.LabelPair, labels ...string) MetricDesc {
 	return &automaticMetricDesc{
 		name:        name,
 		help:        help,
@@ -431,7 +499,7 @@ func (a automaticMetricDesc) Help() string {
 }
 
 // ValueType implements MetricDesc.
-func (a automaticMetricDesc) ValueType() prometheus.ValueType {
+func (a automaticMetricDesc) ValueType() dto.MetricType {
 	return a.valueType
 }
 
@@ -450,6 +518,9 @@ func (a automaticMetricDesc) LogContext() []interface{} {
 	return a.logContext
 }
 
+// Config implements MetricDesc.
+func (a automaticMetricDesc) Config() *MetricConfig { return nil }
+
 //
 // Metric
 //
@@ -458,6 +529,7 @@ func (a automaticMetricDesc) LogContext() []interface{} {
 type Metric interface {
 	Desc() MetricDesc
 	Write(out *dto.Metric) error
+	SetValue(any) error
 }
 
 // NewMetric returns a metric with one fixed value that cannot be changed.
@@ -490,9 +562,9 @@ func (m *constMetric) Desc() MetricDesc {
 func (m *constMetric) Write(out *dto.Metric) error {
 	out.Label = m.labelPairs
 	switch t := m.desc.ValueType(); t {
-	case prometheus.CounterValue:
+	case dto.MetricType_COUNTER:
 		out.Counter = &dto.Counter{Value: proto.Float64(m.val)}
-	case prometheus.GaugeValue:
+	case dto.MetricType_GAUGE:
 		out.Gauge = &dto.Gauge{Value: proto.Float64(m.val)}
 	default:
 		var logContext []interface{}
@@ -502,6 +574,9 @@ func (m *constMetric) Write(out *dto.Metric) error {
 	}
 	return nil
 }
+
+// SetValue implements Metric.
+func (m *constMetric) SetValue(val any) error { return nil }
 
 func makeLabelPairs(desc MetricDesc, labelNames []string, labelValues []string) []*dto.LabelPair {
 	labels := labelNames
@@ -564,6 +639,9 @@ func (m invalidMetric) Write(*dto.Metric) error {
 	return m.err
 }
 
+// SetValue implements Metric.
+func (m invalidMetric) SetValue(val any) error { return nil }
+
 type Label struct {
 	Key   *Field
 	Value *Field
@@ -591,3 +669,146 @@ func NewLabel(key string, value string, mName string, errStr string, customTempl
 		Value: valueField,
 	}, nil
 }
+
+type histMetric struct {
+	desc      MetricDesc
+	metric    dto.Metric
+	histogram *prometheus.HistogramVec
+}
+
+// Desc implements Metric.
+func (m *histMetric) Desc() MetricDesc {
+	return m.desc
+}
+
+// Write implements Metric.
+func (m *histMetric) Write(out *dto.Metric) error {
+	out.Label = m.metric.GetLabel()
+	out.Histogram = m.metric.GetHistogram()
+	return nil
+}
+
+func NewHistogramMetric(
+	desc MetricDesc,
+	labelNames []string,
+	labelValues []string,
+	histogram *prometheus.HistogramVec) (Metric, *prometheus.HistogramVec) {
+
+	if len(labelNames) != len(labelValues) {
+		panic(fmt.Sprintf("[%s] expected %d labels, got %d", desc.LogContext(), len(labelNames), len(labelValues)))
+	}
+
+	config := desc.Config()
+	if config.histogram.Type == HistogramTypeStatic && histogram == nil {
+		// check if the metric config has already the histogram definition
+		histogram = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "set_later",
+				Help:    "set_later",
+				Buckets: *config.histogram.Buckets,
+			}, labelNames)
+	}
+	return &histMetric{
+		desc: desc,
+		metric: dto.Metric{
+			Label: makeLabelPairs(desc, labelNames, labelValues),
+		},
+		histogram: histogram,
+	}, histogram
+}
+
+// SetValue implements Metric.
+func (m *histMetric) SetValue(hist_var_raw any) error {
+
+	config := m.desc.Config()
+	switch config.histogram.Type {
+	case HistogramTypeExternal:
+		h_var, ok := hist_var_raw.(map[string]any)
+		if !ok {
+			return fmt.Errorf("invalid value transmit: must be map[string]any")
+		}
+		m.metric.Histogram = &dto.Histogram{}
+		hist := m.metric.GetHistogram()
+		if raw_count, ok := h_var["sample_count"]; ok {
+			count := cast.ToUint64(raw_count)
+			hist.SampleCount = &count
+		}
+		if raw_sum, ok := h_var["sample_sum"]; ok {
+			sum := cast.ToFloat64(raw_sum)
+			hist.SampleSum = &sum
+		}
+		if raw_buckets, ok := h_var["buckets"]; ok {
+			t_buckets := reflect.ValueOf(raw_buckets)
+			if t_buckets.Kind() == reflect.Slice {
+				for ind := range t_buckets.Len() {
+					raw_bucket := t_buckets.Index(ind).Interface()
+					t_raw_bucket := reflect.ValueOf(raw_bucket)
+					if t_raw_bucket.Kind() == reflect.Map {
+						iter := t_raw_bucket.MapRange()
+						var (
+							count uint64
+							bound float64
+						)
+						for iter.Next() {
+							raw_key := iter.Key()
+							if raw_key.Kind() == reflect.String {
+								key := raw_key.String()
+								switch key {
+								case "le":
+									bound = cast.ToFloat64(iter.Value().Interface())
+								case "value":
+									count = cast.ToUint64(iter.Value().Interface())
+								}
+							}
+						}
+						new_bucket := &dto.Bucket{
+							CumulativeCount: &count,
+							UpperBound:      &bound,
+						}
+						hist.Bucket = append(hist.Bucket, new_bucket)
+					}
+				}
+			}
+		}
+	case HistogramTypeStatic:
+		if f_value, ok := hist_var_raw.(float64); ok {
+			labels := m.metric.GetLabel()
+			var values []string
+			for _, value := range labels {
+				values = append(values, value.GetValue())
+			}
+			obs, err := m.histogram.GetMetricWithLabelValues(values...)
+			if err != nil {
+				return err
+			}
+			obs.Observe(f_value)
+			loc_ch := make(chan prometheus.Metric, 10)
+			m.histogram.Collect(loc_ch)
+			loc_met := <-loc_ch
+			loc_met.Write(&m.metric)
+			m.metric.Label = labels
+		}
+	}
+	return nil
+}
+
+// func BuildHistogram(h_obj map[string]any) *dto.MetricFamily {
+// 	mf := &dto.MetricFamily{}
+
+// 	name := GetMapValueString(h_obj,"name")
+// 	mf.Name = &name
+// 	help := GetMapValueString(h_obj,"help")
+// 	mf.Help = &help
+// 	typeH := dto.MetricType_HISTOGRAM
+// 	mf.Type = &typeH
+// 	for _, metric_obj_raw := range GetMapValueSlice(h_obj, "metrics") {
+// 		if metric_obj, ok := metric_obj_raw.(map[string]any); ok {
+// 			labels := GetMapValueMap(metric_obj, "labels")
+// 			for key, val := range labels {
+// 				metric.Label =
+// 			}
+// 		}
+// 		a inclure dans Collect
+// 	}
+// 	return mf
+// }

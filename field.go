@@ -1,8 +1,8 @@
+// cSpell:ignore tmpl, mytemplate, jscode, vartype, curval, Mymap, lenattr, mapkey
 package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html"
 	"log/slog"
@@ -107,22 +107,50 @@ func RawGetValueFloat(curval any) float64 {
 func RawGetValueString(curval any) string {
 	res := ""
 	if curval != nil {
-		res = cast.ToString(curval)
+		vSrc := reflect.ValueOf(curval)
+		switch vSrc.Kind() {
+
+		case reflect.Map:
+			fallthrough
+		case reflect.Slice:
+			res_b, err := json.Marshal(curval)
+			if err != nil {
+				return ""
+			}
+			res = string(res_b)
+
+		default:
+			res = cast.ToString(curval)
+		}
 	}
 
 	return strings.Trim(res, "\r\n ")
 }
 
-// obtain a final string value from Field
-// use template if one is defined using item to symbols table
-// else
-// check if value must be sustituted using provided sub map
-// if check_item set to true, check if the resulting value exists in item symbols table
-// else return raw value (simple string)
-func (f *Field) GetValueString(
+func ConvertToBool(value_raw any) (value bool) {
+	switch value_val := value_raw.(type) {
+	case string:
+		asString := strings.ToLower(value_val)
+		switch asString {
+		case "1", "t", "true", "on", "yes":
+			value = true
+			// case "0", "f", "false", "off", "no":
+			// value = false
+		}
+	default:
+		value = cast.ToBool(value_raw)
+	}
+	return
+}
+
+func (f *Field) GetValueSimple(
 	item map[string]interface{},
 	logger *slog.Logger,
-) (res string, err error) {
+	out_type reflect.Kind,
+) (res any, err error) {
+
+	var raw_data any
+
 	if f == nil {
 		return "", nil
 	}
@@ -152,24 +180,72 @@ func (f *Field) GetValueString(
 		// remove before and after blank chars
 		tmp = strings.Trim(tmp, "\r\n ")
 		// unescape string
-		return html.UnescapeString(tmp), nil
+		raw_data = html.UnescapeString(tmp)
 	case field_var:
 		data, err := getVar(item, f.raw, logger)
 		if err != nil {
 			return "", err
 		}
-		return RawGetValueString(data), nil
+		raw_data = data
+
 	case field_js:
 		val, err := f.jscode.Run(item, logger)
 		if err != nil {
 			return "", newVarError(error_var_invalid_javascript_code,
 				fmt.Sprintf("invalid javascript code execution: %s", err.Error()))
 		}
-		return RawGetValueString(val), nil
+		raw_data = val
+		//		return RawGetValueString(val), nil
 	default:
-		val := f.raw
-		return RawGetValueString(val), nil
+		raw_data = f.raw
+		//return RawGetValueString(val), nil
 	}
+	switch out_type {
+	case reflect.String:
+		res = RawGetValueString(raw_data)
+	case reflect.Float64:
+		res = RawGetValueFloat(raw_data)
+	case reflect.Int64:
+		var i_value int64 = 0
+
+		if raw_data != nil {
+			i_value = cast.ToInt64(raw_data)
+		}
+		res = i_value
+	case reflect.Uint64:
+		var u_value uint64 = 0
+
+		if raw_data != nil {
+			u_value = cast.ToUint64(raw_data)
+		}
+		res = u_value
+	case reflect.Bool:
+		if raw_data != nil {
+			res = ConvertToBool(raw_data)
+		}
+	}
+	return res, nil
+}
+
+// obtain a final string value from Field
+// use template if one is defined using item to symbols table
+// else
+// check if value must be substituted using provided sub map
+// if check_item set to true, check if the resulting value exists in item symbols table
+// else return raw value (simple string)
+func (f *Field) GetValueString(
+	symtab map[string]interface{},
+	logger *slog.Logger,
+) (res string, err error) {
+	raw_str, err := f.GetValueSimple(symtab, logger, reflect.String)
+	if err != nil {
+		res = ""
+		return
+	}
+	if str, ok := raw_str.(string); ok {
+		res = str
+	}
+	return
 }
 
 // obtain a final float64 value from Field
@@ -177,59 +253,19 @@ func (f *Field) GetValueString(
 // else if the resulting value exists in item symbols table return it
 // else return raw value (simple float64 constant)
 func (f *Field) GetValueFloat(
-	item map[string]interface{},
+	symtab map[string]interface{},
 	logger *slog.Logger,
 ) (res float64, err error) {
-	var str_value any
 
-	if f == nil {
-		return 0, nil
+	raw_f, err := f.GetValueSimple(symtab, logger, reflect.Float64)
+	if err != nil {
+		res = 0.0
+		return
 	}
-
-	switch f.vartype {
-	case field_template:
-		defer func() {
-			// res and err are named out parameters, so if we set value for them in defer
-			// set the returned values
-			ok := false
-			if r := recover(); r != nil {
-				if err, ok = r.(error); !ok {
-					err = errors.New("panic in GetValueFloat template with undefined error")
-				}
-				res = 0
-			}
-		}()
-
-		tmp_res := new(strings.Builder)
-		err := ((*ttemplate.Template)(f.tmpl)).Execute(tmp_res, &item)
-		if err != nil {
-			return 0, newVarError(error_var_invalid_template,
-				fmt.Sprintf("invalid template: %s", err.Error()))
-		}
-		str_value = html.UnescapeString(tmp_res.String())
-	case field_var:
-		data, err := getVar(item, f.raw, logger)
-		if err != nil {
-			return 0, err
-		}
-		str_value = data
-	case field_js:
-		val, err := f.jscode.Run(item, logger)
-		if err != nil {
-			return 0, newVarError(error_var_invalid_javascript_code,
-				fmt.Sprintf("invalid javascript code execution: %s", err.Error()))
-		}
-		str_value = val
-	default:
-		val := f.raw
-		// check if value exists in symbol table
-		if curval, ok := item[val]; ok {
-			str_value = curval
-		} else {
-			str_value = val
-		}
+	if num, ok := raw_f.(float64); ok {
+		res = num
 	}
-	return RawGetValueFloat(str_value), nil
+	return
 }
 
 // eval field as a boolean condition: return true|false or error if something bad!
@@ -311,112 +347,66 @@ func getMapKey(raw_value any, key string) any {
 	return new_value
 }
 
-func getSliceIndice(raw_value any, indice int) any {
+func getSliceIndex(raw_value any, index int) any {
 
 	var res_value any = nil
 
-	if indice != -1 {
+	if index != -1 {
 		vSrc := reflect.ValueOf(raw_value)
 		if vSrc.Kind() == reflect.Slice {
-			if indice < vSrc.Len() {
-				res_value = vSrc.Index(indice).Interface()
+			if index < vSrc.Len() {
+				res_value = vSrc.Index(index).Interface()
 			}
 		}
-		// switch slice_val := raw_value.(type) {
-		// case []any:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// case []string:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// case []byte:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// case []int:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// case []int64:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// case []float32:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// case []float64:
-		// 	if indice < len(slice_val) {
-		// 		raw_value = slice_val[indice]
-		// 	} else {
-		// 		raw_value = nil
-		// 	}
-		// default:
-		// 	raw_value = nil
-		// }
 	}
 	return res_value
 }
 
-func buildAttrWithIndice(
+func buildAttrWithIndex(
 	symtab map[string]any,
 	raw_value any,
 	var_name,
-	indice_str string,
+	index_str string,
 	logger *slog.Logger,
 ) (any, error) {
 	vDst := reflect.ValueOf(raw_value)
 	if vDst.Kind() == reflect.Map {
-		if indice_str[0] == '$' {
-			tmp_name, _ := extract_var_name(indice_str[1:])
+		if index_str[0] == '$' {
+			tmp_name, _ := extract_var_name(index_str[1:])
 			raw_ind, err := getVar(symtab, tmp_name, logger)
 			if err != nil {
 				return nil, err
 			} else {
-				indice_str = cast.ToString(raw_ind)
+				index_str = cast.ToString(raw_ind)
 			}
 		}
-		raw_value = getMapKey(raw_value, indice_str)
+		raw_value = getMapKey(raw_value, index_str)
 		if raw_value == nil {
 			return nil, newVarError(error_var_mapkey_not_found,
-				fmt.Sprintf("key '%s' not found in %s map", indice_str, var_name))
+				fmt.Sprintf("key '%s' not found in %s map", index_str, var_name))
 		}
 	} else if vDst.Kind() == reflect.Slice {
-		var indice int
+		var index int
 
-		if indice_str[0] == '$' {
-			tmp_name, _ := extract_var_name(indice_str[1:])
+		if index_str[0] == '$' {
+			tmp_name, _ := extract_var_name(index_str[1:])
 			raw_ind, err := getVar(symtab, tmp_name, logger)
 			if err != nil {
 				return nil, err
 			} else {
-				indice = cast.ToInt(raw_ind)
+				index = cast.ToInt(raw_ind)
 			}
 		} else {
-			if i_value, err := strconv.ParseInt(indice_str, 10, 0); err != nil {
-				indice = 0
+			if i_value, err := strconv.ParseInt(index_str, 10, 0); err != nil {
+				index = 0
 			} else {
-				indice = int(i_value)
+				index = int(i_value)
 			}
 		}
-		raw_value = getSliceIndice(raw_value, indice)
+		raw_value = getSliceIndex(raw_value, index)
 		if raw_value == nil {
-			return nil, newVarError(error_var_sliceindice_not_found,
-				fmt.Sprintf("indice '%s' not found in %s array", indice_str, var_name))
+			return nil, newVarError(error_var_sliceindex_not_found,
+				fmt.Sprintf("index '%s' not found in %s array", index_str, var_name))
 		}
 	}
 	return raw_value, nil
@@ -440,7 +430,7 @@ const (
 	error_var_invalid_template        = iota
 	error_var_invalid_json_output     = iota
 	error_var_mapkey_not_found        = iota
-	error_var_sliceindice_not_found   = iota
+	error_var_sliceindex_not_found    = iota
 	error_var_invalid_javascript_code = iota
 )
 
@@ -453,15 +443,6 @@ type VarError interface {
 	Code() int
 	Error() string
 }
-
-// func (e *VarError) CodeToText() string {
-// 	var res string
-// 	switch e.Code {
-// 	case error_var_not_found:
-// 		res = "error var not found"
-// 	}
-// 	return res
-// }
 
 func newVarError(code int, msg string) *varError {
 	return &varError{
@@ -494,7 +475,7 @@ func getVar(
 	vars := strings.Split(attr, ".")
 	lenattr := len(vars) - 1
 	for idx, var_name := range vars {
-		indice_str := ""
+		index_str := ""
 		// check if attr refers to an another variable name $X.[...].$var_name
 		if var_name[0] == '$' {
 			tmp_name, pos := extract_var_name(var_name[1:])
@@ -514,13 +495,13 @@ func getVar(
 			}
 
 		}
-		// check if component contains indice pos: attr[x]
+		// check if component contains index pos: attr[x]
 		if pos := strings.Index(var_name, "["); pos != -1 {
 			pos2 := strings.Index(var_name, "]")
-			indice_str = var_name[pos+1 : pos2]
+			index_str = var_name[pos+1 : pos2]
 			var_name = var_name[0:pos]
 			// remove enclosing string separators if any found
-			indice_str = strings.Trim(indice_str, "'`\"")
+			index_str = strings.Trim(index_str, "'`\"")
 		}
 		// try to find attribute name as key name of map element
 		if raw_value, ok := tmp_symtab[var_name]; ok {
@@ -531,30 +512,12 @@ func getVar(
 				}
 			}
 
-			// special case attribute name contains '[indice_str]'
-			if indice_str != "" {
-				raw_value, err = buildAttrWithIndice(symtab, raw_value, var_name, indice_str, logger)
+			// special case attribute name contains '[index_str]'
+			if index_str != "" {
+				raw_value, err = buildAttrWithIndex(symtab, raw_value, var_name, index_str, logger)
 				if err != nil {
 					return nil, err
 				}
-				// vDst := reflect.ValueOf(raw_value)
-				// if vDst.Kind() == reflect.Map {
-				// 	raw_value = getMapKey(raw_value, indice_str)
-				// 	if raw_value == nil {
-				// 		return nil, fmt.Errorf("key '%s' not found in %s map", indice_str, var_name)
-				// 	}
-				// } else if vDst.Kind() == reflect.Slice {
-				// 	var indice int
-				// 	if i_value, err := strconv.ParseInt(indice_str, 10, 0); err != nil {
-				// 		indice = 0
-				// 	} else {
-				// 		indice = int(i_value)
-				// 	}
-				// 	raw_value = getSliceIndice(raw_value, indice)
-				// 	if raw_value == nil {
-				// 		return nil, fmt.Errorf("indice '%s' not found in %s array", indice_str, var_name)
-				// 	}
-				// }
 			}
 
 			// attributes chain is not over, so we check if current element is a map so we can go on on attributes
@@ -576,36 +539,9 @@ func getVar(
 					err = newVarError(error_var_invalid_type,
 						fmt.Sprintf("attribute '%s' is not of 'map' type", var_name))
 				}
-				// switch cur_value := raw_value.(type) {
-				// case map[string]string:
-				// 	mAmy := make(map[string]any)
-				// 	for k, v := range cur_value {
-				// 		mAmy[k] = v
-				// 	}
-				// 	tmp_symtab = mAmy
-
-				// case map[string]any:
-				// 	tmp_symtab = cur_value
-				// default:
-				// 	err = fmt.Errorf("can't set attr: '%s' has invalid type", var_name)
-				// }
 			} else {
-				// if value, ok := raw_value.(*Field); ok {
-				// 	raw_value, err = value.GetValueObject(symtab, with_raw_name)
-				// 	if err != nil {
-				// 		return nil, err
-				// 	}
-				// 	if indice_str != "" {
-				// 		raw_value, err = buildAttrWithIndice(raw_value, var_name, indice_str)
-				// 		if err != nil {
-				// 			return nil, err
-				// 		}
-				// 		// raw_value = getSliceIndice(raw_value, indice)
-				// 	}
-				// }
 				return raw_value, err
 			}
-			// }
 		} else {
 			err = newVarError(error_var_not_found,
 				fmt.Sprintf("%s not found", var_name))
@@ -617,7 +553,6 @@ func getVar(
 }
 
 func (f *Field) GetValueObject(
-	// item map[string]interface{}) ([]any, error) {
 	item any,
 	logger *slog.Logger,
 ) (res any, err error) {
@@ -737,49 +672,4 @@ func AddDefaultTemplate(dest_cond *Field, customTemplate *exporterTemplate) (*Fi
 		}
 	}
 	return dest_cond, nil
-}
-
-type ResultElement struct {
-	raw any
-}
-
-func (r *ResultElement) GetSlice(field string) ([]any, bool) {
-	var myslice []any
-	var found bool
-
-	// 	vSrc := reflect.ValueOf(r.raw)
-	// 	if vSrc.Kind() == reflect.Map {
-	// 		n_slice := make([]any, 1)
-	// 		n_slice[0] = raw
-	// 		myslice = n_slice
-	// 		found = true
-	// raw_value = getMapKey(raw_value, indice_str)
-	// 		if raw_value == nil {
-	// 			return nil, fmt.Errorf("key '%s' not found in %s map", indice_str, var_name)
-	// 		}
-	// 	} else if vSrc.Kind() == reflect.Slice {
-	// 		// if src is a slice,
-	// 		myslice = make([]any, vSrc.Len())
-	// 		for idx := range vSrc.Len() {
-	// 			myslice[idx] = vSrc.Index(idx).Interface()
-	// 		}
-	// 		found = true
-	// 	}
-	if r_type, ok := r.raw.(map[string]any); ok {
-
-		if myvar, ok := r_type[field]; ok {
-			switch curval := myvar.(type) {
-			case []any:
-				myslice = curval
-				found = true
-			case map[string]any:
-				n_slice := make([]any, 1)
-				n_slice[0] = myvar
-				myslice = n_slice
-				found = true
-
-			}
-		}
-	}
-	return myslice, found
 }

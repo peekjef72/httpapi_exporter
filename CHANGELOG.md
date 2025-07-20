@@ -1,20 +1,24 @@
+<!-- cSpell:ignore healthz, SIGUSR, varname, Authconfig, symtab, collid, gotemplate, virtualbrowser, gofunc, gotest, httpapi, resty, fileglob, openmetrics, apiprefix -->
 # Change Log
 
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.2 / 2025-06-xx
+## 0.4.2 / 2025-07-20
 
-### 0.4.2 / 2025-06-09  - not release
+### 2025-07-20 - not release
 
-- upgrade to go 1.24.4
-- updaded: minor updates: convert if to switch.
+- fixed spellings (use Code Spelling extension).
+- added: documentations for histograms.
+- fixed: bug in preserve/restore symtab in loops that cause misbehavior with scope in metric : loop_var was sometime still defined and causing a bad default scope to undefined var.
+- new: add metric type histogram. There are two usages: first to send back a parsed histogram metric from a prometheus page, second to build a locally defined metric using collected values.
 
-### 0.4.2 / 2025-06-09 - not release
+### 2025-07-02 - not release
 
-- fixed: apache contrib: proccesses count
-- fixed: js script integration: error with empty catch part in try/catch statements.
+- fixed: config parsing - check for stand-alone metric_action not in metrics loop: exit with error message.
+- fixed: panic in external identifiers lookup in js code.
+- upgrade: to go 1.24.4, modules...
 
 ## 0.4.1 / 2025-06-04
 
@@ -51,7 +55,7 @@ targets:
 
 - added: support for `javascript code` in each field, as an alternative to gotemplate. This part is still in development (see examples)
 
-- added: new metric named "query_status" (prefixed by metric_prefix) and labeled by url query stage. The goal is to provide a always generated value for each queried url with the http status code as value. The generation is conditionned by the status attribute from each query action and the default value is false.
+- added: new metric named "query_status" (prefixed by metric_prefix) and labeled by url query stage. The goal is to provide a always generated value for each queried url with the http status code as value. The generation is conditioned by the status attribute from each query action and the default value is false.
 
 ```yaml
   - name: check api url
@@ -81,7 +85,7 @@ xxx_query_perf_seconds{page="/status",stage="total_time"} 0.004912388
 ```
 
 If the request timeouts, the status code is 504.
-If the request is not perfomed (target is down), the status code is 0.
+If the request is not performed (target is down), the status code is 0.
 
 ### 2025-03-26 - not release
 
@@ -209,9 +213,9 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
 
 ### 2025-03-19 - not release
 
-- bugfixed: synchronization error between target and collectors replies. target may stayed in infinite wait for collectors that had send replies too early in process (gofunc() channel synchro pb)
+- bug fixed: synchronization error between target and collectors replies. target may stayed in infinite wait for collectors that had send replies too early in process (gofunc() channel synchro pb)
 - added: debug messages (to track previous bug)
-- fixed: json reponse format for /reload
+- fixed: json response format for /reload
   - {"message":"ok","status": 1,"data": {"reload": true}}
 
 ### 2025-03-16 - not release
@@ -228,14 +232,14 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
 
 ### 2025-02-17
 
-- fixed: json reponse format for /status and /loglevel
+- fixed: json response format for /status and /loglevel
   - {"message":"ok","status": 1,"data": {"status":"ok"}}
   - {"message":"ok","status": 1,"data": {"loglevel": "&lt;loglevel&gt;"}}
 
 ### 2025-01-15
 
 - fixed: changed **--dry-run** command line flag behavior when no target specified: only check config; do not try to collect first available target.
-- added: disable_warn: true|false in auth_config to disable warning messages from RESTY if auth is basic and connection is http.
+- added: disable_warn: true|false in auth_config to disable warning messages from resty if auth is basic and connection is http.
 
   ```yaml
     auth_config:
@@ -286,7 +290,7 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
                 ...
   ```
 
-  Alternatively it is possible to add profiles via profile files with **profiles_file_config** directive: set a list of filepath accepting wildcards '*' (golang filegob ()) to "profiles". The content of each file must be a profile_config (see above or contribs)
+  Alternatively it is possible to add profiles via profile files with **profiles_file_config** directive: set a list of filepath accepting wildcards '*' (golang fileglob ()) to "profiles". The content of each file must be a profile_config (see above or contribs)
   
   ```yaml
     profiles_file_config:
@@ -298,11 +302,11 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
 
 ### 2024-12-14
 
-- added: parameter "health" to endpoint "/metrics", so that only "ping" script is performed and the metrics "up" with status returned. May be usefull to check if a target is responding; I use this feature in ansible playbook before to generate "file_sd_config" of scraping job for prometheus.
+- added: parameter "health" to endpoint "/metrics", so that only "ping" script is performed and the metrics "up" with status returned. May be useful to check if a target is responding; I use this feature in ansible playbook before to generate "file_sd_config" of scraping job for prometheus.
 - added: parsers feature to decode response in the query action. parser can be:
   - `xml` for "text/xml" content : beta ; feedbacks are appreciated.
   - `json` default parser. Before 0.4.0 all replies must be in json format.
-  - `none` for reponse that you don't want to parse (landing ping() page by example.)
+  - `none` for response that you don't want to parse (landing ping() page by example.)
   - `openmetrics` not implemented yet!
 
   httpapi_exporter can now provide unified results for multi-format api. I've got one that respond with both json and xml data.
@@ -318,7 +322,7 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
 
   ```
 
-- fixed access to url without authentication (no user, password provided with defaut basic authentication). Removed the header generation (Authorization).
+- fixed access to url without authentication (no user, password provided with default basic authentication). Removed the header generation (Authorization).
 - allow dynamic metric name and help. Now it is possible to define metrics in a loop:
 
   ```yaml
@@ -347,7 +351,7 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
   exalead_license_config_hasAdvancedQueryReporting{company="My Company",param="hasSemanticFactory",type="-"} 0
   ```
 
-  This example is a lilte bit stupid, because it is more accurate to add a label param with name of parameter in config metric, but it explains how it can work !
+  This example is a little bit stupid, because it is more accurate to add a label param with name of parameter in config metric, but it explains how it can work !
 - add new template function `convertBoolToInt` to convert text boolean to value 0 or 1.
   - string "true", "yes", "ok" returns 1 anything else 0.
   - any int or float value distinct of 0 then 1 else 0.
@@ -363,9 +367,9 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
 
 ## 0.3.9 / 2024-12-14
 
-- removed passwd_encrypt tool source code from httpapi_exporter: created a new stand-alone package [passwd_encrypt](https://github.com/peekjef72/passwd_encrypt). Passwd_encrypt is still installed when building and added to the released archiv.
+- removed passwd_encrypt tool source code from httpapi_exporter: created a new stand-alone package [passwd_encrypt](https://github.com/peekjef72/passwd_encrypt). Passwd_encrypt is still installed when building and added to the released archive.
 - updated prometheus/exporter-toolkit to 0.13.0 (log => log/slog)
-- renamed entrypoint /healthz to /health : response format depends on "accept" header (application/json, text/plain, text/html default)
+- renamed entrypoint '/healthz' to /health : response format depends on "accept" header (application/json, text/plain, text/html default)
 - updated entrypoint /status, /loglevel /targets /config: response format depends on "accept" header (application/json, text/plain, text/html default)
 - added cmd line --model_name to perform test with model and uri in dry-run mode
 - added out format for passwd_encrypt that can be cut/pasted into config file.
@@ -462,14 +466,14 @@ query_perf_seconds{page="status",stage="total_time"} 0.00123
   loop: $item.list
   ```
 
-- added a new template func "lookupAddr" to retrive DNS hostname from ip address.
+- added a new template func "lookupAddr" to retrieve DNS hostname from ip address.
 - adapt contribs (netscaler/veeam) with new features.
   
 ## 0.3.4 / 2023-12-16
 
 - fixed var evaluation (set_fact with template)
-- fixed type evalution for cookies and header
-- (beta) add set_stats action to store vars (and values) from collector into target global symbols table, so they are persistent accross several runs; used to get config datas only once or at periodic time.
+- fixed type evaluation for cookies and header
+- (beta) add set_stats action to store vars (and values) from collector into target global symbols table, so they are persistent across several runs; used to get config data only once or at periodic time.
 - updated go version to 1.21.5
 - updated contrib netscaler (lb services, ssl services, rename metrics from system collector)
 - fixed template panic: add recover

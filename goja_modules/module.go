@@ -209,16 +209,16 @@ func getIdentifierFromStatementList(stmts []ast.Statement, identifiers map[strin
 func GetIdentifiers(p *ast.Program) map[string]string {
 	var identifiers = make(map[string]string)
 	getIdentifierFromStatementList(p.Body, identifiers, "global")
+	var local_var_idents = make(map[string]string)
 	for _, decl := range p.DeclarationList {
 		for _, var_def := range decl.List {
-			if ident := var_def.Target.(*ast.Identifier); ident != nil {
-				delete(identifiers, ident.Name.String())
-
-			}
+			getIdentifiersFromExpression(var_def.Target, local_var_idents, "local")
 		}
 	}
+	for ident := range local_var_idents {
+		delete(identifiers, ident)
+	}
 	return identifiers
-
 }
 
 //********************************************************************

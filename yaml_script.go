@@ -1,3 +1,5 @@
+// cSpell:ignore maprefix, elmt, curval, tmpl, ldata, errmsg, error_var_mapkey_not_found, acta
+
 package main
 
 import (
@@ -51,6 +53,7 @@ type GetMetricsRes struct {
 type Action interface {
 	BaseAction
 	Type() int
+	TypeName() string
 	setBasicElement(nameField *Field, vars [][]any, with []any, loopVar string, when []*Field, until []*Field) error
 	PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
 	CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
@@ -132,7 +135,7 @@ type BaseAction interface {
 
 	GetNameField() *Field
 	SetNameField(*Field)
-	GetWidh() []any
+	GetWidth() []any
 	SetWidth([]any)
 	// GetWhen() []*exporterTemplate
 	GetWhen() []*Field
@@ -253,7 +256,7 @@ func AddCustomTemplate(ba BaseAction, customTemplate *exporterTemplate) error {
 			return err
 		}
 	}
-	baWith := ba.GetWidh()
+	baWith := ba.GetWidth()
 	for idx, with := range baWith {
 		if err := AddCustomTemplateElement(with, customTemplate); err != nil {
 			return fmt.Errorf("error in with[%d]: %s", idx, err)
@@ -294,15 +297,41 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 		}
 		if data == nil {
 			check_value = true
-		} else if r_data, ok := data.([]any); ok {
-			if r_data == nil {
-				check_value = true
-			}
-		} else if s_data, ok := data.(string); ok {
-			if s_data == "" {
-				data = nil
+		} else {
+			vSrc := reflect.ValueOf(data)
+			switch vSrc.Kind() {
+
+			case reflect.Map:
+				if vSrc.Len() == 0 {
+					check_value = true
+					// } else {
+					// 	dst := make([]any,1)
+					// 	dst[0] = data
+					// 	data = dst
+				}
+
+			case reflect.Slice:
+				if vSrc.Len() == 0 {
+					check_value = true
+				}
+			case reflect.String:
+				if s_data, ok := data.(string); ok {
+					if s_data == "" {
+						data = nil
+					}
+				}
+			default:
 			}
 		}
+		//  if r_data, ok := data.([]any); ok {
+		// 	if r_data == nil {
+		// 		check_value = true
+		// 	}
+		// } else if s_data, ok := data.(string); ok {
+		// 	if s_data == "" {
+		// 		data = nil
+		// 	}
+		// }
 		if check_value {
 			data, err = curval.GetValueString(symtab, logger)
 		}
@@ -453,10 +482,14 @@ func preserve_sym_tab(symtab map[string]any, old_values map[string]any, key stri
 
 func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger, ba Action, customAction func(*YAMLScript, map[string]any, *slog.Logger) error) error {
 
-	// to preverse values from symtab
+	// to preserve values from symtab
 	old_values := make(map[string]any)
 
 	defer func() {
+		// if len(old_values) > 0 {
+		// 	logger.Debug("remove old_values", "old_values", old_values)
+		// }
+
 		for key, val := range old_values {
 			if val == "_" {
 				delete(symtab, key)
@@ -533,10 +566,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 	var items []any
 	var loop_var string
 	do_loop := false
+	no_loop := false
 	set_loops_var := false
 
 	final_items := make([]any, 0)
-	baWith := ba.GetWidh()
+	baWith := ba.GetWidth()
 	if len(baWith) > 0 {
 		// build a list of element from ba.With list of Field
 		items = baWith
@@ -545,7 +579,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 			data, err := ValorizeValue(symtab, item, logger, ba.GetName(symtab, logger), false)
 			if val_err, ok := (err).(VarError); ok {
 				if val_err.Code() == error_var_not_found || val_err.Code() == error_var_mapkey_not_found ||
-					val_err.Code() == error_var_sliceindice_not_found {
+					val_err.Code() == error_var_sliceindex_not_found {
 					// reset everything to build an empty loop
 					data = nil
 					err = nil
@@ -558,9 +592,13 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 			}
 			if err == nil {
 				if data != nil {
-					if l_data, ok := data.([]any); ok {
-						if len(l_data) > 0 {
-							final_items = append(final_items, l_data...)
+					t_data := reflect.ValueOf(data)
+					switch t_data.Kind() {
+					case reflect.Slice, reflect.Array:
+						if t_data.Len() > 0 {
+							for ind := range t_data.Len() {
+								final_items = append(final_items, t_data.Index(ind).Interface())
+							}
 						} else {
 							logger.Debug(
 								"with_items list empty.",
@@ -568,14 +606,26 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 								"script", ScriptName(symtab, logger),
 								"name", ba.GetName(symtab, logger))
 						}
-					} else {
+
+					case reflect.Map:
+						if t_data.Len() > 0 {
+							// append a one list element constituted with the map
+							final_items = append(final_items, t_data.Interface())
+						} else {
+							logger.Debug(
+								"with_items list empty.",
+								"coll", CollectorId(symtab, logger),
+								"script", ScriptName(symtab, logger),
+								"name", ba.GetName(symtab, logger))
+						}
+					case reflect.String:
 						if s_data, ok := data.(string); ok {
 							if s_data != "null" {
 								final_items = append(final_items, data)
 							}
-						} else {
-							final_items = append(final_items, data)
 						}
+					default:
+						final_items = append(final_items, data)
 					}
 				}
 			} else {
@@ -599,6 +649,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 	} else {
 		items = make([]any, 1)
 		items[0] = 0
+		no_loop = true
 	}
 
 	if !do_loop {
@@ -614,6 +665,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 				}
 				preserve_sym_tab(symtab, old_values, "loop_var_idx", idx)
 				preserve_sym_tab(symtab, old_values, "loop_var", loop_var)
+				set_loops_var = false
+			} else if !no_loop {
+				symtab[loop_var] = item
+				symtab["loop_var_idx"] = idx
+				symtab["loop_var"] = loop_var
 			}
 			// check if there are condition on the "item" loop;
 			// if one is false break item the loop on next.
@@ -653,6 +709,9 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 			if set_loops_var {
 				preserve_sym_tab(symtab, old_values, "loop_var_idx", idx)
 				// symtab["loop_var_idx"] = idx
+				set_loops_var = false
+			} else if !no_loop {
+				symtab["loop_var_idx"] = idx
 			}
 			valid_value := true
 
@@ -712,11 +771,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 //
 // * set_fact: vars to set in symbols table
 //
-// * query: play url to the target and set resulting json obj the sybols table
+// * query: play url to the target and set resulting json obj the symbols table
 //
 // * metrics: define a list of metric (metric_name) to generate for the exporter
 //
-// * actions: define a list of subaction to play: query, metrics...
+// * actions: define a list of sub-action to play: query, metrics...
 //
 // * play_script: play the script
 //
@@ -1116,6 +1175,14 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				if err != nil {
 					return nil, err
 				}
+				// check stand-alone metric_action (without "metrics" action)
+				for i, act := range acta {
+					if act.Type() == metric_action {
+						err = fmt.Errorf("in action '%s' sub_action '#%d/%s' is a stand alone metric_action without metrics action (forbidden)", name.String(), i, act.TypeName())
+						return nil, err
+					}
+				}
+
 				a := &ActionsAction{}
 				a.Actions = acta
 				if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
@@ -1153,10 +1220,13 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 
 				mcl := make([]*MetricConfig, len(raw.Content))
 				idx := 0
-				for _, act := range acta {
+				for i, act := range acta {
 					if act.Type() == metric_action {
 						mcl[idx] = act.GetMetric()
 						idx++
+					} else {
+						err = fmt.Errorf("in action '%s' sub_action '#%d/%s' is not a metric_action (forbidden)", name.String(), i, act.TypeName())
+						return nil, err
 					}
 				}
 				a.Metrics = mcl
@@ -1229,7 +1299,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			// we haven't found any label in action that we should understand
 			// display first key of the map and context (line, column)
 			for key, val := range cur_act {
-				err := fmt.Errorf("unknown action type: '%s': '%v', arround line %d column: %d", key, val.Value, val.Line, val.Column)
+				err := fmt.Errorf("unknown action type: '%s': '%v', around line %d column: %d", key, val.Value, val.Line, val.Column)
 				return nil, err
 			}
 			// ***********************************************

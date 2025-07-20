@@ -1,3 +1,5 @@
+// cSpell:ignore errmsg
+
 package main
 
 import (
@@ -30,6 +32,10 @@ func (a *SetFactAction) Type() int {
 	return set_fact_action
 }
 
+func (a *SetFactAction) TypeName() string {
+	return "set_fact_action"
+}
+
 func (a *SetFactAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -49,7 +55,7 @@ func (a *SetFactAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *SetFactAction) GetWidh() []any {
+func (a *SetFactAction) GetWidth() []any {
 	return a.With
 }
 func (a *SetFactAction) SetWidth(with []any) {
@@ -118,7 +124,7 @@ func (a *SetFactAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 
 // specific behavior for the SetStatsAction
 // it does nothing at all... it is only en entry point for calling target to collect
-// vars from the collector and so to make them persistent accross calls
+// vars from the collector and so to make them persistent across calls
 func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
 
 	var (
@@ -142,6 +148,9 @@ func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, 
 			if err == nil {
 				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
 					return err
+				}
+				if len(key_name) > 2 && key_name[0] == '_' && key_name[1] == '_' {
+					return errors.New("set_fact: variable names starting with __ are forbidden")
 				}
 
 				if value_name == nil {

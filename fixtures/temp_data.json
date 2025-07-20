@@ -1,0 +1,55 @@
+{
+  "actions": "/api/vendor/device/777/metrics/actions",
+  "metrics": [
+    {
+      "bins": [
+        {
+          "binId": "ACTION_1",
+          "counters": [
+            {
+              "count": 1,
+              "counterId": "REQUESTS"
+            }
+          ]
+        },
+        {
+          "binId": "ACTION_N",
+          "counters": [
+            {
+              "count": 11,
+              "counterId": "REQUESTS"
+            }
+          ]
+        }
+      ],
+      "label": "lbl1",
+      "partId": 11111
+    },
+    {
+      "bins": [
+        {
+          "binId": "ACTION_1",
+          "counters": [
+            {
+              "count": 99,
+              "counterId": "REQUESTS"
+            }
+          ]
+        },
+        {
+          "binId": "ACTION_N",
+          "counters": [
+            {
+              "count": 5,
+              "counterId": "REQUESTS"
+            }
+          ]
+        }
+      ],
+      "label": "lbl2",
+      "partId": 22222
+    }
+  ],
+  "resetTime": "2025-02-13T14:19:55"
+}
+

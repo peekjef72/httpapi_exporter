@@ -1,3 +1,5 @@
+// cSpell:ignore stretchr, yamlscript, regrTest, cerebro, lastdate, devcounter
+
 package main
 
 import (
@@ -14,7 +16,7 @@ import (
 
 func TestMetricsGoTemplate(t *testing.T) {
 
-	// init prerequirements for yamlscript to work
+	// init pre-requirements for yamlscript to work
 	initTest()
 
 	logHandlerOpts := &slog.HandlerOptions{
@@ -184,7 +186,7 @@ func TestMetricsGoTemplate(t *testing.T) {
 
 func TestMetricsJSTemplate(t *testing.T) {
 
-	// init prerequirements for yamlscript to work
+	// init pre requirements for yamlscript to work
 	initTest()
 
 	logHandlerOpts := &slog.HandlerOptions{
@@ -355,9 +357,9 @@ func TestMetricsJSTemplate(t *testing.T) {
 	}
 }
 
-func TestMetricsRegresionPSF(t *testing.T) {
+func TestMetricsRegressionPSF(t *testing.T) {
 
-	// init prerequirements for yamlscript to work
+	// init pre requirements for yamlscript to work
 	initTest()
 
 	logHandlerOpts := &slog.HandlerOptions{
@@ -379,7 +381,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
             solution: _
             uniqueid: $uniqueId
           values:
-            _: availability
+            _: $availability
 
         - metric_name: availability_timestamp
           help: timestamp when the component availability was computed.
@@ -411,7 +413,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
 	// parse the code and build AST to execute.
 	err := yaml.Unmarshal([]byte(code), &script)
 	if err != nil {
-		assert.Nil(t, err, fmt.Sprintf(`TestMetricsRegresionPSF("%s") error: %s`, script.name, err.Error()))
+		assert.Nil(t, err, fmt.Sprintf(`TestMetricsRegressionPSF("%s") error: %s`, script.name, err.Error()))
 		return
 	}
 
@@ -438,7 +440,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
 	}
 	// add constants to symbols table so that script wan work
 	symtab["__collector_id"] = "regrTest"
-	symtab["__name__"] = "TestMetricsRegresionPSF"
+	symtab["__name__"] = "TestMetricsRegressionPSF"
 	symtab["query_status"] = true
 
 	// set the data to build metrics content
@@ -457,7 +459,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
 
 	var data any
 	if err := json.Unmarshal([]byte(results_str), &data); err != nil {
-		t.Errorf(`TestMetricsRegresionPSF() parsing test results error: %s`, err.Error())
+		t.Errorf(`TestMetricsRegressionPSF() parsing test results error: %s`, err.Error())
 		return
 	}
 	symtab["results"] = data
@@ -479,7 +481,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
 	// play the script
 	err = script.Play(symtab, false, logger)
 	if err != nil {
-		assert.Nil(t, err, `TestMetricsRegresionPSF("%s") error: %s`, script.name, err.Error())
+		assert.Nil(t, err, `TestMetricsRegressionPSF("%s") error: %s`, script.name, err.Error())
 		return
 	}
 
@@ -489,7 +491,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
 	var_name := `js: results[idx]`
 	name, err := NewField(var_name, nil)
 	if err != nil {
-		t.Errorf(`TestMetricsRegresionPSF("%s") error: %s`, var_name, err.Error())
+		t.Errorf(`TestMetricsRegressionPSF("%s") error: %s`, var_name, err.Error())
 		return
 	}
 
@@ -527,7 +529,10 @@ func TestMetricsRegresionPSF(t *testing.T) {
 					if f_value, ok := GetMapValueFloat(res, "availability"); !ok {
 						assert.True(t, ok, fmt.Sprintf("TestMetricsScript('%s') value not found", var_name))
 					} else {
-						assert.True(t, metric.val == f_value, "metric value differs between computed and source")
+						if metric.val != f_value {
+							logger.Debug("metric_val", "m.Value", metric.val, "awaiting value", f_value)
+						}
+						assert.True(t, metric.val == f_value, "metric value differs between computed and source", metricDesc.Name(), metric.val, f_value)
 					}
 				case 1, 3:
 					assert.True(t, metricDesc.Name() == "availability_timestamp", "invalid name found", metricDesc.Name())
@@ -538,7 +543,7 @@ func TestMetricsRegresionPSF(t *testing.T) {
 						assert.True(t, lastdate == "", fmt.Sprintf("TestMetricsScript('%s') value not found", var_name))
 					} else {
 						if ts, err := time.Parse("2006-01-02 15:04:00 -0700", lastdate+":00 +0000"); err != nil {
-							assert.Nil(t, err, `TestMetricsRegresionPSF("%s") error: %s`, script.name, err.Error())
+							assert.Nil(t, err, `TestMetricsRegressionPSF("%s") error: %s`, script.name, err.Error())
 							return
 						} else {
 							f_value := float64(ts.Unix())
@@ -599,4 +604,129 @@ func TestMetricsRegresionPSF(t *testing.T) {
 		}
 
 	}
+}
+
+// DEBUG prog
+func TestMetricsJSTempo(t *testing.T) {
+
+	// init pre-requirements for yamlscript to work
+	initTest()
+
+	logHandlerOpts := &slog.HandlerOptions{
+		Level:     slog.LevelDebug,
+		AddSource: true,
+	}
+	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
+
+	// the script part to execute.
+	code := `
+    - name: extract device
+      set_fact:
+        dev1: >-
+          js:
+            var res = devcounter.actions.split('/')
+            res[4]
+
+    - name: loop on metrics
+      loop: $devcounter.metrics
+      loop_var: metric
+      actions:
+        - name: loop on bins
+          loop: $metric.bins
+          loop_var: bin
+          actions:
+            - name: debug
+              debug:
+                msg: "bin: {{ .bin }}"
+
+            - name: build
+              metrics:
+                - metric_name: action_metrics_total
+                  scope: none
+                  type: gauge
+                  help: "dummy & dummy"
+                  key_labels:
+                    device: $dev1
+                    partId: $metric.partId
+                    label: $metric.label
+                    bindID: $bin.binId
+                    counterID: $bin.counters[0].counterId
+                  values:
+                    _: $bin.counters[0].count
+    - name: add metric for reset resetTime
+      metrics:
+        - metric_name: action_metrics_reset_time
+          # scope: none
+          type: gauge
+          help: reset timestamp
+          keys_labels:
+            device: $dev1
+          values:
+            _: >-
+              js:
+                 Math.floor(new Date( devcounter.resetTime +'+0000').getTime()/1000)
+`
+
+	script := &YAMLScript{
+		name: "test",
+	}
+	// parse the code and build AST to execute.
+	err := yaml.Unmarshal([]byte(code), &script)
+	if err != nil {
+		assert.Nil(t, err, fmt.Sprintf(`TestMetricsJSTempo("%s") error: %s`, script.name, err.Error()))
+		return
+	}
+
+	// set metric associated with found code.
+	var logContext []any
+	for _, ma := range script.metricsActions {
+		for _, act := range ma.Actions {
+			if act.Type() == metric_action {
+				mc := act.GetMetric()
+				if mc == nil {
+					assert.Nil(t, mc, fmt.Errorf(`TestMetricsJSTempo("%s") MetricAction nil received`, script.name))
+					return
+				}
+				mf, err := NewMetricFamily(logContext, mc, nil, nil)
+				if err != nil {
+					assert.Nil(t, err, fmt.Errorf(`TestMetricsJSTempo("%s") MetricAction nil received`, script.name))
+					return
+				}
+				//			ma.metricFamilies = append(ma.metricFamilies, mf)
+				// mfs = append(mfs, mf)
+				act.SetMetricFamily(mf)
+			}
+		}
+	}
+	// add constants to symbols table so that script wan work
+	symtab["__collector_id"] = "test"
+	symtab["__name__"] = "TestMetricsJSTempo"
+	symtab["query_status"] = true
+
+	// set the data to build metrics content
+	file_content, err := os.ReadFile("fixtures/temp_data.json")
+	if err != nil {
+		t.Errorf(`TestMetricsJSTempo("%s") load test results error: %s`, script.name, err.Error())
+		return
+	}
+	var data any
+	if err := json.Unmarshal(file_content, &data); err != nil {
+		t.Errorf(`TestMetricsJSTempo("%s") parsing test results error: %s`, script.name, err.Error())
+		return
+	}
+	symtab["devcounter"] = data
+
+	// set the channel to send results so that we can receive & analyze them
+	metricChan := make(chan Metric, capMetricChan)
+	symtab["__metric_channel"] = (chan<- Metric)(metricChan)
+
+	// play the script
+	err = script.Play(symtab, false, logger)
+	if err != nil {
+		assert.Nil(t, err, `TestMetricsScript("%s") error: %s`, script.name, err.Error())
+		return
+	}
+
+	logger.Debug(fmt.Sprintf("metric channel length: %d", len(metricChan)))
+
 }

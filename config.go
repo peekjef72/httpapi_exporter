@@ -1,3 +1,4 @@
+// cSpell:ignore mytemplate, colls, reslist, maprefix, tnames, scdef,pfglob, cfglob,tfglob,sclabels,keymap,elmt, elmts, Mymap, tmpl, jscode, ktype, htype, cref
 package main
 
 import (
@@ -17,7 +18,9 @@ import (
 
 	mytemplate "github.com/peekjef72/httpapi_exporter/template"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
+	"github.com/spf13/cast"
 	"gopkg.in/yaml.v3"
 )
 
@@ -138,7 +141,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		coll.id = fmt.Sprintf("%02d", id)
 	}
 
-	// read the target config with a TargetsFiles specfied
+	// read the target config with a TargetsFiles specified
 	for _, t := range c.Targets {
 		if len(t.TargetsFiles) > 0 {
 			err := c.loadTargetsFiles(t.TargetsFiles)
@@ -158,7 +161,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 
-	// check if a target nammed "default" exists
+	// check if a target named "default" exists
 	// if not create one with default parameters from TargetConfig
 	found := false
 	for _, t := range c.Targets {
@@ -842,7 +845,7 @@ type CollectorConfig struct {
 	MetricPrefix   string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
 	MinInterval    model.Duration         `yaml:"min_interval,omitempty" json:"min_interval,omitempty"`   // minimum interval between query executions
 	Templates      map[string]string      `yaml:"templates,omitempty" json:"templates,omitempty"`         // share custom templates/funcs for results templating
-	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallem
+	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallel
 	symtab         map[string]any
 
 	customTemplate *exporterTemplate // to store the custom Templates used by this collector
@@ -888,6 +891,12 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 			if c_script.name == "" {
 				c_script.name = collect_script_name
 			}
+			// check stand-alone metric_action (without "metrics" action)
+			for i, act := range c_script.Actions {
+				if act.Type() == metric_action {
+					return fmt.Errorf("in script '%s' sub_action '#%d/%s' is a stand alone metric_action without metrics action (forbidden)", c_script.name, i, act.TypeName())
+				}
+			}
 			if err := c_script.AddCustomTemplate(c.customTemplate); err != nil {
 				err = fmt.Errorf("script %s: error with custom template: %s", c_script.name, err)
 				return err
@@ -919,7 +928,7 @@ type dumpCollectorConfig struct {
 	MetricPrefix   string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
 	MinInterval    model.Duration         `yaml:"min_interval,omitempty" json:"min_interval,omitempty"`   // minimum interval between query executions
 	Templates      map[string]string      `yaml:"templates,omitempty" json:"templates,omitempty"`         // share custom templates/funcs for results templating
-	CollectScripts map[string]ActionsList `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallem
+	CollectScripts map[string]ActionsList `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallel
 }
 
 func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
@@ -936,27 +945,55 @@ func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
 	return colls
 }
 
+const (
+	HistogramTypeUndef = iota
+	HistogramTypeStatic
+	HistogramTypeExternal
+)
+
+// type eBucket struct {
+// 	CumulativeCount uint64
+// 	UpperBound float64
+// }
+
+type EHistogram struct {
+	Type          int
+	Histogram_var *Field
+	Histogram     []*prometheus.HistogramVec
+	// SampleCount uint64
+	// SampleSum   float64
+	// // Bucket []*eBucket
+	Buckets         *[]float64
+	Histogram_value *Field
+}
+
 // MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
 // keys/values.
 type MetricConfig struct {
 	Name         string            `yaml:"metric_name" json:"metric_name"`                         // the Prometheus metric name
 	TypeString   string            `yaml:"type" json:"type"`                                       // the Prometheus metric type
 	Help         string            `yaml:"help" json:"help"`                                       // the Prometheus metric help text
-	KeyLabels    any               `yaml:"key_labels,omitempty" json:"key_labels,omitempty"`       // expose these atributes as labels from JSON object: format name: value with name and value that should be template
+	KeyLabels    any               `yaml:"key_labels,omitempty" json:"key_labels,omitempty"`       // expose these attributes as labels from JSON object: format name: value with name and value that should be template
 	StaticLabels map[string]string `yaml:"static_labels,omitempty" json:"static_labels,omitempty"` // fixed key/value pairs as static labels
 	ValueLabel   string            `yaml:"value_label,omitempty" json:"value_label,omitempty"`     // with multiple value columns, map their names under this label
 	Values       map[string]string `yaml:"values" json:"values"`                                   // expose each of these columns as a value, keyed by column name
 	Scope        string            `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
 
-	valueType      prometheus.ValueType // TypeString converted to prometheus.ValueType
+	HistogramInfos any `yaml:"histogram,omitempty" json:"histogram,omitempty"`
+
+	// valueType_old prometheus.ValueType // TypeString converted to prometheus.ValueType
+	valueType dto.MetricType
+
 	name           *Field
 	help           *Field
 	key_labels_map map[string]string
 	key_labels     *Field
+
+	histogram *EHistogram
 }
 
-// ValueType returns the metric type, converted to a prometheus.ValueType.
-func (m *MetricConfig) ValueType() prometheus.ValueType {
+// ValueType returns the metric type, converted to a dto.MetricType.
+func (m *MetricConfig) ValueType() dto.MetricType {
 	return m.valueType
 }
 
@@ -966,7 +1003,6 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal((*plain)(m)); err != nil {
 		return err
 	}
-
 	// Check required fields
 	if m.Name == "" {
 		return fmt.Errorf("missing name for metric %+v", m)
@@ -988,12 +1024,15 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return err
 		}
 	}
-
 	switch strings.ToLower(m.TypeString) {
 	case "counter":
-		m.valueType = prometheus.CounterValue
+		m.valueType = dto.MetricType_COUNTER
 	case "gauge":
-		m.valueType = prometheus.GaugeValue
+		m.valueType = dto.MetricType_GAUGE
+	case "histogram":
+		m.valueType = dto.MetricType_HISTOGRAM
+	case "summary":
+		m.valueType = dto.MetricType_SUMMARY
 	default:
 		return fmt.Errorf("unsupported metric type: %s", m.TypeString)
 	}
@@ -1034,11 +1073,111 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 			}
 		default:
-			return fmt.Errorf("key_labels should be a map[string][string] or Template(string) that will contain a map[string][string] for metric %q", m.Name)
+			return fmt.Errorf("key_labels should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", m.Name)
 		}
 	}
 
-	if len(m.Values) == 0 {
+	if m.valueType == dto.MetricType_HISTOGRAM {
+		if m.HistogramInfos == nil {
+			return fmt.Errorf("no histogram defined for metric %q", m.Name)
+		}
+
+		m.histogram = &EHistogram{}
+
+		htype := reflect.ValueOf(m.HistogramInfos)
+		switch htype.Kind() {
+		case reflect.Map:
+			// if we found elements definition (bucket & value) histogram is static
+			m.histogram.Type = HistogramTypeStatic
+			// hist := &EHistogram{
+			// 	Type: HistogramTypeUndef,
+			// }
+			iter := htype.MapRange()
+			for iter.Next() {
+				raw_key := iter.Key()
+				if raw_key.Kind() == reflect.String {
+					switch raw_key.String() {
+					case "buckets":
+						t_buckets := iter.Value()
+						invalid_format := false
+						if t_buckets.Kind() == reflect.Interface {
+							t_b_v := reflect.ValueOf(t_buckets.Interface())
+							// t_b_i := reflect.TypeOf(t_buckets.Interface())
+							if t_b_v.Kind() == reflect.Slice {
+								buckets := make([]float64, t_b_v.Len())
+
+								prev_v := 0.0
+								for ind := range t_b_v.Len() {
+									t_val := t_b_v.Index(ind)
+									buckets[ind] = cast.ToFloat64(t_val.Interface())
+									// check if bound of bucket is increasing strictly
+									if ind > 0 {
+										if buckets[ind] <= prev_v {
+											return fmt.Errorf("invalid value for buckets bounds definition for histogram metric %q: elmt[%d] %f <= %f", m.Name, ind, buckets[ind], prev_v)
+										}
+										prev_v = buckets[ind]
+									}
+								}
+								m.histogram.Buckets = &buckets
+							} else {
+								invalid_format = true
+							}
+						} else {
+							invalid_format = true
+						}
+						if invalid_format {
+							return fmt.Errorf("invalid format for buckets bounds definition for histogram metric %q: must be slice", m.Name)
+						}
+
+					case "value":
+						t_value := iter.Value()
+						invalid_format := false
+						if t_value.Kind() == reflect.Interface {
+							t_v_v := reflect.ValueOf(t_value.Interface())
+							if t_v_v.Kind() == reflect.String {
+								if val, err := NewField(t_v_v.String(), nil); err == nil {
+									m.histogram.Histogram_value = val
+								} else {
+									return err
+								}
+							} else {
+								invalid_format = true
+							}
+						} else {
+							invalid_format = true
+						}
+						if invalid_format {
+							return fmt.Errorf("invalid format for value definition for histogram metric %q: must be string", m.Name)
+						}
+					}
+				}
+			}
+			// need to check if both buckets and value are defined
+			if m.histogram.Buckets == nil || len(*m.histogram.Buckets) == 0 || m.histogram.Histogram_value == nil {
+				return fmt.Errorf("invalid definition for histogram metric %q: buckets and value must be set", m.Name)
+				// } else {
+				// 	toto := prometheus.NewHistogramVec(
+				// 		prometheus.HistogramOpts {
+				// 			Buckets: *m.histogram.Buckets,
+				// 	}, []string{})
+				// 	m.histogram.Histogram = &dto.Histogram{
+				// 		Bucket: make([]*dto.Bucket, len(*m.histogram.Buckets)),
+				// 	}
+			}
+
+		case reflect.String:
+			m.histogram.Type = HistogramTypeExternal
+			if htype.String() != "" {
+				if val, err := NewField(htype.String(), nil); err == nil {
+					m.histogram.Histogram_var = val
+				} else {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("histogram should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", m.Name)
+		}
+	} else if len(m.Values) == 0 {
 		return fmt.Errorf("no values defined for metric %q", m.Name)
 	}
 
@@ -1078,7 +1217,7 @@ func (s Secret) MarshalJSON() ([]byte, error) {
 	return nil, nil
 }
 
-// ConvertibleBoolean special type to retrive 1 yes true to boolean true
+// ConvertibleBoolean special type to retrieve 1 yes true to boolean true
 type ConvertibleBoolean bool
 
 func (bit *ConvertibleBoolean) UnmarshalJSON(data []byte) error {

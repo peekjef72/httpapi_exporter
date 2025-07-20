@@ -56,6 +56,10 @@ func (a *DebugAction) Type() int {
 	return debug_action
 }
 
+func (a *DebugAction) TypeName() string {
+	return "debug_action"
+}
+
 func (a *DebugAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -75,7 +79,7 @@ func (a *DebugAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *DebugAction) GetWidh() []any {
+func (a *DebugAction) GetWidth() []any {
 	return a.With
 }
 func (a *DebugAction) SetWidth(with []any) {

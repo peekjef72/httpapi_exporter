@@ -1,3 +1,5 @@
+// cSpell:ignore curval, subval
+
 package main
 
 import (
@@ -177,6 +179,10 @@ func (a *QueryAction) Type() int {
 	return query_action
 }
 
+func (a *QueryAction) TypeName() string {
+	return "query_action"
+}
+
 func (a *QueryAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -195,7 +201,7 @@ func (a *QueryAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *QueryAction) GetWidh() []any {
+func (a *QueryAction) GetWidth() []any {
 	return a.With
 }
 func (a *QueryAction) SetWidth(with []any) {

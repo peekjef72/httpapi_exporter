@@ -124,7 +124,7 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 				if !ok {
 					err = errors.New("undefined error")
 				}
-				e.logger.Debug(
+				e.logger.Error(
 					fmt.Sprintf("target has panic-ed: %s", err.Error()),
 					"coll", target.Name(),
 				)
@@ -171,6 +171,8 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 				dtoMetricFamily.Type = dto.MetricType_GAUGE.Enum()
 			case dtoMetric.Counter != nil:
 				dtoMetricFamily.Type = dto.MetricType_COUNTER.Enum()
+			case dtoMetric.Histogram != nil:
+				dtoMetricFamily.Type = dto.MetricType_HISTOGRAM.Enum()
 			default:
 				errs = append(errs, fmt.Errorf("don't know how to handle metric %v", dtoMetric))
 				continue

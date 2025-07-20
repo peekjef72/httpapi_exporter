@@ -1,3 +1,4 @@
+// cSpell:ignore maprefix, elmt
 package main
 
 import (
@@ -37,6 +38,10 @@ func (a *MetricsAction) Type() int {
 	return metrics_action
 }
 
+func (a *MetricsAction) TypeName() string {
+	return "metrics_action"
+}
+
 func (a *MetricsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -56,7 +61,7 @@ func (a *MetricsAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *MetricsAction) GetWidh() []any {
+func (a *MetricsAction) GetWidth() []any {
 	return a.With
 }
 func (a *MetricsAction) SetWidth(with []any) {

@@ -17,7 +17,7 @@ func TestFuncParsePrometheusResponse(t *testing.T) {
 		raw_data any
 	)
 	if data, err := ParsePrometheusResponse(file_content); err != nil {
-		t.Errorf(`ParseYAMLResponse() parsing test results error: %s`, err.Error())
+		t.Errorf(`ParsePrometheusResponse() parsing test results error: %s`, err.Error())
 		return
 	} else {
 		raw_data = data
@@ -26,7 +26,7 @@ func TestFuncParsePrometheusResponse(t *testing.T) {
 		t.Errorf("ParsePrometheusResponse(): invalid content received")
 	} else {
 		// must obtain 9 metrics
-		assert.True(t, len(data) == 9, "result doesn't contain 9 metrics")
+		assert.True(t, len(data) == 10, "result doesn't contain 9 metrics")
 
 		// check that metric familly  "apache_workers" exists and contains two metrics
 		if raw_metric, ok := data["apache_workers"]; !ok {
@@ -46,5 +46,25 @@ func TestFuncParsePrometheusResponse(t *testing.T) {
 			}
 
 		}
+
+		// check that metric familly  "process_cpu_seconds_total" exists and contains on metric
+		if raw_metric, ok := data["process_cpu_seconds_total"]; !ok {
+			t.Errorf(`ParsePrometheusResponse(): metric "process_cpu_seconds_total" not founf`)
+		} else {
+			if metric, ok := raw_metric.(map[string]any); !ok {
+				t.Errorf("ParsePrometheusResponse(): invalid content for metric")
+			} else {
+				met_type := GetMapValueString(metric, "type")
+				assert.True(t, met_type == "counter", "ParsePrometheusResponse(): invalid metric type found")
+				raw_data := metric["metrics"]
+				if mets, ok := raw_data.([]map[string]any); !ok {
+					t.Errorf(`ParsePrometheusResponse(): invalid content for metric["metrics"]`)
+				} else {
+					assert.True(t, len(mets) == 1, "ParsePrometheusResponse(): invalid metric type found")
+				}
+			}
+
+		}
+
 	}
 }

@@ -1,3 +1,4 @@
+// cSpell:ignore scriptname
 package main
 
 import (
@@ -31,6 +32,10 @@ func (a *PlayScriptAction) Type() int {
 	return play_script_action
 }
 
+func (a *PlayScriptAction) TypeName() string {
+	return "play_script_action"
+}
+
 func (a *PlayScriptAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -50,7 +55,7 @@ func (a *PlayScriptAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *PlayScriptAction) GetWidh() []any {
+func (a *PlayScriptAction) GetWidth() []any {
 	return a.With
 }
 func (a *PlayScriptAction) SetWidth(with []any) {

@@ -61,7 +61,7 @@ scripts:
       loop_var: mod
       actions:
         - name: management module status
-          # by default scope is set to loop_var, here $ts; because we need $key_labels var
+          # by default scope is set to loop_var, here $mod; because we need $key_labels var
           # scope must be set to none
           scope: none
           metrics:

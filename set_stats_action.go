@@ -1,3 +1,5 @@
+// cSpell:ignore errmsg
+
 package main
 
 import (
@@ -30,6 +32,10 @@ func (a *SetStatsAction) Type() int {
 	return set_fact_action
 }
 
+func (a *SetStatsAction) TypeName() string {
+	return "set_fact_action"
+}
+
 func (a *SetStatsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -49,7 +55,7 @@ func (a *SetStatsAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *SetStatsAction) GetWidh() []any {
+func (a *SetStatsAction) GetWidth() []any {
 	return a.With
 }
 func (a *SetStatsAction) SetWidth(with []any) {
@@ -134,7 +140,7 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 	dst_symtab := make(map[string]any)
 	for _, pair := range a.setStats {
 		if pair == nil {
-			return errors.New("set_fact: invalid key value")
+			return errors.New("set_stats: invalid key value")
 		}
 		if key, ok := pair[0].(*Field); ok {
 			key_name, err = key.GetValueString(symtab, logger)

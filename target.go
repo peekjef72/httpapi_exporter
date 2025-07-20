@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"google.golang.org/protobuf/proto"
 )
@@ -151,7 +150,7 @@ func NewTarget(
 	queryStatusDesc := NewAutomaticMetricDesc(logContext,
 		profile.MetricPrefix+"_"+queryStatusName,
 		gc.QueryStatusHelp,
-		prometheus.GaugeValue, constLabelPairs,
+		dto.MetricType_GAUGE, constLabelPairs,
 		"phase")
 
 	collectors := make([]Collector, 0, len(tpar.collectors))
@@ -172,18 +171,28 @@ func NewTarget(
 	upDesc := NewAutomaticMetricDesc(logContext,
 		profile.MetricPrefix+"_"+upMetricName,
 		gc.UpMetricHelp,
-		prometheus.GaugeValue, constLabelPairs)
+		dto.MetricType_GAUGE, constLabelPairs)
 
 	scrapeDurationDesc := NewAutomaticMetricDesc(logContext,
 		profile.MetricPrefix+"_"+scrapeDurationName,
 		gc.ScrapeDurationHelp,
-		prometheus.GaugeValue, constLabelPairs)
+		dto.MetricType_GAUGE, constLabelPairs)
 
 	collectorStatusDesc := NewAutomaticMetricDesc(logContext,
 		profile.MetricPrefix+"_"+collectorStatusName,
 		gc.CollectorStatusHelp,
-		prometheus.GaugeValue, constLabelPairs,
+		dto.MetricType_GAUGE, constLabelPairs,
 		"collectorname")
+
+	// testHisto := prometheus.NewHistogramVec(
+	// 	prometheus.HistogramOpts{
+	// 		Namespace: profile.MetricPrefix,
+	// 		Name:      "qmgr_messages_inserted_size_bytes",
+	// 		Help:      "Size of messages inserted into the mail queues in bytes.",
+	// 		Buckets:   []float64{1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9},
+	// 	},
+	// 	[]string{"bla"},
+	// )
 
 	t := target{
 		name:       tpar.Name,
@@ -218,7 +227,7 @@ func NewTarget(
 		if scr == nil {
 			continue
 		}
-		// populate MetricFamily with context for all metrics actions
+		// populate MetricFamily with context for all metrics actions from profile default scripts
 		for _, ma := range scr.metricsActions {
 			for _, act := range ma.Actions {
 				if act.Type() == metric_action {
@@ -871,6 +880,17 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			"goroutine target collector controler is over",
 			"coll", t.name)
 
+		// play logout script if one is provided for target !
+		if script, ok := t.client.sc["logout"]; ok && script != nil {
+			if err := t.client.Logout(); err != nil {
+				t.content_mutex.Lock()
+				t.logger.Error(
+					err.Error(),
+					"coll", fmt.Sprintf("logout/%s", t.name))
+				t.content_mutex.Unlock()
+
+			}
+		}
 		// Drain collectChan in case of premature return.
 		defer func() {
 			for range collectChan {
@@ -902,6 +922,20 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 				// obtain set_stats from collector
 				c.SetSetStats(t)
+			}
+
+			// play finalize script if one is provided for target !
+			if script, ok := t.client.sc["finalize"]; ok && script != nil {
+				t.client.symtab["__metric_channel"] = met_ch
+				if err := t.client.Finalize(); err != nil {
+					t.content_mutex.Lock()
+					t.logger.Error(
+						err.Error(),
+						"coll", fmt.Sprintf("finalize/%s", t.name))
+					t.content_mutex.Unlock()
+
+				}
+				delete(t.client.symtab, "__metric_channel")
 			}
 		}
 		// Add to exporter a `scrape duration` metric once we're done scraping.

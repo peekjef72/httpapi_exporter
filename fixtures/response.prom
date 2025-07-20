@@ -90,3 +90,6 @@ postfix_showq_message_size_bytes_bucket{queue="maildrop",le="1e+09"} 0
 postfix_showq_message_size_bytes_bucket{queue="maildrop",le="+Inf"} 0
 postfix_showq_message_size_bytes_sum{queue="maildrop"} 0
 postfix_showq_message_size_bytes_count{queue="maildrop"} 0
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 19.75

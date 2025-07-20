@@ -1,9 +1,14 @@
+// cSpell:ignore histo
+
 package main
 
 import (
 	//"bytes"
 	"fmt"
 	"log/slog"
+
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // ***************************************************************************************
@@ -31,6 +36,9 @@ type MetricAction struct {
 func (a *MetricAction) Type() int {
 	return metric_action
 }
+func (a *MetricAction) TypeName() string {
+	return "metric_action"
+}
 
 func (a *MetricAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
@@ -51,7 +59,7 @@ func (a *MetricAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *MetricAction) GetWidh() []any {
+func (a *MetricAction) GetWidth() []any {
 	return a.With
 }
 func (a *MetricAction) SetWidth(with []any) {
@@ -127,16 +135,18 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 		metric_channel chan<- Metric
 		// mfs            []*MetricFamily
 	)
-	loop_var_idx := ""
-	if raw_loop_var_idx, ok := symtab["loop_var_idx"].(int); ok {
-		if raw_loop_var_idx > 0 {
-			loop_var_idx = fmt.Sprintf(" %d", raw_loop_var_idx)
+	str_loop_var_idx := ""
+	loop_var_idx := 0
+	if val_loop_var_idx, ok := symtab["loop_var_idx"].(int); ok {
+		if val_loop_var_idx > 0 {
+			loop_var_idx = val_loop_var_idx
+			str_loop_var_idx = fmt.Sprintf(" %d", loop_var_idx)
 		}
 	} else {
-		loop_var_idx = "<no loop>"
+		str_loop_var_idx = "<no loop>"
 	}
 	logger.Debug(
-		fmt.Sprintf("[Type: MetricAction] loop %s", loop_var_idx),
+		fmt.Sprintf("[Type: MetricAction] loop %s", str_loop_var_idx),
 		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
@@ -160,7 +170,27 @@ func (a *MetricAction) CustomAction(script *YAMLScript, symtab map[string]any, l
 		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
+
+	if a.metricFamily.ValueType() == dto.MetricType_HISTOGRAM {
+		var histo *prometheus.HistogramVec
+		if len(a.metricFamily.config.histogram.Histogram) > loop_var_idx {
+			histo = a.metricFamily.config.histogram.Histogram[loop_var_idx]
+		}
+		symtab["__histogram"] = histo
+	}
 	a.metricFamily.Collect(symtab, logger, metric_channel)
+	if a.metricFamily.ValueType() == dto.MetricType_HISTOGRAM {
+		if r_val, ok := symtab["__histogram"]; ok {
+			if histo, ok := r_val.(*prometheus.HistogramVec); ok && histo != nil {
+				if len(a.metricFamily.config.histogram.Histogram) > loop_var_idx {
+					a.metricFamily.config.histogram.Histogram[loop_var_idx] = histo
+				} else {
+					a.metricFamily.config.histogram.Histogram = append(a.metricFamily.config.histogram.Histogram, histo)
+				}
+			}
+			delete(symtab, "__histogram")
+		}
+	}
 
 	return nil
 }

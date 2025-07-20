@@ -1,3 +1,4 @@
+// cSpell:ignore errmsg, ciphertext, apiendpoint
 package main
 
 import (
@@ -275,7 +276,7 @@ func (c *Client) SetContext(ctx context.Context) {
 	c.ctx = ctx
 }
 
-// unmarshall a default content in xml... I hope so
+// unmarshal a default content in xml... I hope so
 func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	// var s string
 	content := &Content{
@@ -355,7 +356,7 @@ func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 //
 //   - json default
 //
-//   - openmetrics (not implemented)
+//   - prometheus
 //
 //   - xml
 //
@@ -441,7 +442,7 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 	return data
 }
 
-// sent HTTP Method to uri with params or body and get the reponse and the json obj
+// sent HTTP Method to uri with params or body and get the response and the json obj
 func (c *Client) Execute(
 	method, uri string,
 	params map[string]string,
@@ -520,7 +521,7 @@ func (c *Client) Execute(
 				return resp, data, ErrInvalidLogin
 			} else if !slices.Contains(c.valid_status, code) && i+1 < query_retry {
 				c.logger.Debug(
-					fmt.Sprintf("query unsuccessfull: retrying (%d)", i+1),
+					fmt.Sprintf("query unsuccessful: retrying (%d)", i+1),
 					"status_code", code,
 					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger))
@@ -537,7 +538,7 @@ func (c *Client) Execute(
 			c.symtab["response_cookies"] = resp.Cookies()
 		} else {
 			c.logger.Debug(
-				"query unsuccessfull",
+				"query unsuccessful",
 				"coll", CollectorId(c.symtab, c.logger),
 				"script", ScriptName(c.symtab, c.logger),
 				"errmsg", err)
@@ -1103,7 +1104,7 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 			if auth_token != "" {
 				c.client.SetAuthToken(auth_token)
 				c.logger.Debug(
-					"token Hearder set for request",
+					"token Header set for request",
 					"coll", CollectorId(c.symtab, c.logger),
 					"script", ScriptName(c.symtab, c.logger))
 			}
@@ -1151,7 +1152,6 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 	if params.Status {
 		c.SetQueriesStatus(url, status_code, nil)
 	}
-	// blabla
 	// if params.Trace {
 	// 	c.logger.Debug(
 	// 		"query debug trace",
@@ -1312,18 +1312,7 @@ func GetMapValueBool(symtab map[string]any, key string) (bool, bool) {
 
 	if value_raw, ok := symtab[key]; ok {
 		found = true
-		switch value_val := value_raw.(type) {
-		case string:
-			asString := strings.ToLower(value_val)
-			switch asString {
-			case "1", "t", "true", "on", "yes":
-				value = true
-				// case "0", "f", "false", "off", "no":
-				// value = false
-			}
-		default:
-			value = cast.ToBool(value_raw)
-		}
+		value = ConvertToBool(value_raw)
 	}
 	return value, found
 }
@@ -1351,6 +1340,23 @@ func GetMapValueMap(symtab map[string]any, key string) map[string]any {
 				raw_key := iter.Key()
 				raw_value := iter.Value()
 				mAny[raw_key.String()] = raw_value.Interface()
+			}
+			value = mAny
+		}
+	}
+	return value
+}
+
+func GetMapValueSlice(symtab map[string]any, key string) []any {
+	var value []any
+
+	if value_raw, ok := symtab[key]; ok {
+		vSrc := reflect.ValueOf(value_raw)
+
+		if vSrc.Kind() == reflect.Slice {
+			mAny := make([]any, vSrc.Len())
+			for ind := range vSrc.Len() {
+				mAny[ind] = vSrc.Index(ind).Interface()
 			}
 			value = mAny
 		}
@@ -1577,14 +1583,16 @@ func (cl *Client) Login() (bool, error) {
 
 // logout from target
 func (cl *Client) Logout() error {
-	set_name := cl.SetScriptName("logout")
-	defer func() {
-		if set_name {
-			delete(cl.symtab, "__name__")
-		}
-	}()
+
 	// ** get the login script definition from config if one is defined
 	if script, ok := cl.sc["logout"]; ok && script != nil {
+
+		set_name := cl.SetScriptName("logout")
+		defer func() {
+			if set_name {
+				delete(cl.symtab, "__name__")
+			}
+		}()
 		// cl.symtab["__client"] = cl.client
 		cl.symtab["__method"] = cl.callClientExecute
 		cl.symtab["__collector_id"] = "tg"
@@ -1603,9 +1611,7 @@ func (cl *Client) Logout() error {
 		if err := cl.proceedCookies(); err != nil {
 			return err
 		}
-	} else {
-		// ** no user script found: equivalent to Clear()
-		return cl.Clear()
+
 	}
 	return nil
 }
@@ -1644,6 +1650,37 @@ func (cl *Client) Clear() error {
 	if err := cl.proceedCookies(); err != nil {
 		return err
 	}
+	return nil
+}
+
+// finalize element (metrics) for target
+func (cl *Client) Finalize() error {
+	set_name := cl.SetScriptName("finalize")
+	defer func() {
+		if set_name {
+			delete(cl.symtab, "__name__")
+		}
+	}()
+	// ** get the clear script definition from config if one is defined
+	if script, ok := cl.sc["finalize"]; ok && script != nil {
+		// cl.symtab["__client"] = cl.client
+		cl.symtab["__method"] = cl.callClientExecute
+		cl.symtab["__collector_id"] = "tg"
+
+		err := script.Play(cl.symtab, false, cl.logger)
+		// delete(cl.symtab, "__collector_id")
+		delete(cl.symtab, "__method")
+
+		if err != nil {
+			return err
+		}
+	} else {
+		cl.symtab["logged"] = false
+		cl.symtab["auth_set"] = false
+		delete(cl.symtab, "auth_token")
+		cl.client.SetAuthToken("")
+	}
+
 	return nil
 }
 

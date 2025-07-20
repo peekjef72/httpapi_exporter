@@ -31,6 +31,10 @@ func (a *ActionsAction) Type() int {
 	return actions_action
 }
 
+func (a *ActionsAction) TypeName() string {
+	return "actions_action"
+}
+
 func (a *ActionsAction) GetName(symtab map[string]any, logger *slog.Logger) string {
 	str, err := a.Name.GetValueString(symtab, logger)
 	if err != nil {
@@ -50,7 +54,7 @@ func (a *ActionsAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *ActionsAction) GetWidh() []any {
+func (a *ActionsAction) GetWidth() []any {
 	return a.With
 }
 func (a *ActionsAction) SetWidth(with []any) {
