@@ -72,8 +72,8 @@ func (a *ActionsAction) SetWhen(when []*Field) {
 func (a *ActionsAction) GetLoopVar() string {
 	return a.LoopVar
 }
-func (a *ActionsAction) SetLoopVar(loopvar string) {
-	a.LoopVar = loopvar
+func (a *ActionsAction) SetLoopVar(loopVar string) {
+	a.LoopVar = loopVar
 }
 
 func (a *ActionsAction) GetVars() [][]any {

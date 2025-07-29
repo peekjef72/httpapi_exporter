@@ -21,6 +21,7 @@ scripts:
       # loop: '{{ .results.Interface | toRawJson }}'
       loop: $results.Interface
       actions:
+
         - name: build labels
           set_fact:
             key_labels:

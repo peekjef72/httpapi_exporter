@@ -1,3 +1,5 @@
+// cSpell:ignore vartype
+
 package main
 
 import (
@@ -169,8 +171,8 @@ func (c *collector) SetSetStats(target Target) {
 	if len(c.collect_script) > 0 {
 		for _, sc := range c.collect_script {
 			if len(sc.setStatsActions) > 0 {
-				if r_setstats, ok := c.client.symtab["set_stats"]; ok {
-					if set_stats, ok := r_setstats.(map[string]any); ok {
+				if r_setStats, ok := c.client.symtab["set_stats"]; ok {
+					if set_stats, ok := r_setStats.(map[string]any); ok {
 						target.Lock()
 						for key, value := range set_stats {
 							target.SetSymbol(key, value)

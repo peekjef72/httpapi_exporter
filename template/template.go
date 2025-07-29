@@ -1,3 +1,5 @@
+// cSpell:ignore Mymap, curval, isnil, llen
+
 package template
 
 import (
@@ -28,24 +30,6 @@ func convertToBytes(curval any, unit string) (int64, error) {
 	}
 	i_value = cast.ToInt64(curval)
 
-	// it is a raw value not a template look in "item"
-	// switch curval := curval.(type) {
-	// case int:
-	// 	i_value = int64(curval)
-	// case int64:
-	// 	i_value = curval
-	// case float32:
-	// 	i_value = int64(curval)
-	// case float64:
-	// 	i_value = int64(curval)
-	// case string:
-	// 	if i_value, err = strconv.ParseInt(strings.Trim(curval, "\r\n "), 10, 64); err != nil {
-	// 		i_value = 0
-	// 	}
-	// default:
-	// 	i_value = 0
-	// }
-
 	switch unit {
 	case "kilobyte", "Kb":
 		i_value = i_value * 1024
@@ -60,7 +44,7 @@ func convertToBytes(curval any, unit string) (int64, error) {
 
 // convert the variable cast to boolean to return 0 or 1.
 //
-// convertion convention:
+// conversion convention:
 //
 // - something like number : if value != 0 => 1 else 0
 //
@@ -90,14 +74,6 @@ func convertBoolToInt(curval any) (int64, error) {
 		}
 	case reflect.Map, reflect.Slice:
 		i_value = int64(vSrc.Len())
-	// case reflect.Slice:
-	// 	i_value = int64(vSrc.Len())
-	// case map[any]any:
-	// 	i_value = int64(len(curval))
-	// case []any:
-	// 	i_value = int64(len(curval))
-	// case []string:
-	// 	i_value = int64(len(curval))
 	default:
 		i_value = cast.ToInt64(curval)
 	}
@@ -107,12 +83,12 @@ func convertBoolToInt(curval any) (int64, error) {
 	return i_value, nil
 }
 
-// allow to retrive string header from response's headers
+// allow to retrieve string header from response's headers
 func getHeader(headers http.Header, header string) (string, error) {
 	return headers.Get(header), nil
 }
 
-// allow to retrive string header from response's headers
+// allow to retrieve string header from response's headers
 func getCookie(cookies []*http.Cookie, find_cookie string) (string, error) {
 	found_cookie := ""
 
@@ -140,7 +116,7 @@ func exists(data any) (bool, error) {
 	return res, nil
 }
 
-func getfloat(val any) (float64, bool) {
+func getFloat(val any) (float64, bool) {
 	if val == nil {
 		return 0, true
 	}
@@ -178,8 +154,8 @@ const (
 
 func checkOp(op uint, val1 any, val2 any) bool {
 	res := false
-	f1, isnil1 := getfloat(val1)
-	f2, isnil2 := getfloat(val2)
+	f1, isnil1 := getFloat(val1)
+	f2, isnil2 := getFloat(val2)
 
 	if isnil1 || isnil2 {
 		switch op {
@@ -263,16 +239,6 @@ func exporterHasKey(dict any, lookup_key string) (bool, error) {
 			res = true
 		}
 	}
-	// switch maptype := dict.(type) {
-	// case map[string]any:
-	// 	if _, ok := maptype[lookup_key]; ok {
-	// 		res = true
-	// 	}
-	// case map[any]any:
-	// 	if _, ok := maptype[lookup_key]; ok {
-	// 		res = true
-	// 	}
-	// }
 
 	return res, nil
 }
@@ -288,23 +254,6 @@ func exporterGet(dict any, lookup_key string) (any, error) {
 			val = tmp_value.Interface()
 		}
 	}
-
-	// switch maptype := dict.(type) {
-	// case map[string]string:
-	// 	if raw_val, ok := maptype[lookup_key]; ok {
-	// 		val = raw_val
-	// 	}
-	// case map[string]any:
-	// 	if raw_val, ok := maptype[lookup_key]; ok {
-	// 		val = raw_val
-	// 	}
-	// case map[any]any:
-	// 	if raw_val, ok := maptype[lookup_key]; ok {
-	// 		val = raw_val
-	// 	}
-	// default:
-	// 	val = ""
-	// }
 	if val == nil {
 		val = ""
 	}
@@ -320,12 +269,6 @@ func exporterSet(dict any, lookup_key string, val any) (any, error) {
 	if vDst.Kind() == reflect.Map {
 		vDst.SetMapIndex(reflect.ValueOf(lookup_key), reflect.ValueOf(val))
 	}
-	// switch maptype := dict.(type) {
-	// case map[string]any:
-	// 	maptype[lookup_key] = val
-	// case map[any]any:
-	// 	maptype[lookup_key] = val
-	// }
 
 	return dict, nil
 }
@@ -341,21 +284,6 @@ func exporterKeys(dict any) ([]any, error) {
 			res[i] = raw_key.String()
 		}
 	}
-	// switch maptype := dict.(type) {
-	// case map[string]any:
-	// 	i := 0
-	// 	for raw_key := range maptype {
-	// 		res[i] = raw_key
-	// 		i++
-	// 	}
-	// case map[any]any:
-	// 	res = make([]any, len(maptype))
-	// 	i := 0
-	// 	for raw_key := range maptype {
-	// 		res[i] = raw_key
-	// 		i++
-	// 	}
-	// }
 
 	return res, nil
 }
@@ -374,23 +302,6 @@ func exporterValues(dict any) ([]any, error) {
 			i++
 		}
 	}
-
-	// switch maptype := dict.(type) {
-	// case map[string]any:
-	// 	res = make([]any, len(maptype))
-	// 	i := 0
-	// 	for _, raw_value := range maptype {
-	// 		res[i] = raw_value
-	// 		i++
-	// 	}
-	// case map[any]any:
-	// 	res = make([]any, len(maptype))
-	// 	i := 0
-	// 	for _, raw_value := range maptype {
-	// 		res[i] = raw_value
-	// 		i++
-	// 	}
-	// }
 
 	return res, nil
 }
@@ -417,7 +328,7 @@ func exporterToRawJson(in any) (string, error) {
 		buf.WriteString("]")
 	case map[any]any:
 		buf.WriteString("{")
-		mlen := len(raw_v)
+		mLen := len(raw_v)
 		i := 0
 		for raw_k, raw_v2 := range raw_v {
 			str, err2 := exporterToRawJson(raw_k)
@@ -432,7 +343,7 @@ func exporterToRawJson(in any) (string, error) {
 			}
 			buf.WriteString(str)
 			i++
-			if i < mlen {
+			if i < mLen {
 				buf.WriteString(",")
 			}
 		}
@@ -452,13 +363,13 @@ func exporterToRawJson(in any) (string, error) {
 // function to decrypt password from shared key sent by caller
 func exporterDecryptPass(passwd string, auth_key string) (string, error) {
 	if strings.Contains(passwd, "/encrypted/") {
-		ciphertext := passwd[len("/encrypted/"):]
+		cipherText := passwd[len("/encrypted/"):]
 		cipher, err := encrypt.NewAESCipher(auth_key)
 		if err != nil {
 			err := fmt.Errorf("can't obtain cipher to decrypt: %s", err)
 			return passwd, err
 		}
-		passwd, err = cipher.Decrypt(ciphertext, true)
+		passwd, err = cipher.Decrypt(cipherText, true)
 		if err != nil {
 			err := fmt.Errorf("invalid key provided to decrypt: %s", err)
 			return passwd, err
@@ -509,7 +420,7 @@ func js_getDurationSecond(duration_str string) (int, error) {
 	return sec, nil
 }
 
-func Mymap() ttemplate.FuncMap {
+func MyMap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["convertBoolToInt"] = convertBoolToInt

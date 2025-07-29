@@ -1,3 +1,5 @@
+// cspell:ignore stretchr, svclb, svcgrplb, mypassword
+
 package goja_modules
 
 import (
@@ -344,7 +346,7 @@ func TestJSModuleExporterDecryptPass(t *testing.T) {
 
 }
 
-func TestJSModuleExportergetDurationSecond(t *testing.T) {
+func TestJSModuleExporterGetDurationSecond(t *testing.T) {
 	symtab := make(map[string]any)
 
 	// test 1
@@ -354,7 +356,7 @@ func TestJSModuleExportergetDurationSecond(t *testing.T) {
 
 	js, err := NewJSCode(code, template.Js_func_map())
 	if err != nil {
-		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDecryptPass compilation error: %s`, err.Error()))
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterGetDurationSecond compilation error: %s`, err.Error()))
 		return
 	}
 
@@ -385,7 +387,7 @@ func TestJSModuleExportergetDurationSecond(t *testing.T) {
 
 	js, err = NewJSCode(code, template.Js_func_map())
 	if err != nil {
-		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDecryptPass compilation error: %s`, err.Error()))
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterGetDurationSecond compilation error: %s`, err.Error()))
 		return
 	}
 
@@ -393,6 +395,6 @@ func TestJSModuleExportergetDurationSecond(t *testing.T) {
 
 	_, err = js.Run(symtab, nil)
 	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "can't extract duration"), "invalid error:", err.Error())
+	assert.True(t, strings.Contains(err.Error(), "TestJSModuleExporterGetDurationSecond: can't extract duration"), "invalid error:", err.Error())
 
 }

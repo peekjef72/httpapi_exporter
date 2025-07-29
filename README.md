@@ -1,3 +1,4 @@
+<!-- cSpell:ignore openmetrics, contribs, veeam, promu, GOBIN, logfmt, mytarget, ciphertext, cipherkey, keepass, mypassword, hp3parhost, passphrass, fullqualified -->
 <meta name="google-site-verification" content="W1W5S9kNhNL2ZcTEZJ6lMZpAGeNnka6I3iIVFhiUO-I" />
 
 # Prometheus HTTPAPI Exporter
@@ -64,7 +65,7 @@ Flags:
   -V, --[no-]version         Show application version.
 ```
 
-## Loging level
+## Login level
 
 You can change the log.level online by sending a signal USR2 to the process. It will increase and cycle into levels each time a signal is received.
 
@@ -72,7 +73,7 @@ You can change the log.level online by sending a signal USR2 to the process. It 
 kill -USR2 pid
 ```
 
-Usefull if something is wrong and you want to have detailled log only for a small interval.
+Useful if something is wrong and you want to have detailed log only for a small interval.
 
 You can also set the loglevel using API endpoint /loglevel:
 
@@ -134,7 +135,7 @@ Most of the time the access to a http api requires an authentication. It is the 
 The exporter allows you 2 modes:
 
 - to define the authentication parameters statically for each target.
-- to define a dictionnary (map) of authentications and then to use it a target definition, or even to set it in the prometheus query.
+- to define a dictionary (map) of authentications and then to use it a target definition, or even to set it in the prometheus query.
 
 The auth parameters are:
 
@@ -146,7 +147,7 @@ The auth parameters are:
 - password
 - token
 
-The user, password and token values can be raw strings or retrive the values from environment variables. To use env var the value must be prefixed by "$env:" followed by the name of the variable.
+The user, password and token values can be raw strings or retrieve the values from environment variables. To use env var the value must be prefixed by "$env:" followed by the name of the variable.
 
 ```yml
   # use this auth_config to authenticate via env vars

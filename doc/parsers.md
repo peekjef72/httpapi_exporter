@@ -1,4 +1,4 @@
-
+<!-- cSpell:ignore cvslave, Cpus, structma, virtualbrowser, nrpe, sched -->
 # Parsers
 
 Parsers are used to build structured objects with the content obtained by a query function in the collectors scripts.
@@ -50,7 +50,7 @@ Imagine the returned content is:
 
 According to the previous config, you have a variable `result` containing this object; something that you can write in javascript:
 
-```javacript
+```javascript
 result = {
     "sampleTime": "2022-11-10T18:25:00+01:00",
     "sampleTimeSec": 1668101100,
@@ -85,11 +85,11 @@ with following config:
           loop: $members
 ```
 
-This block of configuration is a two levels instuction set:
+This block of configuration is a two levels instruction set:
 
 1) `metrics` with scope
 
-    here `scope` directive tells to reduce the symbols table to only 'results" variable, so ease the writing of formula by compacting the syntax; anyway you can perfectly loop on $resuls.members.
+    here `scope` directive tells to reduce the symbols table to only 'results" variable, so ease the writing of formula by compacting the syntax; anyway you can perfectly loop on $results.members.
 1) `metric_name` with `loop` and implicit scope on loop_var. It means to loop on each $results.members; Loop on metric_name has a specific behavior that is to scope on the loop_var; here `loop_var` is not set so is defined to default `item` value; As conclusion, `$userPct` is equivalent to `{{ .item.userPct }}`.
 
 It is quite complicated to explain, but the result is in fact very simple and natural: you want a metric called `cpu_usage_percent` labeled by each `node` and `cpu` and with the `mode` that is corresponding to cpu time spent percent into that state.
@@ -113,14 +113,14 @@ so generated metric will be:
 # TYPE cpu_usage_percent gauge
 cpu_usage_percent{node="0",cpu="0",mode="user"} 1.8
 cpu_usage_percent{node="0",cpu="0",mode="system"} 8.5
-cpu_usage_percent{node="0",cpu="0",mode="idel"} 89.7
+cpu_usage_percent{node="0",cpu="0",mode="idle"} 89.7
 ```
 
 And so on for all node elements.
 
 ## YAML
 
-The `yaml` parser works exactly like the json parser. I do not have usecases for the moment, so can't imagine what should be specific.
+The `yaml` parser works exactly like the json parser. I do not have use-cases for the moment, so can't imagine what should be specific.
 
 Once the content is parsed, the resulting object is constructed as a JSON object and is therefore treated as such.
 
@@ -128,7 +128,7 @@ Once the content is parsed, the resulting object is constructed as a JSON object
 
 The `xml` parser has the same purpose than the previous two: build a go `map[string]any` that represents the objects and their attributes so that they can be addressed simply by standard '.' notation.
 
-by example, the bolow xml data will produce:
+by example, the below xml data will produce:
 
 ```xml
 <DeploymentStatus xmlns="exa:exa.bee.deploy.v10">
@@ -187,11 +187,11 @@ results = {
 }
 ```
 
-In details, each subelement of an element is represented as a array even if the element is unique. In previous example, subelement `HostStatus` of element `DeploymentStatus` will be represented in object as a single element list. Same for `ProcessStatus` in `HostStatus`.
+In details, each sub-element of an element is represented as a array even if the element is unique. In previous example, sub-element `HostStatus` of element `DeploymentStatus` will be represented in object as a single element list. Same for `ProcessStatus` in `HostStatus`.
 
 ## None Parser
 
-This parser is a do nothing parser: it means you don't want to use the result content so it is useless to perform any operation on it. That may be usefull for "ping" page without any interesting content.
+This parser is a do nothing parser: it means you don't want to use the result content so it is useless to perform any operation on it. That may be useful for "ping" page without any interesting content.
 
 ## text-lines
 

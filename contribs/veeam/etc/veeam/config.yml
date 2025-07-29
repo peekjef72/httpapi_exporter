@@ -33,50 +33,44 @@ profiles:
             # set default time in hours (time.Duration) to look back for jobs and tasks
             jobHistory: -12h
             taskHistory: -12h
-            
-            # default values for parameters that you don't want to set for each target
-            # base_url: /api/v1
-            # scheme: https
-            # port: 8080
-            # verifySSL: true|false
-            # query_retry: 3
 
       auth_check:
         - name: analyze login response ok
           set_fact:
             headers: 
               - name: "X-RestSvcSessionId"
-                value: '{{ getHeader .response_headers "X-RestSvcSessionId" }}'
+                value: 'js: exporter.getHeader( response_headers, "X-RestSvcSessionId" )'
             logged: true
-            login_retry: "{{ .queryRetry }}"
+            login_retry: $queryRetry
             # remove .login entry from symbols table
             # login: ~
           when:
-            - eq .status_code 201
+            - 'js: status_code == 201'
         - name: analyze login response
           set_fact:
             # auth_token: ""
             logged: false
-            login_retry: "{{ .queryRetry  }}"
+            login_retry: $queryRetry
             headers: 
               - name: "X-RestSvcSessionId"
                 action: delete
           when:
-            - or (eq .status_code 401) (eq .status_code 403)
+            - 'js: (status_code == 401) || (status_code == 403)'
+
         - name: analyze login response not ok with retry
           set_fact:
             # auth_token: ""
             logged: false
-            login_retry: "{{ add .login_retry 1 }}"
+            login_retry: 'js: ++login_retry'
           when:
-            - and (and (ne .status_code 201) (ne .status_code 401)) (ne .status_code 403)
+            - 'js: (status_code != 201) && (status_code != 401) && (status_code != 403)'
 
       login:
         - name: init login loop
           vars:
             login_retry: 0
             status_code: 0
-          until: "{{ $login_retry := .login_retry | int }}{{ lt $login_retry .queryRetry }}"
+          until: 'js: login_retry < queryRetry'
 
           actions:
             - name: login phase
@@ -123,6 +117,7 @@ targets:
     #   mode: script
     #   user: usrVeeam
     #   password: "/encrypted/base64_encrypted_password_by_passwd_crypt_cmd"
+    profile: veeam
     collectors:
       - ~.*_metrics
 

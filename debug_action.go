@@ -97,8 +97,8 @@ func (a *DebugAction) SetWhen(when []*Field) {
 func (a *DebugAction) GetLoopVar() string {
 	return a.LoopVar
 }
-func (a *DebugAction) SetLoopVar(loopvar string) {
-	a.LoopVar = loopvar
+func (a *DebugAction) SetLoopVar(loopVar string) {
+	a.LoopVar = loopVar
 }
 
 func (a *DebugAction) GetVars() [][]any {

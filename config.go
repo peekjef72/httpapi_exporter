@@ -1,4 +1,4 @@
-// cSpell:ignore mytemplate, colls, reslist, maprefix, tnames, scdef,pfglob, cfglob,tfglob,sclabels,keymap,elmt, elmts, Mymap, tmpl, jscode, ktype, htype, cref
+// cSpell:ignore mytemplate, colls, reslist, maprefix, tnames, scdef, pfglob, cfglob,tfglob,sclabels,keymap,elmt, elmts, tmpl, jscode, ktype, htype, cref, upto
 package main
 
 import (
@@ -261,7 +261,7 @@ collectors:
 
 	// Check for empty/duplicate target names
 	// check for valid "known" profile name
-	tnames := make(map[string]interface{})
+	tnames := make(map[string]any)
 	var (
 		default_profile      *Profile
 		default_profile_name string
@@ -297,7 +297,7 @@ collectors:
 			if default_profile != nil {
 				var msg string
 				if t.ProfileName != "" {
-					msg = fmt.Sprintf("target '%s' profile set '%s' not found. reset to default.", t.Name, t.ProfileName)
+					msg = fmt.Sprintf("target '%s' specified profile '%s' not found. reset to default.", t.Name, t.ProfileName)
 				} else {
 					msg = fmt.Sprintf("target '%s' not profile set. reset to default.", t.Name)
 				}
@@ -869,7 +869,7 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 	// build the default templates/funcs that my be used by all templates
 	if len(c.Templates) > 0 {
 		// c.customTemplate = template.New("default").Funcs(sprig.FuncMap())
-		c.customTemplate = (*exporterTemplate)(template.New("default").Funcs(mytemplate.Mymap()))
+		c.customTemplate = (*exporterTemplate)(template.New("default").Funcs(mytemplate.MyMap()))
 		if c.customTemplate == nil {
 			return fmt.Errorf("for collector %s template is invalid", c.Name)
 		}

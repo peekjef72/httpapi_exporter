@@ -1,3 +1,5 @@
+// cSpell:ignore Neue, loglevel, tdata, HealthHandlerfunc, vinfos
+
 package main
 
 import (
@@ -249,7 +251,7 @@ func ReloadHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- ac
 			"received /reload from %s", "client", r.RemoteAddr)
 
 		msg := actionMsg{
-			actiontype: ACTION_RELOAD,
+			actionType: ACTION_RELOAD,
 			retCh:      make(chan error),
 		}
 		reloadCh <- msg
@@ -329,7 +331,7 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 			}
 			w.Write(result)
 		case "POST":
-			ctxval, ok := r.Context().Value(ctxKey{}).(*ctxValue)
+			ctxVal, ok := r.Context().Value(ctxKey{}).(*ctxValue)
 			if !ok {
 				err := errors.New("invalid context received")
 				HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
@@ -337,8 +339,8 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 
 			}
 			msg := actionMsg{
-				actiontype: ACTION_LOGLEVEL,
-				logLevel:   strings.ToLower(ctxval.path),
+				actionType: ACTION_LOGLEVEL,
+				logLevel:   strings.ToLower(ctxVal.path),
 				retCh:      make(chan error),
 			}
 			reloadCh <- msg
@@ -427,7 +429,7 @@ func TargetsHandlerFunc(metricsPath string, exporter Exporter) func(http.Respons
 			err         error
 		)
 
-		ctxval, ok := r.Context().Value(ctxKey{}).(*ctxValue)
+		ctxVal, ok := r.Context().Value(ctxKey{}).(*ctxValue)
 		if !ok {
 			err := errors.New("invalid context received")
 			HandleError(http.StatusInternalServerError, err, metricsPath, exporter, w, r)
@@ -436,8 +438,8 @@ func TargetsHandlerFunc(metricsPath string, exporter Exporter) func(http.Respons
 		}
 
 		c := exporter.Config()
-		if ctxval.path != "" {
-			if tg, err := exporter.FindTarget(ctxval.path); err == nil {
+		if ctxVal.path != "" {
+			if tg, err := exporter.FindTarget(ctxVal.path); err == nil {
 				tgl := make([]*TargetConfig, 1)
 				tgl[0] = tg.Config()
 

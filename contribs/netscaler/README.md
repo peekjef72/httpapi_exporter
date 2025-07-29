@@ -1,3 +1,4 @@
+<!-- cSpell:ignore netscalers, logfmt, netscalerhost, vserver, lbvserver, protocolip, protocoludp, protocoltcp, protocolhttp, nscapacity, sslcertkey, sslvserver, systemmemory, systemcpu, hanode, citrixadc, custmetric, numcpus -->
 # netscaler_exporter
 
 ## Overview
@@ -5,16 +6,18 @@
 ![dashboard overview](./screenshots/netscaler_general.png)
 
 see [more screenshots](./screenshots/details.md)
+
 ## Description
+
 Prometheus exporter for Netscaler (CITRIX ADC)
 
 This exporter collect metrics from netscaler HTTP REST API.
 
 It uses httpapi_exporter that exposes metrics to http (default port 9258) that can be then scrapped by Prometheus.
 
-This exporter was originaly inspired from [citrix-adc-metrics-exporter](citrix/citrix-adc-metrics-exporter/), and has generated a python version [netscaler_exporter](peekjef72/netscaler_exporter).
+This exporter was originally inspired from [citrix-adc-metrics-exporter](citrix/citrix-adc-metrics-exporter/), and has generated a python version [netscaler_exporter](peekjef72/netscaler_exporter).
 
-It is an usage in "my company" and doens't collect every feature exposed by netscaler HTTP API, but it can be expanded as desired: updates and contributions are welcome.
+It is an usage in "my company" and doesn't collect every feature exposed by netscaler HTTP API, but it can be expanded as desired: updates and contributions are welcome.
 
 It allows you to collect several netscalers by adding them to the YAML config files and then specifying a target parameter in Prometheus configuration. It benefits all features from httpapi_exporter : targets, models, auth and proxies.
 
@@ -22,7 +25,7 @@ It allows you to collect several netscalers by adding them to the YAML config fi
 
 ## Usage
 
-I recommand to create a unix symbolic link from httpapi_exporter to netscaler_exporter so it is easy to distinguish in processes tree (top, ps)
+I recommend to create a unix symbolic link from httpapi_exporter to netscaler_exporter so it is easy to distinguish in processes tree (top, ps)
 
 ```shell
 ln -s httpapi_exporter netscaler_exporter
@@ -112,14 +115,15 @@ The exporter can act as a remote collector so that several netscalers can be col
       - target_label: __address__
         replacement: "netscaler-exporter-hostname.domain:9258"  # The netscaler exporter's real hostname.
 ```
+
 ## Metrics
 
-The collected metrics are defined in separeted files positionned in the folder conf/metrics.
+The collected metrics are defined in separated files positioned in the folder conf/metrics.
 All values, computations, labels are defined in the metrics files, meaning that the exporter does nothing internally on values. The configuration files fully drive how values are collected and rendered.
 
-### Currently collected metrics are:
+### Currently collected metrics are
 
-All metrics are defined in the configuration files (conf/metrics/*.yml). You can retrive all metric names here. Most of them have help text too.
+All metrics are defined in the configuration files (conf/metrics/*.yml). You can retrieve all metric names here. Most of them have help text too.
 
  STATS | NS nitro name
 ------ | -------------
@@ -133,7 +137,7 @@ Service stats | "service"
 Service group stats | "services"
 Bandwidth Capacity stats | "nscapacity"
 SSL stats | "ssl"
-SSL Certicates stats | "sslcertkey"
+SSL Certificates stats | "sslcertkey"
 SSL vserver stats | "sslvserver"
 System info stats | "system"
 System memory stats | "systemmemory"
@@ -169,23 +173,24 @@ The "attributes" are analyzed in the order specified in previous table; it means
 
 action | parameter | description | remark
 ------ | ----------- | ------ | ------
-url | &nbsp; |a string that's representing the entity to collect without '/nitro/v1' | http://host.domain:port/nitro/v1**[url]**. e.g.: /stat/system
- &nbsp; | var_name |the name ofthe variable to store the results. Default is '_root' meaning that the resulting JSON object is directly store in symbols table. | &nbsp;
- &nbsp; | &nbsp; | &nbsp; | &nbsp; 
- set_fact | &nbsp; | list of variable to define | &nbsp; 
- &nbsp; | var_name: value| &nbsp;  
- &nbsp; | &nbsp; | &nbsp; | &nbsp; 
-metrics | &nbsp; | define the list of metrics to expose
+url | &nbsp; |a string that's representing the entity to collect without '/nitro/v1' | http\://host.domain:port/nitro/v1**[url]**. e.g.: /stat/system
+ &nbsp; | var_name |the name of the variable to store the results. Default is '_root' meaning that the resulting JSON object is directly store in symbols table. | &nbsp;
+ &nbsp; | &nbsp; | &nbsp; | &nbsp;
+ set_fact | &nbsp; | list of variable to define | &nbsp;
+ &nbsp; | var_name: value| &nbsp; | &nbsp;
+ &nbsp; | &nbsp; | &nbsp; | &nbsp;
+metrics | &nbsp; | define the list of metrics to expose | &nbsp;
  &nbsp; | metric_prefix | a prefix to add to all metric name | final name will be [metric_prefix]_[metric_name]
- 'a metric' | name | the name of the metric
- &nbsp; | help | the help message added to the metric (and displayed in grafana explorer)
+ 'a metric' | name | the name of the metric | &nbsp;
+ &nbsp; | help | the help message added to the metric (and displayed in grafana explorer) | &nbsp;
  &nbsp; | type 'gauge' or 'counter' | the type of the prometheus metric | &nbsp;
  &nbsp; | value | the numeric value itself | &nbsp;
  &nbsp; | labels | a list of name value pairs to qualify the metric | &nbsp;
 
-A metric configuration file is so at minimum, an action containing list of two actions, one for collecting values on netscaler with 'url', one to define the resulting metric for prometheusi with 'metrics':
+A metric configuration file is so at minimum, an action containing list of two actions, one for collecting values on netscaler with 'url', one to define the resulting metric for prometheus with 'metrics':
 
 example:
+
 ```yaml
 ---
 - name: my_custom_metric
@@ -210,5 +215,3 @@ example:
 
 ... 
 ```
-
-

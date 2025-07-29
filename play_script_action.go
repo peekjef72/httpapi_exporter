@@ -73,8 +73,8 @@ func (a *PlayScriptAction) SetWhen(when []*Field) {
 func (a *PlayScriptAction) GetLoopVar() string {
 	return a.LoopVar
 }
-func (a *PlayScriptAction) SetLoopVar(loopvar string) {
-	a.LoopVar = loopvar
+func (a *PlayScriptAction) SetLoopVar(loopVar string) {
+	a.LoopVar = loopVar
 }
 
 func (a *PlayScriptAction) GetVars() [][]any {

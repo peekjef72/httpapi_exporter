@@ -211,11 +211,11 @@ func (e *exporter) Logger() *slog.Logger {
 }
 
 // FindTarget implements Exporter.
-func (e *exporter) FindTarget(tname string) (Target, error) {
+func (e *exporter) FindTarget(tName string) (Target, error) {
 	var t_found Target
 	found := false
 	for _, t := range e.targets {
-		if tname == t.Name() {
+		if tName == t.Name() {
 			t_found = t
 			found = true
 		}

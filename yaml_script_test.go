@@ -1,3 +1,5 @@
+// cSpell:ignore stretchr, mymap, constmap
+
 package main
 
 import (
@@ -171,7 +173,7 @@ func TestValorizeValueConstMap(t *testing.T) {
 //   - is defined
 //   - is string
 //   - equals "value1"
-func TestValorizeValueConstSliceConstIndice(t *testing.T) {
+func TestValorizeValueConstSliceConstIndex(t *testing.T) {
 	initTest()
 
 	slice := make([]string, 2)
@@ -212,7 +214,7 @@ func TestValorizeValueConstSliceConstIndice(t *testing.T) {
 //   - is defined
 //   - is string
 //   - equals "value2"
-func TestValorizeValueConstSliceVarIndice(t *testing.T) {
+func TestValorizeValueConstSliceVarIndex(t *testing.T) {
 	initTest()
 
 	slice := make([]string, 2)
@@ -347,7 +349,7 @@ func TestValorizeValueMapTemplateValidNotFound(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if r_value != nil {
@@ -385,7 +387,7 @@ func TestValorizeValueMapTemplateValidKey(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if value, ok := r_value.(string); ok {
@@ -433,7 +435,7 @@ func TestValorizeValueMap2Vars(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if map_val, ok := r_value.(map[string]string); !ok {
@@ -480,7 +482,7 @@ func TestValorizeValueMap2LvlMap(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if _, ok := r_value.(map[string]string); !ok {
@@ -526,7 +528,7 @@ func TestValorizeValueMap2LvlSlice(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if s_val, ok := r_value.([]string); !ok {
@@ -583,7 +585,7 @@ func TestValorizeValueMap2LvlSliceSubVar(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if _, ok := r_value.([]string); !ok {
@@ -621,7 +623,7 @@ func TestValorizeValueMap2LvlSliceSubVar(t *testing.T) {
 //   - is defined
 //   - is string
 //   - equals  "sub_value1"
-func TestValorizeValueMap2LvlSliceSubVarElmt(t *testing.T) {
+func TestValorizeValueMap2LvlSliceSubVarElement(t *testing.T) {
 	initTest()
 
 	var err error
@@ -643,7 +645,7 @@ func TestValorizeValueMap2LvlSliceSubVarElmt(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if value, ok := r_value.(string); !ok {
@@ -676,7 +678,7 @@ func TestValorizeValueMap2LvlSliceSubVarElmt(t *testing.T) {
 // check:
 //   - mymap2["list"] is []string <==> mymap["sub_list_1"]
 //   - check mymap2["list"][0] == "sub_value1"
-func TestValorizeValueMap2LvlSliceSubVarSubElmt(t *testing.T) {
+func TestValorizeValueMap2LvlSliceSubVarSubElement(t *testing.T) {
 	initTest()
 	var err error
 	mymap := make(map[string]any)
@@ -706,7 +708,7 @@ func TestValorizeValueMap2LvlSliceSubVarSubElmt(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
-	if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+	if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	} else {
 		if v_list, ok := r_value.([]string); !ok {
@@ -764,7 +766,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
-		if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+		if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 			t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 		} else {
 			if val, ok := r_value.(string); !ok {
@@ -781,7 +783,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
-		if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+		if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 			t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 		} else {
 			if val, ok := r_value.(string); !ok {
@@ -819,7 +821,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 //   - $test == "sub_value1"
 //   - "$test2" is string
 //   - $test2 == "sub_value2"
-func TestValorizeValueMap2LvlVarName2VarWithIndice(t *testing.T) {
+func TestValorizeValueMap2LvlVarName2VarWithIndex(t *testing.T) {
 	initTest()
 	var err error
 	mymap := make(map[string]any)
@@ -840,7 +842,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndice(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
-		if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+		if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 			t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 		} else {
 			if val, ok := r_value.(string); !ok {
@@ -856,7 +858,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndice(t *testing.T) {
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
-		if r_value, err := ValorizeValue(symtab, name, logger, "test maptemplate", false); err != nil {
+		if r_value, err := ValorizeValue(symtab, name, logger, "test map template", false); err != nil {
 			t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 		} else {
 			if val, ok := r_value.(string); !ok {

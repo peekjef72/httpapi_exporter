@@ -1,5 +1,5 @@
 ---
-
+# cSpell:ignore mgmt, coredump, selftest, elmt -->
 ###
 ##
 ##
@@ -10,7 +10,7 @@ metric_prefix: arubacx_system
 
 scripts:
   get stat_system:
-    - name: collect hadware info
+    - name: collect hardware info
       query:
         url: /system?attributes=software_version,boot_time,other_config
         var_name: results
@@ -35,7 +35,7 @@ scripts:
             software_version: $results.software_version
           values:
             _: 1
-    - name: collect hadware info
+    - name: collect hardware info
       query:
         url: /system/redundant_managements?depth=1
         var_name: results

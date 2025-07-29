@@ -1,3 +1,5 @@
+// cSpell:ignore collectorname, Histo, qmgr, vartype, colls
+
 package main
 
 import (
@@ -52,7 +54,7 @@ type Target interface {
 	SetTimeout(time.Duration)
 }
 
-// target implements Target. It wraps a httpAPI, which is initially nil but never changes once instantianted.
+// target implements Target. It wraps a httpAPI, which is initially nil but never changes once instantiated.
 type target struct {
 	name       string
 	config     *TargetConfig
@@ -136,16 +138,16 @@ func build_ConstantLabels(labels map[string]string) []*dto.LabelPair {
 // An empty target name means the exporter is running in single target mode: no synthetic metrics will be exported.
 func NewTarget(
 	logContext []interface{},
-	tpar *TargetConfig,
+	tPar *TargetConfig,
 	gc *GlobalConfig,
 	profile *Profile,
 	logger *slog.Logger) (Target, error) {
 
-	if tpar.Name != "" {
-		logContext = append(logContext, "target", tpar.Name)
+	if tPar.Name != "" {
+		logContext = append(logContext, "target", tPar.Name)
 	}
 
-	constLabelPairs := build_ConstantLabels(tpar.Labels)
+	constLabelPairs := build_ConstantLabels(tPar.Labels)
 
 	queryStatusDesc := NewAutomaticMetricDesc(logContext,
 		profile.MetricPrefix+"_"+queryStatusName,
@@ -153,15 +155,15 @@ func NewTarget(
 		dto.MetricType_GAUGE, constLabelPairs,
 		"phase")
 
-	collectors := make([]Collector, 0, len(tpar.collectors))
-	for _, cc := range tpar.collectors {
-		cscrl := make([]*YAMLScript, len(cc.CollectScripts))
+	collectors := make([]Collector, 0, len(tPar.collectors))
+	for _, cc := range tPar.collectors {
+		csCrl := make([]*YAMLScript, len(cc.CollectScripts))
 		i := 0
 		for _, cs := range cc.CollectScripts {
-			cscrl[i] = cs
+			csCrl[i] = cs
 			i++
 		}
-		c, err := NewCollector(logContext, logger, cc, constLabelPairs, cscrl)
+		c, err := NewCollector(logContext, logger, cc, constLabelPairs, csCrl)
 		if err != nil {
 			return nil, err
 		}
@@ -195,9 +197,9 @@ func NewTarget(
 	// )
 
 	t := target{
-		name:       tpar.Name,
-		config:     tpar,
-		client:     newClient(tpar, profile.Scripts, logger, gc),
+		name:       tPar.Name,
+		config:     tPar,
+		client:     newClient(tPar, profile.Scripts, logger, gc),
 		collectors: collectors,
 		// httpAPIScript:       profile.Scripts,
 		upDesc:              upDesc,
@@ -358,13 +360,13 @@ func (t *target) buildCollector(logger *slog.Logger,
 	if constLabelPairs == nil {
 		constLabelPairs = build_ConstantLabels(t.config.Labels)
 	}
-	cscrl := make([]*YAMLScript, len(coll_config.CollectScripts))
+	csCrl := make([]*YAMLScript, len(coll_config.CollectScripts))
 	i := 0
 	for _, cs := range coll_config.CollectScripts {
-		cscrl[i] = cs
+		csCrl[i] = cs
 		i++
 	}
-	coll, err = NewCollector(t.logContext, logger, coll_config, constLabelPairs, cscrl)
+	coll, err = NewCollector(t.logContext, logger, coll_config, constLabelPairs, csCrl)
 
 	return
 }
@@ -572,9 +574,9 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				collectChan <- MsgDone
 			}
 			// read one message
-			submsg := <-collectChan
+			subMsg := <-collectChan
 
-			switch submsg {
+			switch subMsg {
 			case MsgLogin:
 				logger.Debug(
 					"target ping wait: received MsgLogin",
@@ -597,7 +599,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 			default:
 				logger.Debug(
-					fmt.Sprintf("target ping wait: received msg =[%s] from collector", Msg2Text(submsg)),
+					fmt.Sprintf("target ping wait: received msg =[%s] from collector", Msg2Text(subMsg)),
 					"coll", fmt.Sprintf("ping/%s", t.name))
 				if err != nil {
 					// status_code, _ := GetMapValueInt(t.client.symtab, "status_code")
@@ -837,9 +839,9 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 						break
 					}
 					// read one message
-					submsg := <-collectChan
+					subMsg := <-collectChan
 
-					switch submsg {
+					switch subMsg {
 					case MsgLogin:
 						logger.Debug(
 							"target wait: received MsgLogin",
@@ -847,7 +849,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 						need_login = true
 					default:
 						logger.Debug(
-							fmt.Sprintf("target wait: received msg for collector '%s': '%s'", colls[i].GetName(), Msg2Text(submsg)),
+							fmt.Sprintf("target wait: received msg for collector '%s': '%s'", colls[i].GetName(), Msg2Text(subMsg)),
 							"coll", t.name)
 					}
 				}
@@ -877,7 +879,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 			}
 		}
 		t.logger.Debug(
-			"goroutine target collector controler is over",
+			"goroutine target collector controller is over",
 			"coll", t.name)
 
 		// play logout script if one is provided for target !
@@ -942,7 +944,7 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 		met_ch <- NewMetric(t.scrapeDurationDesc, float64(time.Since(scrapeStart))*1e-9, nil, nil)
 	}
 
-	// Add to exporter the `query status http code` metric once we're done scraping.
+	// Add to exporter the `query status http code` metric once we've done scraping.
 	// metrics may have duplicate because some query are made by target and results
 	// may be "cloned" into collector symtab.
 	q_status := make(map[string]int)

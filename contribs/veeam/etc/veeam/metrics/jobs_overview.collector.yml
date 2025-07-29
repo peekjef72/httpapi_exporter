@@ -17,7 +17,7 @@ scripts:
         url: /reports/summary/job_statistics
         var_name: results
 
-    - name: procceed elements count
+    - name: proceed elements count
       with_items: 
         - type: running
           value: $results.RunningJobs
@@ -36,7 +36,7 @@ scripts:
           values: 
             _: $value
 
-    - name: procceed elements count
+    - name: proceed elements count
       with_items: 
           - type: total
             value: $results.TotalJobRuns
@@ -48,21 +48,21 @@ scripts:
             value: $results.FailedJobRuns
       metrics:
         - metric_name: runs_count
-          help: total number of job runs by type "total", "successfull", "warning", "failed"
+          help: total number of job runs by type "total", "successful", "warning", "failed"
           type: gauge
           key_labels:
             type: $type
           values: 
             _: $value
 
-    - name: procceed elements duration
+    - name: proceed elements duration
       with_items: 
           - { type: "job", jobname: "", value: "{{ .results.MaxJobDuration }}" }
           - { type: "backupjob", jobname: "{{ .results.MaxDurationBackupJobName }}", value: "{{ .results.MaxBackupJobDuration }}" }
           - { type: "replicajob", jobname: "{{ .results.MaxDurationReplicaJobName }}", value: "{{ .results.MaxReplicaJobDuration }}" }
       metrics:
         - metric_name: max_duration
-          help: max duration for job by type and name of longuest
+          help: max duration for job by type and name of longest
           type: gauge
           key_labels:
             type: _

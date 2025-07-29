@@ -1,4 +1,4 @@
-<!-- cSpell:ignore healthz, SIGUSR, varname, Authconfig, symtab, collid, gotemplate, virtualbrowser, gofunc, gotest, httpapi, resty, fileglob, openmetrics, apiprefix -->
+<!-- cSpell:ignore healthz, SIGUSR, varname, Authconfig, symtab, collid, gotemplate, virtualbrowser, gofunc, gotest, httpapi, resty, fileglob, openmetrics, apiprefix, contribs, veeam -->
 # Change Log
 
 All notable changes to this project will be documented in this file.
@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 ## 0.4.2 / 2025-07-20
+
+### 2025-07-27 - not release
+
+- fixed spellings (use Code Spelling extension).
+- convert and fixe up netscaler & veeam configurations to js (from go template).
 
 ### 2025-07-20 - not release
 

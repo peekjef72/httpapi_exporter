@@ -106,7 +106,7 @@ scripts:
         url: '/query?type=BackupJobSession&format=Entities&filter=CreationTime>="{{ .datestart }}"'
         var_name: results
 
-    - name: procceed elements
+    - name: proceed elements
       loop: "{{ .results.Entities.BackupJobSessions.BackupJobSessions | toRawJson }}"
       actions:
         - name: determine last job status from all jobs starts
@@ -114,14 +114,14 @@ scripts:
             # parse to time.Time, then convert to second unix epoch
             item_start: '{{ mustToDate "2006-01-02T15:04:05Z" .item.CreationTimeUTC | unixEpoch }}'
 
-        - name: determine hask key & state of job
+        - name: determine hash key & state of job
           set_fact:
             hash: "{{ print (index .item.Links 0).Name .item.JobName .item.JobType | sha1sum }}"
             current_state: '{{ template "currentJobStatus" .item }}'
 
-        - name: determine hask key & state of job
+        - name: determine hash key & state of job
           set_fact:
-            # obtain corrsponding numerical value of string state
+            # obtain corresponding numerical value of string state
             current_state: '{{ template "jobStatus" .current_state }}'
 
         - name: update job state

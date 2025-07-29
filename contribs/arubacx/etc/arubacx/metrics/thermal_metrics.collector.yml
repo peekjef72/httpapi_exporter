@@ -1,4 +1,5 @@
 ---
+# cSpell:ignore mgmt, coredump, selftest, elmt -->
 
 ###
 ##
@@ -19,9 +20,9 @@ scripts:
     - name: proceed each elements from list
       with_items: $results
       loop_var: elmt
-      when:
-        - exporterHasKey .elmt "temp_sensors"
-        - GT (LEN .elmt.temp_sensors) 0
+      when: >-
+        js:
+          elmt["temp_sensors"] != undefined && elmt.temp_sensors.length > 0
       actions:
         - name: loop tss
           with_items: $elmt.temp_sensors
@@ -29,7 +30,7 @@ scripts:
           actions:
             # - name: debug ts
             #   debug:
-            #     msg: "ts {{ .ts }}"
+            #     msg: 'js: "ts: " + JSON.stringify( ts )'
             - name: build labels
               set_fact:
                 key_labels:
@@ -45,11 +46,19 @@ scripts:
                   type: gauge
                   key_labels: $key_labels
                   values:
-                    _: '{{ if eq .ts.status "normal"}}1{{ else if eq .ts.status "empty"}}2{{ else }}0{{ end }}'
+                    _: >-
+                        js:
+                          var res = 0
+                          if( ts.status == "normal" ) { 
+                            res = 1
+                          } else if( ts.status == "empty" ) {
+                            res = 2
+                          }
+                          res
 
                 - metric_name: temperature
                   help: "temperature sensor in Celsius degrees"
                   type: gauge
                   key_labels: $key_labels
                   values:
-                    _: "{{ divf .ts.temperature 1000 }}"
+                    _: 'js: $ts.temperature / 1000'

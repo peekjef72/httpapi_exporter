@@ -73,8 +73,8 @@ func (a *SetFactAction) SetWhen(when []*Field) {
 func (a *SetFactAction) GetLoopVar() string {
 	return a.LoopVar
 }
-func (a *SetFactAction) SetLoopVar(loopvar string) {
-	a.LoopVar = loopvar
+func (a *SetFactAction) SetLoopVar(loopVar string) {
+	a.LoopVar = loopVar
 }
 
 func (a *SetFactAction) GetVars() [][]any {

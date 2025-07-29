@@ -13,7 +13,6 @@ import (
 )
 
 type YAMLScript struct {
-	// name           string `yaml:"name"`
 	Actions    ActionsList `yaml:"actions" json:"actions,omitempty"`
 	UntilLimit int         `yaml:"until_limit" json:"until_limit,omitempty"`
 
@@ -23,11 +22,6 @@ type YAMLScript struct {
 	setStatsActions []*SetStatsAction
 	queryActions    []*QueryAction
 }
-
-// type DumpYAMLScript struct {
-// 	Actions    ActionsList `yaml:"actions" json:"actions,omitempty"`
-// 	UntilLimit int         `yaml:"until_limit,omitempty" json:"until_limit,omitempty"`
-// }
 
 //******************************************************************
 //**
@@ -137,16 +131,12 @@ type BaseAction interface {
 	SetNameField(*Field)
 	GetWidth() []any
 	SetWidth([]any)
-	// GetWhen() []*exporterTemplate
 	GetWhen() []*Field
-	// SetWhen([]*exporterTemplate)
 	SetWhen([]*Field)
 	GetLoopVar() string
 	SetLoopVar(string)
 	GetVars() [][]any
 	SetVars([][]any)
-	// GetUntil() []*exporterTemplate
-	// SetUntil([]*exporterTemplate)
 	GetUntil() []*Field
 	SetUntil([]*Field)
 }
@@ -203,7 +193,6 @@ func setBasicElement(
 		if loopVar != "" {
 			ba.SetLoopVar(loopVar)
 		}
-		// ba.With = with
 	}
 	if len(when) > 0 {
 		ba.SetWhen(when)
@@ -304,10 +293,6 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 			case reflect.Map:
 				if vSrc.Len() == 0 {
 					check_value = true
-					// } else {
-					// 	dst := make([]any,1)
-					// 	dst[0] = data
-					// 	data = dst
 				}
 
 			case reflect.Slice:
@@ -323,15 +308,7 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 			default:
 			}
 		}
-		//  if r_data, ok := data.([]any); ok {
-		// 	if r_data == nil {
-		// 		check_value = true
-		// 	}
-		// } else if s_data, ok := data.(string); ok {
-		// 	if s_data == "" {
-		// 		data = nil
-		// 	}
-		// }
+
 		if check_value {
 			data, err = curval.GetValueString(symtab, logger)
 		}
@@ -365,6 +342,9 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 					"script", ScriptName(symtab, logger),
 					"name", action_name)
 				continue
+			}
+			if value == nil {
+				value = ""
 			}
 			if err := SetSymTab(ldata, key_val, value); err != nil {
 				logger.Warn(
@@ -486,10 +466,6 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 	old_values := make(map[string]any)
 
 	defer func() {
-		// if len(old_values) > 0 {
-		// 	logger.Debug("remove old_values", "old_values", old_values)
-		// }
-
 		for key, val := range old_values {
 			if val == "_" {
 				delete(symtab, key)
@@ -708,7 +684,6 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 		for {
 			if set_loops_var {
 				preserve_sym_tab(symtab, old_values, "loop_var_idx", idx)
-				// symtab["loop_var_idx"] = idx
 				set_loops_var = false
 			} else if !no_loop {
 				symtab["loop_var_idx"] = idx

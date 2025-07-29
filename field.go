@@ -1,4 +1,4 @@
-// cSpell:ignore tmpl, mytemplate, jscode, vartype, curval, Mymap, lenattr, mapkey
+// cSpell:ignore tmpl, mytemplate, jscode, vartype, curval, lenattr, mapkey
 package main
 
 import (
@@ -31,8 +31,7 @@ type Field struct {
 	raw     string
 	vartype int
 	tmpl    *exporterTemplate
-	// prog    *goja.Program
-	jscode *goja_modules.JSCode
+	jscode  *goja_modules.JSCode
 }
 
 const (
@@ -60,7 +59,7 @@ func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
 				return nil, fmt.Errorf("field template clone for %s is invalid: %s", name, err)
 			}
 		} else {
-			tmpl = ttemplate.New("field").Funcs(mytemplate.Mymap())
+			tmpl = ttemplate.New("field").Funcs(mytemplate.MyMap())
 		}
 		tmpl, err = tmpl.Parse(name)
 		if err != nil {
@@ -134,8 +133,6 @@ func ConvertToBool(value_raw any) (value bool) {
 		switch asString {
 		case "1", "t", "true", "on", "yes":
 			value = true
-			// case "0", "f", "false", "off", "no":
-			// value = false
 		}
 	default:
 		value = cast.ToBool(value_raw)
@@ -195,10 +192,8 @@ func (f *Field) GetValueSimple(
 				fmt.Sprintf("invalid javascript code execution: %s", err.Error()))
 		}
 		raw_data = val
-		//		return RawGetValueString(val), nil
 	default:
 		raw_data = f.raw
-		//return RawGetValueString(val), nil
 	}
 	switch out_type {
 	case reflect.String:
@@ -312,38 +307,7 @@ func getMapKey(raw_value any, key string) any {
 			new_value = tmp_value.Interface()
 		}
 	}
-	// if raw_value != nil && key != "" {
-	// 	switch map_val := raw_value.(type) {
-	// 	case map[string]any:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	case map[string]string:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	case map[string]byte:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	case map[string]int:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	case map[string]int64:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	case map[string]float32:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	case map[string]float64:
-	// 		if tmp_value, ok := map_val[key]; ok {
-	// 			new_value = tmp_value
-	// 		}
-	// 	}
-	// }
+
 	return new_value
 }
 
@@ -628,7 +592,6 @@ func (f *Field) String() string {
 
 	switch f.vartype {
 	case field_template:
-		// f.tmpl.
 		return f.tmpl.Tree.Root.String()
 	case field_var:
 		return "$" + f.raw
@@ -652,7 +615,6 @@ func (f *Field) AddDefaultTemplate(customTemplate *exporterTemplate) error {
 	return nil
 }
 
-// func AddDefaultTemplate(dest_tmpl *exporterTemplate, customTemplate *exporterTemplate) (*exporterTemplate, error) {
 func AddDefaultTemplate(dest_cond *Field, customTemplate *exporterTemplate) (*Field, error) {
 	if dest_cond != nil && dest_cond.vartype == field_template && customTemplate != nil {
 		cc_tmpl, err := ((*ttemplate.Template)(customTemplate)).Clone()

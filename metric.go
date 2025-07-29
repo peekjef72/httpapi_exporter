@@ -1,3 +1,5 @@
+// cSpell:ignore errmsg, rawdatas, histo
+
 package main
 
 import (
@@ -12,7 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// MetricDesc is a descriptor for a family of metrics, sharing the same name, help, labes, type.
+// MetricDesc is a descriptor for a family of metrics, sharing the same name, help, labels, type.
 type MetricDesc interface {
 	Name() string
 	Help() string
@@ -34,7 +36,7 @@ type MetricFamily struct {
 	help         string
 	constLabels  []*dto.LabelPair
 	labels       []*Label // raw string or template
-	valueslabels []*Label // raw string or template for key and value
+	valuesLabels []*Label // raw string or template for key and value
 	logContext   []interface{}
 }
 
@@ -84,13 +86,13 @@ func NewMetricFamily(
 			}
 		}
 	}
-	// values are stored in variable 'valueslabels': it is meanfull only when values are greater than 1.
+	// values are stored in variable 'valuesLabels': it is meaningful only when values are greater than 1.
 	// original config struct is a map of [value label] : [value template];
-	valueslabels := make([]*Label, len(mc.Values))
+	valuesLabels := make([]*Label, len(mc.Values))
 
 	i := 0
 	for key, val := range mc.Values {
-		valueslabels[i], err = NewLabel(key, val, mc.Name, "'values'", customTemplate)
+		valuesLabels[i], err = NewLabel(key, val, mc.Name, "'values'", customTemplate)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +114,7 @@ func NewMetricFamily(
 		config:       mc,
 		constLabels:  sortedLabels,
 		labels:       labels,
-		valueslabels: valueslabels,
+		valuesLabels: valuesLabels,
 		logContext:   logContext,
 	}, nil
 }
@@ -122,7 +124,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 	var (
 		set_root bool = false
 	)
-	// reset logcontxt for MetricFamily: remove previous errors if any
+	// reset logContext for MetricFamily: remove previous errors if any
 	mf.logContext = make([]any, 2)
 	mf.logContext[0] = "metric"
 	mf.logContext[1] = mf.config.Name
@@ -223,13 +225,10 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 
 	// build the labels family with the content of the var(*Field)
 	if len(mf.labels) == 0 && mf.config.key_labels != nil {
-		if labelsmap_raw, err := ValorizeValue(symtab, mf.config.key_labels, logger, mf.name, true); err == nil {
-			t_labels := reflect.ValueOf(labelsmap_raw)
+		if labelsMap_raw, err := ValorizeValue(symtab, mf.config.key_labels, logger, mf.name, true); err == nil {
+			t_labels := reflect.ValueOf(labelsMap_raw)
 			if t_labels.Kind() == reflect.Map {
 				label_len := t_labels.Len()
-				// }
-				// if key_labels_map, ok := labelsmap_raw.(map[string]any); ok {
-				// 	label_len := len(key_labels_map)
 				if len(mf.config.Values) > 1 {
 					label_len++
 				}
@@ -239,9 +238,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				iter := t_labels.MapRange()
 				for iter.Next() {
 					raw_key := iter.Key().Interface()
-					raw_value := iter.Value()
-					// for key, val_raw := range key_labels_map {
-					// mf.labels[i], err = NewLabel(key, RawGetValueString(val_raw), mf.name, "key_label", nil)
+					raw_value := iter.Value().Interface()
 					mf.labels[i], err = NewLabel(
 						RawGetValueString(raw_key),
 						RawGetValueString(raw_value),
@@ -259,15 +256,14 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				if len(mf.config.Values) > 1 {
 					mf.labels[i], err = NewLabel(mf.config.ValueLabel, "", mf.name, "value_label", nil)
 					if err != nil {
-						logger.Warn(fmt.Sprintf("invalid templatefor value_label for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
+						logger.Warn(fmt.Sprintf("invalid template for value_label for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
 							"coll", CollectorId(root_symtab, logger),
 							"script", ScriptName(root_symtab, logger),
 						)
-						// 	return nil, err
 					}
 				}
 			} else {
-				logger.Warn("invalid type need map[string][string]", "type_error", reflect.TypeOf(labelsmap_raw),
+				logger.Warn("invalid type need map[string][string]", "type_error", reflect.TypeOf(labelsMap_raw),
 					"coll", CollectorId(root_symtab, logger),
 					"script", ScriptName(root_symtab, logger),
 				)
@@ -335,14 +331,6 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				ch <- met
 			}
 		case HistogramTypeStatic:
-			// if mf.config.histogram.Histogram == nil {
-			// 	mf.config.histogram.Histogram = prometheus.NewHistogramVec(
-			// 		prometheus.HistogramOpts{
-			// 			Name:    "set_later",
-			// 			Help:    "set_later",
-			// 			Buckets: *mf.config.histogram.Buckets,
-			// 		}, []string{})
-			// }
 			// try to find a previously existing HistogramVec
 			var histogram *prometheus.HistogramVec
 			if r_val, ok := root_symtab["__histogram"]; ok {
@@ -365,7 +353,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 			}
 		}
 	} else {
-		for _, label := range mf.valueslabels {
+		for _, label := range mf.valuesLabels {
 			var f_value float64
 			var err error
 
@@ -406,7 +394,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				return
 			}
 			logger.Debug(
-				fmt.Sprintf("metric.Collect() send metric to channel (len labelNames: %d lenlabelValue: %d)", len(labelNames), len(labelValues)),
+				fmt.Sprintf("metric.Collect() send metric to channel (len labelNames: %d - len labelValue: %d)", len(labelNames), len(labelValues)),
 				"coll", CollectorId(root_symtab, logger),
 				"script", ScriptName(root_symtab, logger),
 			)
@@ -657,11 +645,9 @@ func NewLabel(key string, value string, mName string, errStr string, customTempl
 	if err != nil {
 		return nil, fmt.Errorf("NewMetricFamily(): name of %s for metric %q: %s", errStr, mName, err)
 	}
-	if value != "" {
-		valueField, err = NewField(value, customTemplate)
-		if err != nil {
-			return nil, fmt.Errorf("NewMetricFamily(): value of %s for metric %q: %s", errStr, mName, err)
-		}
+	valueField, err = NewField(value, customTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("NewMetricFamily(): value of %s for metric %q: %s", errStr, mName, err)
 	}
 
 	return &Label{
@@ -791,24 +777,3 @@ func (m *histMetric) SetValue(hist_var_raw any) error {
 	}
 	return nil
 }
-
-// func BuildHistogram(h_obj map[string]any) *dto.MetricFamily {
-// 	mf := &dto.MetricFamily{}
-
-// 	name := GetMapValueString(h_obj,"name")
-// 	mf.Name = &name
-// 	help := GetMapValueString(h_obj,"help")
-// 	mf.Help = &help
-// 	typeH := dto.MetricType_HISTOGRAM
-// 	mf.Type = &typeH
-// 	for _, metric_obj_raw := range GetMapValueSlice(h_obj, "metrics") {
-// 		if metric_obj, ok := metric_obj_raw.(map[string]any); ok {
-// 			labels := GetMapValueMap(metric_obj, "labels")
-// 			for key, val := range labels {
-// 				metric.Label =
-// 			}
-// 		}
-// 		a inclure dans Collect
-// 	}
-// 	return mf
-// }

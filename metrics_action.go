@@ -79,8 +79,8 @@ func (a *MetricsAction) SetWhen(when []*Field) {
 func (a *MetricsAction) GetLoopVar() string {
 	return a.LoopVar
 }
-func (a *MetricsAction) SetLoopVar(loopvar string) {
-	a.LoopVar = loopvar
+func (a *MetricsAction) SetLoopVar(loopVar string) {
+	a.LoopVar = loopVar
 }
 
 func (a *MetricsAction) GetVars() [][]any {

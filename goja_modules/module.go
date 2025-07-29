@@ -1,3 +1,5 @@
+// cspell:ignore stmts, idents
+
 package goja_modules
 
 import (
@@ -8,6 +10,7 @@ import (
 
 	"github.com/peekjef72/httpapi_exporter/goja_modules/console"
 	"github.com/peekjef72/httpapi_exporter/goja_modules/exporter"
+	goja_fs "github.com/peekjef72/httpapi_exporter/goja_modules/fs"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/ast"
@@ -234,48 +237,52 @@ type JSCode struct {
 }
 
 func NewJSCode(code string, func_map map[string]any) (*JSCode, error) {
-	jscode := &JSCode{}
+	jsCode := &JSCode{}
 
 	ast_prog, err := goja.Parse("field", code)
 	if err != nil {
 		return nil, fmt.Errorf("parse failure in js code %s: %s", code, err)
 	}
 
-	jscode.idents = GetIdentifiers(ast_prog)
+	jsCode.idents = GetIdentifiers(ast_prog)
 	prog, err := goja.CompileAST(ast_prog, false)
 	if err != nil {
 		return nil, fmt.Errorf("field js code %s is invalid: %s", code, err)
 	}
-	jscode.prog = prog
-	jscode.func_map = func_map
+	jsCode.prog = prog
+	jsCode.func_map = func_map
 
-	jscode.initRunTime()
+	jsCode.initRunTime()
 
-	return jscode, nil
+	return jsCode, nil
 }
 
-func (jscode *JSCode) initRunTime() {
+func (jsCode *JSCode) initRunTime() {
 	var print console.Printer
-	jscode.vm = goja.New()
+	jsCode.vm = goja.New()
 
-	jscode.registry = new(require.Registry)
-	jscode.registry.Enable(jscode.vm)
-	if jscode.logger == nil {
+	jsCode.registry = new(require.Registry)
+	jsCode.registry.Enable(jsCode.vm)
+	if jsCode.logger == nil {
 		print = &printer{}
 	} else {
 		print = &logger_printer{
-			logger: jscode.logger,
+			logger: jsCode.logger,
 		}
 
 	}
 	func_val := console.RequireWithPrinter(print)
-	jscode.registry.RegisterNativeModule(console.ModuleName, func_val)
-	console.Enable(jscode.vm)
+	jsCode.registry.RegisterNativeModule(console.ModuleName, func_val)
+	console.Enable(jsCode.vm)
 	mod := &jsModExporterFunc{
-		func_map: jscode.func_map,
+		func_map: jsCode.func_map,
 	}
-	jscode.registry.RegisterNativeModule(exporter.ModuleName, exporter.RequireWithJSModFuncMap(mod))
-	exporter.Enable(jscode.vm)
+	jsCode.registry.RegisterNativeModule(exporter.ModuleName, exporter.RequireWithJSModFuncMap(mod))
+	exporter.Enable(jsCode.vm)
+
+	jsCode.registry.RegisterNativeModule(goja_fs.ModuleName, nil)
+	goja_fs.Enable(jsCode.vm)
+
 }
 
 type logger_printer struct {

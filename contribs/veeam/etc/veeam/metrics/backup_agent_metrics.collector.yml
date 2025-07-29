@@ -43,7 +43,7 @@ scripts:
               when: not (exporterHasKey .agents .agent.UID)
               metrics:
                 - metric_name: status
-                  help: backup agent status 0 Unkwonw / 1 Online / 2 Offline
+                  help: backup agent status 0 Unknown / 1 Online / 2 Offline
                   type: gauge
                   key_labels:
                     # item.Links[0].Name !

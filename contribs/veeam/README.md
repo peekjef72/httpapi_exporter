@@ -1,3 +1,4 @@
+<!-- cSpell:ignore logfmt, veeamhost, jobname, jobtype, vmname, veeam, taskname, backupjob -->
 # veeam_exporter
 
 ## Overview
@@ -5,7 +6,8 @@
 ![dashboard overview](./screenshots/veeam_general_dash.png)
 
 ## Description
-Prometheus exporter for Veeam Entreprise Manager
+
+Prometheus exporter for Veeam Enterprise Manager
 
 This exporter collects metrics from Veeam Enterprise Manager HTTP API.
 
@@ -15,10 +17,9 @@ Several Veeam server can be polled by adding them to the YAML config file, by ad
 
 **Config**: [see etc/config.yml](etc/veeam/config.yml)
 
-
 ## Usage
 
-I recommand to create a unix symbolic link from httpapi_exporter to netscaler_exporter so it is easy to distinguish in processes tree (top, ps)
+I recommend to create a unix symbolic link from httpapi_exporter to netscaler_exporter so it is easy to distinguish in processes tree (top, ps)
 
 ```shell
 ln -s httpapi_exporter veeam_exporter
@@ -42,7 +43,6 @@ By default, it will load the file config.yml to perform action.
 
 <details>
 <summary>Detail options</summary>
-
 
 ```shell
 usage: netscaler_exporter [<flags>]
@@ -105,14 +105,15 @@ Since several veeam servers can be set in the exporter, Prometheus addresses eac
         replacement: "veeam-exporter-hostname.domain:9247"  # The veeam exporter's real hostname.
 
 ```
+
 ## Metrics
 
-The collected metrics are defined in separeted files positionned the folder conf/metrics.
+The collected metrics are defined in separated files positioned the folder conf/metrics.
 All Values, computations, labels are defined in the metrics files, meaning that the exporter does nothing internally on values. The configuration fully drives how values are rendered.
 
 ### Collected Metrics
 
-All metrics are defined in the configuration file (conf/metrics/*.yml). You can retrive all metrics' names here. Most of them have help text too.
+All metrics are defined in the configuration file (conf/metrics/*.yml). You can retrieve all metrics' names here. Most of them have help text too.
 
 by default the history of backup job and tasks are set to 12h.
 You can update this value in config file for the init script; the format is the golang time.duration so hours (Xh) or second (Ys) (or days (Zd))
@@ -134,12 +135,13 @@ httpapi_config:
         taskHistory: -12h
 
 ```
+
 file | domain | metrics
 ---- | ------ | -------
 veeam_overview_metrics.yml | general results | count by type "backup", "proxy", "repository", "scheduled_jobs", "successful_vms", "warning_vms"
-vm_overview_metrics.yml | general vm results | VMs count by protection type "protected","backedup","replicated","restore_points"<br>VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"<br>percent of sucessful backup of VMs
+vm_overview_metrics.yml | general vm results | VMs count by protection type "protected","backupjob","replicated","restore_points"<br>VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"<br>percent of successful backup of VMs
 repositories_metrics.yml | repositories | total and free size and in bytes of each repository by name and type
-jobs_overview_metrics.yml | jobs generics | various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"<br>total number of job runs by type "total", "successfull", "warning", "failed"<br>max duration for job by type and name of longuest
+jobs_overview_metrics.yml | jobs generics | various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"<br>total number of job runs by type "total", "successful", "warning", "failed"<br>max duration for job by type and name of longest
 backup_agent_metrics.yml | backup agent | backup agent status 1 Online / 2 Offline labeled by nae , type and version
 backup_servers_metrics.yml | backup servers | config of each backup server labeled by name, description, port, version: no value collect (1 returned)
 backup_jobs_sessions_metrics.yml | backup jobs runs | last backup job run info state, duration, retries labeled by backup server, jobname, jobtype
@@ -153,7 +155,7 @@ So a metric configuration file, consists in a list of action to perform.
 There are five possible actions:
 
 - url: to collect metrics from HTTP API
-- set_fact: to assign vlaue to variables
+- set_fact: to assign value to variables
 - actions: to perform a list of (sub-)actions
 - metrics: to define metrics to expose/return to Prometheus
 - debug: to display debug text to logger.
@@ -170,17 +172,16 @@ The "attributes" are analyzed in the order specified in previous table; it means
 
 action | parameter | description | remark
 ------ | ----------- | ------ | ------
-url | &nbsp; |a string that's representing the entity to collect without '/api' | http://host.domain:port/api**[url]**. e.g.: /reports/summary/overview
+url | &nbsp; |a string that's representing the entity to collect without '/api' | http\://host.domain:port/api**[url]**. e.g.: /reports/summary/overview
  &nbsp; | var_name |the name of the variable to store the results. Default is '_root' meaning that the resulting JSON object is directly store in symbols table. | &nbsp;
- &nbsp; | &nbsp; | &nbsp; | &nbsp; 
- set_fact | &nbsp; | list of variable to define | &nbsp; 
- &nbsp; | var_name: value| &nbsp;  
- &nbsp; | &nbsp; | &nbsp; | &nbsp; 
-metrics | &nbsp; | define the list of metrics to expose
+ &nbsp; | &nbsp; | &nbsp; | &nbsp;
+ set_fact | &nbsp; | list of variable to define | &nbsp;
+ &nbsp; | var_name: value| &nbsp; | &nbsp;
+ &nbsp; | &nbsp; | &nbsp; | &nbsp;
+metrics | &nbsp; | define the list of metrics to expose | &nbsp;
  &nbsp; | metric_prefix | a prefix to add to all metric name | final name will be [metric_prefix]_[metric_name]
- 'a metric' | name | the name of the metric
- &nbsp; | help | the help message added to the metric (and displayed in grafana explorer)
+ 'a metric' | name | the name of the metric | &nbsp;
+ &nbsp; | help | the help message added to the metric (and displayed in grafana explorer) | &nbsp;
  &nbsp; | type 'gauge' or 'counter' | the type of the prometheus metric | &nbsp;
  &nbsp; | value | the numeric value itself | &nbsp;
  &nbsp; | labels | a list of name value pairs to qualify the metric | &nbsp;
-

@@ -38,14 +38,14 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 		)
 
 		params := req.URL.Query()
-		tname := strings.TrimSpace(params.Get("target"))
-		if tname == "" || tname == "template" {
+		tName := strings.TrimSpace(params.Get("target"))
+		if tName == "" || tName == "template" {
 			err := errors.New("Target parameter is missing")
 			HandleError(http.StatusBadRequest, err, *metricsPath, exporter, w, req)
 			return
 		}
 
-		target, err = exporter.FindTarget(tname)
+		target, err = exporter.FindTarget(tName)
 		if err == ErrTargetNotFound {
 			model := strings.TrimSpace(params.Get("model"))
 			if model == "" {
@@ -57,8 +57,8 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 				HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
 				return
 			}
-			if tmp_t, err = t_def.Config().Clone(tname, ""); err != nil {
-				err := fmt.Errorf("invalid url set for remote_target '%s' %s", tname, err)
+			if tmp_t, err = t_def.Config().Clone(tName, ""); err != nil {
+				err := fmt.Errorf("invalid url set for remote_target '%s' %s", tName, err)
 				HandleError(http.StatusInternalServerError, err, *metricsPath, exporter, w, req)
 				return
 			}
@@ -77,10 +77,10 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 
 		// set a specific collector_name for target
 		if len(params["collector"]) > 0 {
-			// to store anc check name unicity
-			colls := make(map[string]*CollectorConfig, len(params["collector"]))
+			// to store anc check name uniqueness
+			collectors := make(map[string]*CollectorConfig, len(params["collector"]))
 			for _, collector_name := range params["collector"] {
-				if _, ok := colls[collector_name]; !ok {
+				if _, ok := collectors[collector_name]; !ok {
 					coll := exporter.Config().FindCollector(collector_name)
 					if coll != nil {
 						exporter.Config().logger.Debug(fmt.Sprintf("adding specific collector %s", collector_name),
@@ -91,10 +91,10 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 						HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
 						return
 					}
-					colls[collector_name] = coll
+					collectors[collector_name] = coll
 				}
 			}
-			if err := target.SetSpecificCollectorConfig(colls); err != nil {
+			if err := target.SetSpecificCollectorConfig(collectors); err != nil {
 				HandleError(http.StatusNotFound, err, *metricsPath, exporter, w, req)
 				return
 			}
@@ -134,7 +134,7 @@ func ExporterHandlerFor(exporter Exporter) http.Handler {
 		mfs, err := gatherer.Gather()
 		if err != nil {
 			exporter.Logger().Error(
-				fmt.Sprintf("Error gathering metrics for '%s': %s", tname, err))
+				fmt.Sprintf("Error gathering metrics for '%s': %s", tName, err))
 			if len(mfs) == 0 {
 				http.Error(w, "No metrics gathered, "+err.Error(), http.StatusInternalServerError)
 				return

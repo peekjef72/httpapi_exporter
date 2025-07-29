@@ -1,3 +1,5 @@
+// cSpell:ignore loglevel, HealthHandlerfunc, vinfos
+
 package main
 
 import (
@@ -39,12 +41,9 @@ func init() {
 }
 
 var (
-	// listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(metricsPublishingPort).String()
-	metricsPath = kingpin.Flag("web.telemetry-path", "Path under which to expose collector's internal metrics.").Default("/metrics").String()
-	configFile  = kingpin.Flag("config.file", "Exporter configuration file.").Short('c').Default("config/config.yml").String()
-	//debug_flag    = kingpin.Flag("debug", "debug connection checks.").Short('d').Default("false").Bool()
-	dry_run = kingpin.Flag("dry-run", "Only check exporter configuration file and exit.").Short('n').Default("false").Bool()
-	// alsologtostderr = kingpin.Flag("alsologtostderr", "log to standard error as well as files.").Default("true").Bool()
+	metricsPath    = kingpin.Flag("web.telemetry-path", "Path under which to expose collector's internal metrics.").Default("/metrics").String()
+	configFile     = kingpin.Flag("config.file", "Exporter configuration file.").Short('c').Default("config/config.yml").String()
+	dry_run        = kingpin.Flag("dry-run", "Only check exporter configuration file and exit.").Short('n').Default("false").Bool()
 	target_name    = kingpin.Flag("target", "In dry-run mode specify the target name, else ignored.").Short('t').String()
 	model_name     = kingpin.Flag("model", "In dry-run mode specify the model name to build the dynamic target, else ignored.").Default("default").Short('m').String()
 	auth_key       = kingpin.Flag("auth.key", "In dry-run mode specify the auth_key to use, else ignored.").Short('a').String()
@@ -54,7 +53,7 @@ var (
 )
 
 const (
-	OpEgals = 1
+	OpEqual = 1
 	OpMatch = 2
 )
 
@@ -72,7 +71,7 @@ type ctxValue struct {
 
 func newRoute(op int, path string, handler http.HandlerFunc) *route {
 	switch op {
-	case OpEgals:
+	case OpEqual:
 		return &route{path, nil, handler}
 	case OpMatch:
 		return &route{"", regexp.MustCompile("^" + path + "$"), handler}
@@ -84,15 +83,15 @@ func newRoute(op int, path string, handler http.HandlerFunc) *route {
 }
 func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 	var routes = []*route{
-		newRoute(OpEgals, "/", HomeHandlerFunc(*metricsPath, exporter)),
-		newRoute(OpEgals, "/config", ConfigHandlerFunc(*metricsPath, exporter)),
-		newRoute(OpEgals, "/health", HealthHandlerfunc(*metricsPath, exporter)),
-		newRoute(OpEgals, "/httpapi_exporter_metrics", func(w http.ResponseWriter, r *http.Request) { promhttp.Handler().ServeHTTP(w, r) }),
-		newRoute(OpEgals, "/reload", ReloadHandlerFunc(*metricsPath, exporter, actionCh)),
+		newRoute(OpEqual, "/", HomeHandlerFunc(*metricsPath, exporter)),
+		newRoute(OpEqual, "/config", ConfigHandlerFunc(*metricsPath, exporter)),
+		newRoute(OpEqual, "/health", HealthHandlerfunc(*metricsPath, exporter)),
+		newRoute(OpEqual, "/httpapi_exporter_metrics", func(w http.ResponseWriter, r *http.Request) { promhttp.Handler().ServeHTTP(w, r) }),
+		newRoute(OpEqual, "/reload", ReloadHandlerFunc(*metricsPath, exporter, actionCh)),
 		newRoute(OpMatch, "/loglevel(?:/(.*))?", LogLevelHandlerFunc(*metricsPath, exporter, actionCh, "")),
-		newRoute(OpEgals, "/status", StatusHandlerFunc(*metricsPath, exporter)),
+		newRoute(OpEqual, "/status", StatusHandlerFunc(*metricsPath, exporter)),
 		newRoute(OpMatch, "/targets(?:/(.*))?", TargetsHandlerFunc(*metricsPath, exporter)),
-		newRoute(OpEgals, *metricsPath, func(w http.ResponseWriter, r *http.Request) { ExporterHandlerFor(exporter).ServeHTTP(w, r) }),
+		newRoute(OpEqual, *metricsPath, func(w http.ResponseWriter, r *http.Request) { ExporterHandlerFor(exporter).ServeHTTP(w, r) }),
 		// Expose exporter metrics separately, for debugging purposes.
 
 		// pprof handle
@@ -112,10 +111,10 @@ func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 						path = matches[1]
 					}
 
-					ctxval := &ctxValue{
+					ctxVal := &ctxValue{
 						path: path,
 					}
-					ctx := context.WithValue(req.Context(), ctxKey{}, ctxval)
+					ctx := context.WithValue(req.Context(), ctxKey{}, ctxVal)
 					route.handler(w, req.WithContext(ctx))
 					return
 				}
@@ -130,7 +129,7 @@ func BuildHandler(exporter Exporter, actionCh chan<- actionMsg) http.Handler {
 }
 
 type actionMsg struct {
-	actiontype int
+	actionType int
 	logLevel   string
 	retCh      chan error
 }
@@ -279,7 +278,7 @@ func main() {
 					logger.Info("file reloaded.")
 				}
 			case action := <-actionCh:
-				switch action.actiontype {
+				switch action.actionType {
 				case ACTION_RELOAD:
 					logger.Info("file reloading received.")
 					if err := exporter.ReloadConfig(); err != nil {
@@ -302,7 +301,7 @@ func main() {
 		}
 	}()
 
-	srvc := make(chan struct{})
+	service := make(chan struct{})
 	term := make(chan os.Signal, 1)
 	signal.Notify(term, os.Interrupt, syscall.SIGTERM)
 	if exporter.Config().Globals.WebListenAddresses != "" {
@@ -325,7 +324,7 @@ func main() {
 		case <-term:
 			logger.Info("Received SIGTERM, exiting gracefully...")
 			os.Exit(0)
-		case <-srvc:
+		case <-service:
 			os.Exit(1)
 		}
 	}

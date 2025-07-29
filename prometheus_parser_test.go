@@ -1,3 +1,5 @@
+// cSpell:ignore stretchr
+
 package main
 
 import (
@@ -28,9 +30,9 @@ func TestFuncParsePrometheusResponse(t *testing.T) {
 		// must obtain 9 metrics
 		assert.True(t, len(data) == 10, "result doesn't contain 9 metrics")
 
-		// check that metric familly  "apache_workers" exists and contains two metrics
+		// check that metric family  "apache_workers" exists and contains two metrics
 		if raw_metric, ok := data["apache_workers"]; !ok {
-			t.Errorf(`ParsePrometheusResponse(): metric "apache_workers" not founf`)
+			t.Errorf(`ParsePrometheusResponse(): metric "apache_workers" not found`)
 		} else {
 			if metric, ok := raw_metric.(map[string]any); !ok {
 				t.Errorf("ParsePrometheusResponse(): invalid content for metric")
@@ -38,18 +40,18 @@ func TestFuncParsePrometheusResponse(t *testing.T) {
 				met_type := GetMapValueString(metric, "type")
 				assert.True(t, met_type == "gauge", "ParsePrometheusResponse(): invalid metric type found")
 				raw_data := metric["metrics"]
-				if mets, ok := raw_data.([]map[string]any); !ok {
+				if metrics, ok := raw_data.([]map[string]any); !ok {
 					t.Errorf(`ParsePrometheusResponse(): invalid content for metric["metrics"]`)
 				} else {
-					assert.True(t, len(mets) == 2, "ParsePrometheusResponse(): invalid metric type found")
+					assert.True(t, len(metrics) == 2, "ParsePrometheusResponse(): invalid metric type found")
 				}
 			}
 
 		}
 
-		// check that metric familly  "process_cpu_seconds_total" exists and contains on metric
+		// check that metric family  "process_cpu_seconds_total" exists and contains on metric
 		if raw_metric, ok := data["process_cpu_seconds_total"]; !ok {
-			t.Errorf(`ParsePrometheusResponse(): metric "process_cpu_seconds_total" not founf`)
+			t.Errorf(`ParsePrometheusResponse(): metric "process_cpu_seconds_total" not found`)
 		} else {
 			if metric, ok := raw_metric.(map[string]any); !ok {
 				t.Errorf("ParsePrometheusResponse(): invalid content for metric")
@@ -57,10 +59,10 @@ func TestFuncParsePrometheusResponse(t *testing.T) {
 				met_type := GetMapValueString(metric, "type")
 				assert.True(t, met_type == "counter", "ParsePrometheusResponse(): invalid metric type found")
 				raw_data := metric["metrics"]
-				if mets, ok := raw_data.([]map[string]any); !ok {
+				if metrics, ok := raw_data.([]map[string]any); !ok {
 					t.Errorf(`ParsePrometheusResponse(): invalid content for metric["metrics"]`)
 				} else {
-					assert.True(t, len(mets) == 1, "ParsePrometheusResponse(): invalid metric type found")
+					assert.True(t, len(metrics) == 1, "ParsePrometheusResponse(): invalid metric type found")
 				}
 			}
 

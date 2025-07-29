@@ -219,8 +219,8 @@ func (a *QueryAction) SetWhen(when []*Field) {
 func (a *QueryAction) GetLoopVar() string {
 	return a.LoopVar
 }
-func (a *QueryAction) SetLoopVar(loopvar string) {
-	a.LoopVar = loopvar
+func (a *QueryAction) SetLoopVar(loopVar string) {
+	a.LoopVar = loopVar
 }
 
 func (a *QueryAction) GetVars() [][]any {

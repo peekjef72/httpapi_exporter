@@ -1,3 +1,4 @@
+// cSpell:ignore quantiles
 package main
 
 import (
@@ -30,7 +31,7 @@ func ParsePrometheusResponse(data []byte) (any, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, fmt.Errorf("unmarshalling failed: %v", err)
+			return nil, fmt.Errorf("unmarshaling failed: %v", err)
 		}
 		res := make(map[string]any)
 		name = *mf.Name

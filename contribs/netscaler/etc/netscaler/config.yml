@@ -101,7 +101,7 @@ profiles:
           set_fact:
             config:
               ts_next_check: 0
-          when: 'js: typeof config === 'undefined'
+          when: "js: typeof config === 'undefined'"
 
         - name: set config cache vars
           when: >-
