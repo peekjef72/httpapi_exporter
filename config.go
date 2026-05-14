@@ -16,16 +16,19 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/dop251/goja_nodejs/require"
+
 	mytemplate "github.com/peekjef72/httpapi_exporter/template"
-	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
-	"github.com/spf13/cast"
 	"gopkg.in/yaml.v3"
 )
 
 // Load attempts to parse the given config file and return a Config object.
-func LoadConfig(configFile string, logger *slog.Logger, collectorName string) (*Config, error) {
+func LoadConfig(
+	configFile string,
+	logger *slog.Logger,
+	collectorName string,
+	registry *require.Registry) (*Config, error) {
 	logger.Info(fmt.Sprintf("Loading configuration from %s", configFile))
 	buf, err := os.ReadFile(configFile)
 	if err != nil {
@@ -36,6 +39,7 @@ func LoadConfig(configFile string, logger *slog.Logger, collectorName string) (*
 		configFile:    configFile,
 		logger:        logger,
 		collectorName: collectorName,
+		registry:      registry,
 	}
 
 	err = yaml.Unmarshal(buf, &c)
@@ -53,6 +57,8 @@ type ScriptConfig map[string]*YAMLScript
 type Profile struct {
 	MetricPrefix string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
 	Scripts      map[string]*YAMLScript `yaml:"scripts" json:"scripts"`
+
+	registry *require.Registry
 }
 
 // Top-level config
@@ -75,6 +81,8 @@ type Config struct {
 	collectorName string
 	collectors    map[string]*CollectorConfig
 
+	registry *require.Registry
+
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
 }
@@ -82,6 +90,7 @@ type Config struct {
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Config.
 func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type plain Config
+
 	if err := unmarshal((*plain)(c)); err != nil {
 		return err
 	}
@@ -127,9 +136,9 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 							prefix = c.Globals.MetricPrefix
 						}
 						if !strings.HasPrefix(metric.Name, prefix) {
-							metric.Name = fmt.Sprintf("%s_%s", prefix, metric.Name)
+							metric.prefix = prefix
 						}
-						if name, err := NewField(metric.Name, nil); err == nil {
+						if name, err := NewField(metric.Name, nil, c.registry); err == nil {
 							metric.name = name
 						} else {
 							return err
@@ -406,6 +415,93 @@ func (c *Config) JSON() ([]byte, error) {
 	return json.Marshal(fc)
 }
 
+type profileParser struct {
+	MetricPrefix string               `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
+	ScriptsNodes map[string]yaml.Node `yaml:"scripts" json:"scripts"`
+	registry     *require.Registry
+	scripts      map[string]*YAMLScript
+}
+
+// func (p *profileParser) UnmarshalYAML(value *yaml.Node) error {
+// 	m_prefix := ""
+// 	if err := value.Content[0].Decode(&m_prefix); err != nil {
+// 		return err
+// 	}
+// 	p.MetricPrefix = m_prefix
+
+// 	for script_name, script_Node := range p.ScriptsNodes {
+// 		script := &YAMLScript{
+// 			registry: p.registry,
+// 		}
+// 		if err := script_Node.Decode(&script); err != nil {
+// 			return fmt.Errorf("script '%s' parsing error : '%s'", script_name, err.Error())
+// 		}
+// 		if script.name == "" {
+// 			script.name = script_name
+// 		}
+// 		if _, found := p.scripts[script_name]; found {
+// 			return fmt.Errorf("script '%s' already exists (redefined)", script_name)
+// 		}
+// 		p.scripts[script_name] = script
+// 	}
+// 	return nil
+// }
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for GlobalConfig.
+func (p *Profile) UnmarshalYAML(value *yaml.Node) error {
+	var tmp profileParser = profileParser{
+		registry: p.registry,
+	}
+	if err := value.Decode(&tmp); err != nil {
+		return err
+	}
+	p.MetricPrefix = tmp.MetricPrefix
+	if len(tmp.ScriptsNodes) > 0 {
+		var err error
+		p.Scripts, err = build_YAMLScript(p.registry, tmp.ScriptsNodes)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type profiles struct {
+	profiles map[string]*Profile
+	registry *require.Registry
+}
+
+func (p *profiles) UnmarshalYAML(value *yaml.Node) error {
+	var (
+		profile_name *string
+	)
+	if value.Tag == "!!map" && len(value.Content)%2 == 0 {
+		for i, node := range value.Content {
+			if i%2 == 0 {
+				// this is a key
+				if err := node.Decode(&profile_name); err != nil {
+					return err
+				}
+			} else {
+				// this is a profile
+				profile := &Profile{
+					registry: p.registry,
+					Scripts:  make(map[string]*YAMLScript),
+				}
+				if err := node.Decode(&profile); err != nil {
+					return fmt.Errorf("in profile '%s' %s", *profile_name, err.Error())
+				}
+
+				p.profiles[*profile_name] = &Profile{
+					MetricPrefix: profile.MetricPrefix,
+					Scripts:      profile.Scripts,
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // loadProfileFiles resolves all profile file globs to files and loads the profiles they define.
 func (c *Config) loadProfileFiles() error {
 	baseDir := filepath.Dir(c.configFile)
@@ -423,7 +519,6 @@ func (c *Config) loadProfileFiles() error {
 			return fmt.Errorf("error parsing profile files for %s: %s", pfglob, err)
 		}
 
-		type Profiles map[string]*Profile
 		// And load the Profiles defined in each file.
 		for _, pf := range pfs {
 			c.logger.Debug(fmt.Sprintf("Loading profiles from %s", pf))
@@ -432,21 +527,38 @@ func (c *Config) loadProfileFiles() error {
 				return fmt.Errorf("reading profiles file %s: %s", pf, err)
 			}
 
-			var profiles Profiles
+			var profiles profiles = profiles{
+				profiles: make(map[string]*Profile),
+				registry: c.registry,
+			}
 			err = yaml.Unmarshal(buf, &profiles)
 			if err != nil {
 				return fmt.Errorf("reading %s: %s", pf, err)
 			}
-			if c.Profiles == nil {
-				c.Profiles = make(map[string]*Profile)
-			}
-			for p_name, p := range profiles {
-				c.logger.Info(fmt.Sprintf("Loaded profile %s from %s", p_name, pf))
-				if _, found := c.Profiles[p_name]; found {
-					return fmt.Errorf("profile %s already defined", p_name)
-				}
-				c.Profiles[p_name] = p
-			}
+			c.Profiles = profiles.profiles
+			// c.Profiles = make(map[string]*Profile)
+			// if len(profiles.profiles) > 0 {
+			// 	for profile_name, profile_Parser := range profiles.profiles {
+			// 		profile := &Profile{
+			// 			MetricPrefix: profile_Parser.MetricPrefix,
+			// 			Scripts:      make(map[string]*YAMLScript),
+			// 		}
+			// 		for script_name, profile_Node := range profile_Parser.Scripts {
+			// 			script := &YAMLScript{
+			// 				registry: c.registry,
+			// 			}
+			// 			if err := profile_Node.Decode(&script); err != nil {
+			// 				return fmt.Errorf("in profile '%s' script '%s' parsing error : '%s'", profile_name, script_name, err.Error())
+			// 			}
+			// 			profile.Scripts[script_name] = script
+			// 		}
+			// 		c.logger.Info(fmt.Sprintf("Loaded profile %s from %s", profile_name, pf))
+			// 		if _, found := c.Profiles[profile_name]; found {
+			// 			return fmt.Errorf("profile %s already defined", profile_name)
+			// 		}
+			// 		c.Profiles[profile_name] = profile
+			// 	}
+			// }
 		}
 	}
 
@@ -479,7 +591,8 @@ func (c *Config) loadCollectorFiles() error {
 			}
 
 			cc := CollectorConfig{
-				symtab: map[string]any{},
+				symtab:   map[string]any{},
+				registry: c.registry,
 			}
 			err = yaml.Unmarshal(buf, &cc)
 			if err != nil {
@@ -847,6 +960,7 @@ type CollectorConfig struct {
 	Templates      map[string]string      `yaml:"templates,omitempty" json:"templates,omitempty"`         // share custom templates/funcs for results templating
 	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallel
 	symtab         map[string]any
+	registry       *require.Registry
 
 	customTemplate *exporterTemplate // to store the custom Templates used by this collector
 	// id to print in log and to follow request action
@@ -855,16 +969,37 @@ type CollectorConfig struct {
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
 }
 
+type CollectorConfigParser struct {
+	Name           string                 `yaml:"collector_name"`          // name of this collector
+	MetricPrefix   string                 `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
+	MinInterval    model.Duration         `yaml:"min_interval,omitempty"`  // minimum interval between query executions
+	Templates      map[string]string      `yaml:"templates,omitempty"`     // share custom templates/funcs for results templating
+	CollectScripts map[string]yaml.Node   `yaml:"scripts,omitempty"`       // map of all independent scripts to collect metrics - each script can run in parallel
+	XXX            map[string]interface{} `yaml:",inline" json:"-"`
+}
+
 // UnmarshalYAML implements the yaml.Unmarshaler interface for CollectorConfig.
-func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *CollectorConfig) UnmarshalYAML(value *yaml.Node) error {
 	// Default to undefined (a negative value) so it can be overridden by the global default when not explicitly set.
 	c.MinInterval = -1
 	c.MetricPrefix = ""
 
-	type plain CollectorConfig
-	if err := unmarshal((*plain)(c)); err != nil {
+	var tmp CollectorConfigParser = CollectorConfigParser{
+		MinInterval:  -1,
+		MetricPrefix: "",
+	}
+	if err := value.Decode(&tmp); err != nil {
 		return err
 	}
+
+	// type plain CollectorConfig
+	// if err := unmarshal((*plain)(c)); err != nil {
+	// 	return err
+	// }
+	c.Name = tmp.Name
+	c.MetricPrefix = tmp.MetricPrefix
+	c.Templates = tmp.Templates
 
 	// build the default templates/funcs that my be used by all templates
 	if len(c.Templates) > 0 {
@@ -883,20 +1018,41 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 			}
 		}
 	}
-	// build the js functions codes or required modules, from "jscode" to import
-	// then in all Fields
+	if len(tmp.CollectScripts) > 0 {
+		var err error
+		c.CollectScripts, err = build_YAMLScript(c.registry, tmp.CollectScripts)
+		if err != nil {
+			return err
+		}
+		// c.CollectScripts = make(map[string]*YAMLScript)
+		// for collect_script_name, script_Node := range tmp.CollectScripts {
+		// 	script := &YAMLScript{
+		// 		registry: c.registry,
+		// 	}
+		// 	if err := script_Node.Decode(&script); err != nil {
+		// 		return fmt.Errorf("script '%s' parsing error : '%s'", collect_script_name, err.Error())
+		// 	}
+		// 	if script.name == "" {
+		// 		script.name = collect_script_name
+		// 	}
 
+		// 	// check stand-alone metric_action (without "metrics" action)
+		// 	for i, act := range script.Actions {
+		// 		if act.Type() == metric_action {
+		// 			return fmt.Errorf("in script '%s' sub_action '#%d/%s' is a stand alone metric_action without metrics action (forbidden)", script.name, i, act.TypeName())
+		// 		}
+		// 	}
+		// 	if err := script.AddCustomTemplate(c.customTemplate); err != nil {
+		// 		err = fmt.Errorf("script %s: error with custom template: %s", script.name, err)
+		// 		return err
+		// 	}
+
+		// 	c.CollectScripts[collect_script_name] = script
+		// }
+
+	}
 	if c.CollectScripts != nil {
-		for collect_script_name, c_script := range c.CollectScripts {
-			if c_script.name == "" {
-				c_script.name = collect_script_name
-			}
-			// check stand-alone metric_action (without "metrics" action)
-			for i, act := range c_script.Actions {
-				if act.Type() == metric_action {
-					return fmt.Errorf("in script '%s' sub_action '#%d/%s' is a stand alone metric_action without metrics action (forbidden)", c_script.name, i, act.TypeName())
-				}
-			}
+		for _, c_script := range c.CollectScripts {
 			if err := c_script.AddCustomTemplate(c.customTemplate); err != nil {
 				err = fmt.Errorf("script %s: error with custom template: %s", c_script.name, err)
 				return err
@@ -905,6 +1061,32 @@ func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 
 	return checkOverflow(c.XXX, "collector")
+}
+
+func build_YAMLScript(registry *require.Registry, nodes map[string]yaml.Node) (map[string]*YAMLScript, error) {
+	scripts := make(map[string]*YAMLScript)
+	for script_name, script_Node := range nodes {
+		script := &YAMLScript{
+			registry: registry,
+		}
+		if err := script_Node.Decode(&script); err != nil {
+			return nil, fmt.Errorf("script '%s' parsing error : '%s'", script_name, err.Error())
+		}
+		if script != nil {
+			if script.name == "" {
+				script.name = script_name
+			}
+
+			// check stand-alone metric_action (without "metrics" action)
+			for i, act := range script.Actions {
+				if act.Type() == metric_action {
+					return nil, fmt.Errorf("script '%s' sub_action '#%d/%s' is a stand alone metric_action without metrics action (forbidden)", script.name, i, act.TypeName())
+				}
+			}
+		}
+		scripts[script_name] = script
+	}
+	return scripts, nil
 }
 
 type CollectorConfigList []*CollectorConfig
@@ -943,253 +1125,6 @@ func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
 		}
 	}
 	return colls
-}
-
-const (
-	HistogramTypeUndef = iota
-	HistogramTypeStatic
-	HistogramTypeExternal
-)
-
-// type eBucket struct {
-// 	CumulativeCount uint64
-// 	UpperBound float64
-// }
-
-type EHistogram struct {
-	Type          int
-	Histogram_var *Field
-	Histogram     []*prometheus.HistogramVec
-	// SampleCount uint64
-	// SampleSum   float64
-	// // Bucket []*eBucket
-	Buckets         *[]float64
-	Histogram_value *Field
-}
-
-// MetricConfig defines a Prometheus metric, the SQL query to populate it and the mapping of columns to metric
-// keys/values.
-type MetricConfig struct {
-	Name         string            `yaml:"metric_name" json:"metric_name"`                         // the Prometheus metric name
-	TypeString   string            `yaml:"type" json:"type"`                                       // the Prometheus metric type
-	Help         string            `yaml:"help" json:"help"`                                       // the Prometheus metric help text
-	KeyLabels    any               `yaml:"key_labels,omitempty" json:"key_labels,omitempty"`       // expose these attributes as labels from JSON object: format name: value with name and value that should be template
-	StaticLabels map[string]string `yaml:"static_labels,omitempty" json:"static_labels,omitempty"` // fixed key/value pairs as static labels
-	ValueLabel   string            `yaml:"value_label,omitempty" json:"value_label,omitempty"`     // with multiple value columns, map their names under this label
-	Values       map[string]string `yaml:"values" json:"values"`                                   // expose each of these columns as a value, keyed by column name
-	Scope        string            `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
-
-	HistogramInfos any `yaml:"histogram,omitempty" json:"histogram,omitempty"`
-
-	// valueType_old prometheus.ValueType // TypeString converted to prometheus.ValueType
-	valueType dto.MetricType
-
-	name           *Field
-	help           *Field
-	key_labels_map map[string]string
-	key_labels     *Field
-
-	histogram *EHistogram
-}
-
-// ValueType returns the metric type, converted to a dto.MetricType.
-func (m *MetricConfig) ValueType() dto.MetricType {
-	return m.valueType
-}
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface for MetricConfig.
-func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type plain MetricConfig
-	if err := unmarshal((*plain)(m)); err != nil {
-		return err
-	}
-	// Check required fields
-	if m.Name == "" {
-		return fmt.Errorf("missing name for metric %+v", m)
-	}
-	if name, err := NewField(m.Name, nil); err != nil {
-		return err
-	} else {
-		m.name = name
-	}
-
-	if m.TypeString == "" {
-		return fmt.Errorf("missing type for metric %q", m.Name)
-	}
-
-	if m.Help != "" {
-		if help, err := NewField(m.Help, nil); err == nil {
-			m.help = help
-		} else {
-			return err
-		}
-	}
-	switch strings.ToLower(m.TypeString) {
-	case "counter":
-		m.valueType = dto.MetricType_COUNTER
-	case "gauge":
-		m.valueType = dto.MetricType_GAUGE
-	case "histogram":
-		m.valueType = dto.MetricType_HISTOGRAM
-	case "summary":
-		m.valueType = dto.MetricType_SUMMARY
-	default:
-		return fmt.Errorf("unsupported metric type: %s", m.TypeString)
-	}
-
-	// Check for duplicate key labels
-	if m.KeyLabels != nil {
-		switch ktype := m.KeyLabels.(type) {
-		case map[string]string:
-			for key, val := range ktype {
-				if err := checkLabel(key, "metric", m.Name); err != nil {
-					return err
-				}
-				// specific for format key_name: _ => replace by ${key_name}
-				if val == "_" {
-					ktype[key] = "$" + key
-				}
-			}
-			m.key_labels_map = ktype
-		case map[string]any:
-			m.key_labels_map = make(map[string]string, len(ktype))
-			for key, val_raw := range ktype {
-				if err := checkLabel(key, "metric", m.Name); err != nil {
-					return err
-				}
-				if val, ok := val_raw.(string); ok {
-					if val == "_" {
-						val = "$" + key
-					}
-					m.key_labels_map[key] = val
-				}
-			}
-		case string:
-			if ktype != "" {
-				if val, err := NewField(ktype, nil); err == nil {
-					m.key_labels = val
-				} else {
-					return err
-				}
-			}
-		default:
-			return fmt.Errorf("key_labels should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", m.Name)
-		}
-	}
-
-	if m.valueType == dto.MetricType_HISTOGRAM {
-		if m.HistogramInfos == nil {
-			return fmt.Errorf("no histogram defined for metric %q", m.Name)
-		}
-
-		m.histogram = &EHistogram{}
-
-		htype := reflect.ValueOf(m.HistogramInfos)
-		switch htype.Kind() {
-		case reflect.Map:
-			// if we found elements definition (bucket & value) histogram is static
-			m.histogram.Type = HistogramTypeStatic
-			// hist := &EHistogram{
-			// 	Type: HistogramTypeUndef,
-			// }
-			iter := htype.MapRange()
-			for iter.Next() {
-				raw_key := iter.Key()
-				if raw_key.Kind() == reflect.String {
-					switch raw_key.String() {
-					case "buckets":
-						t_buckets := iter.Value()
-						invalid_format := false
-						if t_buckets.Kind() == reflect.Interface {
-							t_b_v := reflect.ValueOf(t_buckets.Interface())
-							// t_b_i := reflect.TypeOf(t_buckets.Interface())
-							if t_b_v.Kind() == reflect.Slice {
-								buckets := make([]float64, t_b_v.Len())
-
-								prev_v := 0.0
-								for ind := range t_b_v.Len() {
-									t_val := t_b_v.Index(ind)
-									buckets[ind] = cast.ToFloat64(t_val.Interface())
-									// check if bound of bucket is increasing strictly
-									if ind > 0 {
-										if buckets[ind] <= prev_v {
-											return fmt.Errorf("invalid value for buckets bounds definition for histogram metric %q: elmt[%d] %f <= %f", m.Name, ind, buckets[ind], prev_v)
-										}
-										prev_v = buckets[ind]
-									}
-								}
-								m.histogram.Buckets = &buckets
-							} else {
-								invalid_format = true
-							}
-						} else {
-							invalid_format = true
-						}
-						if invalid_format {
-							return fmt.Errorf("invalid format for buckets bounds definition for histogram metric %q: must be slice", m.Name)
-						}
-
-					case "value":
-						t_value := iter.Value()
-						invalid_format := false
-						if t_value.Kind() == reflect.Interface {
-							t_v_v := reflect.ValueOf(t_value.Interface())
-							if t_v_v.Kind() == reflect.String {
-								if val, err := NewField(t_v_v.String(), nil); err == nil {
-									m.histogram.Histogram_value = val
-								} else {
-									return err
-								}
-							} else {
-								invalid_format = true
-							}
-						} else {
-							invalid_format = true
-						}
-						if invalid_format {
-							return fmt.Errorf("invalid format for value definition for histogram metric %q: must be string", m.Name)
-						}
-					}
-				}
-			}
-			// need to check if both buckets and value are defined
-			if m.histogram.Buckets == nil || len(*m.histogram.Buckets) == 0 || m.histogram.Histogram_value == nil {
-				return fmt.Errorf("invalid definition for histogram metric %q: buckets and value must be set", m.Name)
-				// } else {
-				// 	toto := prometheus.NewHistogramVec(
-				// 		prometheus.HistogramOpts {
-				// 			Buckets: *m.histogram.Buckets,
-				// 	}, []string{})
-				// 	m.histogram.Histogram = &dto.Histogram{
-				// 		Bucket: make([]*dto.Bucket, len(*m.histogram.Buckets)),
-				// 	}
-			}
-
-		case reflect.String:
-			m.histogram.Type = HistogramTypeExternal
-			if htype.String() != "" {
-				if val, err := NewField(htype.String(), nil); err == nil {
-					m.histogram.Histogram_var = val
-				} else {
-					return err
-				}
-			}
-		default:
-			return fmt.Errorf("histogram should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", m.Name)
-		}
-	} else if len(m.Values) == 0 {
-		return fmt.Errorf("no values defined for metric %q", m.Name)
-	}
-
-	if len(m.Values) > 1 {
-		// Multiple value columns but no value label to identify them
-		if m.ValueLabel == "" {
-			return fmt.Errorf("value_label must be defined for metric with multiple values %q", m.Name)
-		}
-		checkLabel(m.ValueLabel, "value_label for metric", m.Name)
-	}
-
-	return nil
 }
 
 // Secret special type for storing secrets.

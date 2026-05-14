@@ -34,7 +34,7 @@ func TestValorizeValueInt(t *testing.T) {
 	initTest()
 
 	symtab["var"] = 1
-	name, _ := NewField("$var", nil)
+	name, _ := NewField("$var", nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test const int", false); err != nil {
 		t.Errorf(`ValorizeValue("var") error: %s`, err.Error())
 	} else {
@@ -62,7 +62,7 @@ func TestValorizeValueConstString(t *testing.T) {
 	initTest()
 
 	symtab["var"] = "1"
-	name, _ := NewField("$var", nil)
+	name, _ := NewField("$var", nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test const string", false); err != nil {
 		t.Errorf(`ValorizeValue("var") error: %s`, err.Error())
 	} else {
@@ -100,7 +100,7 @@ func TestValorizeValueConstSlice(t *testing.T) {
 	slice[0] = "value1"
 	slice[1] = "value2"
 	symtab["slice"] = slice
-	name, _ := NewField("$slice", nil)
+	name, _ := NewField("$slice", nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test const slice", false); err != nil {
 		t.Errorf(`ValorizeValue("var") error: %s`, err.Error())
 	} else {
@@ -140,7 +140,7 @@ func TestValorizeValueConstMap(t *testing.T) {
 	mymap["key1"] = "value1"
 	mymap["key2"] = "value2"
 	symtab["mymap"] = mymap
-	name, _ := NewField("$mymap", nil)
+	name, _ := NewField("$mymap", nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test constmap", false); err != nil {
 		t.Errorf(`ValorizeValue("var") error: %s`, err.Error())
 	} else {
@@ -183,7 +183,7 @@ func TestValorizeValueConstSliceConstIndex(t *testing.T) {
 	symtab["idx"] = 1
 
 	var_name := `$slice[0]`
-	name, _ := NewField(var_name, nil)
+	name, _ := NewField(var_name, nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test const slice", false); err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`ValorizeValue("%s") error: %s`, var_name, err.Error()))
 	} else {
@@ -224,7 +224,7 @@ func TestValorizeValueConstSliceVarIndex(t *testing.T) {
 	symtab["idx"] = 1
 
 	var_name := `$slice[$idx]`
-	name, _ := NewField(var_name, nil)
+	name, _ := NewField(var_name, nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test const slice", false); err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`ValorizeValue("%s") error: %s`, var_name, err.Error()))
 	} else {
@@ -263,7 +263,7 @@ func TestValorizeValueConstMapConstName(t *testing.T) {
 	mymap["key2"] = "value2"
 	symtab["mymap"] = mymap
 	var_name := `$mymap["key1"]`
-	name, _ := NewField(var_name, nil)
+	name, _ := NewField(var_name, nil, nil)
 	if r_value, err := ValorizeValue(symtab, name, logger, "test constmap", false); err != nil {
 		t.Errorf(`ValorizeValue("var") error: %s`, err.Error())
 	} else {
@@ -305,7 +305,7 @@ func TestValorizeValueConstMapVarName(t *testing.T) {
 	symtab["key"] = "key2"
 
 	var_name := `$mymap[$key]`
-	name, _ := NewField(var_name, nil)
+	name, _ := NewField(var_name, nil, nil)
 
 	if r_value, err := ValorizeValue(symtab, name, logger, "test constmap", false); err != nil {
 		t.Errorf(`ValorizeValue("var") error: %s`, err.Error())
@@ -345,7 +345,7 @@ func TestValorizeValueMapTemplateValidNotFound(t *testing.T) {
 	symtab["mymap"] = mymap
 	var_name := `{{ exporterGet .mymap "not_found" }}`
 
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -383,7 +383,7 @@ func TestValorizeValueMapTemplateValidKey(t *testing.T) {
 	symtab["mymap"] = mymap
 	var_name := `{{ exporterGet .mymap "key2" }}`
 
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -426,12 +426,12 @@ func TestValorizeValueMap2Vars(t *testing.T) {
 	mymap["key2"] = "value2"
 	symtab["mymap"] = mymap
 	var_name := `$label`
-	symtab["label"], err = NewField("$mymap", nil)
+	symtab["label"], err = NewField("$mymap", nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
 
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -478,7 +478,7 @@ func TestValorizeValueMap2LvlMap(t *testing.T) {
 	symtab["mymap"] = mymap
 
 	var_name := `$mymap.sub_map_1`
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -524,7 +524,7 @@ func TestValorizeValueMap2LvlSlice(t *testing.T) {
 	symtab["mymap"] = mymap
 
 	var_name := `$mymap.sub_list_1`
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -576,12 +576,12 @@ func TestValorizeValueMap2LvlSliceSubVar(t *testing.T) {
 	symtab["mymap"] = mymap
 
 	var_name := `$list`
-	symtab["list"], err = NewField(`$mymap.sub_list_1`, nil)
+	symtab["list"], err = NewField(`$mymap.sub_list_1`, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
 
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -636,12 +636,12 @@ func TestValorizeValueMap2LvlSliceSubVarElement(t *testing.T) {
 	symtab["mymap"] = mymap
 
 	var_name := `$list[0]`
-	symtab["list"], err = NewField(`$mymap.sub_list_1`, nil)
+	symtab["list"], err = NewField(`$mymap.sub_list_1`, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
 
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -692,7 +692,7 @@ func TestValorizeValueMap2LvlSliceSubVarSubElement(t *testing.T) {
 	mymap2 := make(map[string]any)
 	mymap2["name"] = "map_2"
 	// mymap2["list"] = "$mymap.sub_list_1"
-	mymap2["list"], err = NewField(`$mymap.sub_list_1`, nil)
+	mymap2["list"], err = NewField(`$mymap.sub_list_1`, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, `$mymap.sub_list_1`, err.Error())
 	}
@@ -704,7 +704,7 @@ func TestValorizeValueMap2LvlSliceSubVarSubElement(t *testing.T) {
 	// 	t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	// }
 
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	}
@@ -762,7 +762,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 	// }
 
 	test_name := `$mymap.$var_name`
-	name, err := NewField(test_name, nil)
+	name, err := NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
@@ -779,7 +779,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 
 	symtab["var_name"] = "sub_map"
 	test_name = `$mymap.$var_name.key1_2`
-	name, err = NewField(test_name, nil)
+	name, err = NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
@@ -838,7 +838,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndex(t *testing.T) {
 	symtab["var_name"] = "sub_list"
 
 	test_name := `$mymap.${var_name}[0]`
-	name, err := NewField(test_name, nil)
+	name, err := NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {
@@ -854,7 +854,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndex(t *testing.T) {
 	}
 
 	test_name = `$mymap.${test_var[0]}[1]`
-	name, err = NewField(test_name, nil)
+	name, err = NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
 	} else {

@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 	"log/slog"
+
+	"github.com/dop251/goja_nodejs/require"
 )
 
 // ***************************************************************************************
@@ -55,10 +57,10 @@ func (a *PlayScriptAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *PlayScriptAction) GetWidth() []any {
+func (a *PlayScriptAction) GetWith() []any {
 	return a.With
 }
-func (a *PlayScriptAction) SetWidth(with []any) {
+func (a *PlayScriptAction) SetWith(with []any) {
 	a.With = with
 }
 
@@ -92,13 +94,14 @@ func (a *PlayScriptAction) SetUntil(until []*Field) {
 }
 
 func (a *PlayScriptAction) setBasicElement(
+	registry *require.Registry,
 	nameField *Field,
 	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*Field,
 	until []*Field) error {
-	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
+	return setBasicElement(a, registry, nameField, vars, with, loopVar, when, until)
 }
 
 func (a *PlayScriptAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {

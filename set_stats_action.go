@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+
+	"github.com/dop251/goja_nodejs/require"
 )
 
 // ***************************************************************************************
@@ -55,10 +57,10 @@ func (a *SetStatsAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *SetStatsAction) GetWidth() []any {
+func (a *SetStatsAction) GetWith() []any {
 	return a.With
 }
-func (a *SetStatsAction) SetWidth(with []any) {
+func (a *SetStatsAction) SetWith(with []any) {
 	a.With = with
 }
 
@@ -91,13 +93,14 @@ func (a *SetStatsAction) SetUntil(until []*Field) {
 }
 
 func (a *SetStatsAction) setBasicElement(
+	registry *require.Registry,
 	nameField *Field,
 	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*Field,
 	until []*Field) error {
-	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
+	return setBasicElement(a, registry, nameField, vars, with, loopVar, when, until)
 }
 
 func (a *SetStatsAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {

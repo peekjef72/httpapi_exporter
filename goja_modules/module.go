@@ -233,11 +233,13 @@ type JSCode struct {
 	vm       *goja.Runtime
 	logger   *slog.Logger
 	idents   map[string]string
-	func_map map[string]any
+	// func_map map[string]any
 }
 
-func NewJSCode(code string, func_map map[string]any) (*JSCode, error) {
-	jsCode := &JSCode{}
+func NewJSCode(registry *require.Registry, code string) (*JSCode, error) {
+	jsCode := &JSCode{
+		registry: registry,
+	}
 
 	ast_prog, err := goja.Parse("field", code)
 	if err != nil {
@@ -250,37 +252,46 @@ func NewJSCode(code string, func_map map[string]any) (*JSCode, error) {
 		return nil, fmt.Errorf("field js code %s is invalid: %s", code, err)
 	}
 	jsCode.prog = prog
-	jsCode.func_map = func_map
+	// jsCode.func_map = func_map
 
 	jsCode.initRunTime()
 
 	return jsCode, nil
 }
 
+func InitJSRegistry(logger *slog.Logger, func_map map[string]any) *require.Registry {
+	registry := new(require.Registry)
+
+	// console module init
+	print := &logger_printer{
+		logger: logger,
+	}
+
+	func_val := console.RequireWithPrinter(print)
+	registry.RegisterNativeModule(console.ModuleName, func_val)
+
+	// exporter module init
+	mod := &jsModExporterFunc{
+		func_map: func_map,
+	}
+	registry.RegisterNativeModule(exporter.ModuleName, exporter.RequireWithJSModFuncMap(mod))
+
+	// fs module init
+	registry.RegisterNativeModule(goja_fs.ModuleName, nil)
+
+	return registry
+
+}
+
 func (jsCode *JSCode) initRunTime() {
-	var print console.Printer
 	jsCode.vm = goja.New()
 
-	jsCode.registry = new(require.Registry)
 	jsCode.registry.Enable(jsCode.vm)
-	if jsCode.logger == nil {
-		print = &printer{}
-	} else {
-		print = &logger_printer{
-			logger: jsCode.logger,
-		}
 
-	}
-	func_val := console.RequireWithPrinter(print)
-	jsCode.registry.RegisterNativeModule(console.ModuleName, func_val)
 	console.Enable(jsCode.vm)
-	mod := &jsModExporterFunc{
-		func_map: jsCode.func_map,
-	}
-	jsCode.registry.RegisterNativeModule(exporter.ModuleName, exporter.RequireWithJSModFuncMap(mod))
+
 	exporter.Enable(jsCode.vm)
 
-	jsCode.registry.RegisterNativeModule(goja_fs.ModuleName, nil)
 	goja_fs.Enable(jsCode.vm)
 
 }
@@ -290,19 +301,39 @@ type logger_printer struct {
 }
 
 func (p *logger_printer) Log(msg string) {
-	p.logger.Info(msg)
+	if p.logger == nil {
+		fmt.Printf("INFO: %s\n", msg)
+	} else {
+		p.logger.Info(msg)
+	}
 }
 func (p *logger_printer) Debug(msg string) {
-	p.logger.Debug(msg)
+	if p.logger == nil {
+		fmt.Printf("DEBUG: %s\n", msg)
+	} else {
+		p.logger.Debug(msg)
+	}
 }
 func (p *logger_printer) Info(msg string) {
-	p.logger.Info(msg)
+	if p.logger == nil {
+		fmt.Printf("INFO: %s\n", msg)
+	} else {
+		p.logger.Info(msg)
+	}
 }
 func (p *logger_printer) Warn(msg string) {
-	p.logger.Warn(msg)
+	if p.logger == nil {
+		fmt.Printf("WARN: %s\n", msg)
+	} else {
+		p.logger.Warn(msg)
+	}
 }
 func (p *logger_printer) Error(msg string) {
-	p.logger.Error(msg)
+	if p.logger == nil {
+		fmt.Printf("ERROR: %s\n", msg)
+	} else {
+		p.logger.Error(msg)
+	}
 }
 func (js *JSCode) SetSymbolTable(symtab map[string]any, logger *slog.Logger) {
 

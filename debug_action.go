@@ -4,6 +4,8 @@ import (
 	//"bytes"
 	"fmt"
 	"log/slog"
+
+	"github.com/dop251/goja_nodejs/require"
 )
 
 // ***************************************************************************************
@@ -17,7 +19,8 @@ import (
 type DebugActionConfig struct {
 	MsgVal string `yaml:"msg" json:"msg"`
 
-	msg *Field
+	registry *require.Registry
+	msg      *Field
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -31,7 +34,7 @@ func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 		return err
 	}
 	// Check required fields
-	dc.msg, err = NewField(dc.MsgVal, nil)
+	dc.msg, err = NewField(dc.MsgVal, nil, dc.registry)
 	if err != nil {
 		return fmt.Errorf("invalid template for debug message %q: %s", dc.MsgVal, err)
 	}
@@ -79,10 +82,10 @@ func (a *DebugAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *DebugAction) GetWidth() []any {
+func (a *DebugAction) GetWith() []any {
 	return a.With
 }
-func (a *DebugAction) SetWidth(with []any) {
+func (a *DebugAction) SetWith(with []any) {
 	a.With = with
 }
 
@@ -120,13 +123,14 @@ func (a *DebugAction) SetUntil(until []*Field) {
 // }
 
 func (a *DebugAction) setBasicElement(
+	registry *require.Registry,
 	nameField *Field,
 	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*Field,
 	until []*Field) error {
-	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
+	return setBasicElement(a, registry, nameField, vars, with, loopVar, when, until)
 }
 
 func (a *DebugAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {

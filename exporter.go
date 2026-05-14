@@ -10,6 +10,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/dop251/goja_nodejs/require"
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
+	"github.com/peekjef72/httpapi_exporter/template"
+
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/promslog"
@@ -48,6 +52,7 @@ type exporter struct {
 	config  *Config
 	targets []Target
 
+	registry      *require.Registry
 	cur_target    Target
 	ctx           context.Context
 	logger        *slog.Logger
@@ -60,7 +65,9 @@ type exporter struct {
 
 // NewExporter returns a new Exporter with the provided config.
 func NewExporter(configFile string, logger *slog.Logger, collectorName string) (Exporter, error) {
-	c, err := LoadConfig(configFile, logger, collectorName)
+
+	registry := goja_modules.InitJSRegistry(logger, template.Js_func_map())
+	c, err := LoadConfig(configFile, logger, collectorName, registry)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +98,7 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string) (
 		ctx:           context.Background(),
 		logger:        logger,
 		content_mutex: &sync.Mutex{},
+		registry:      registry,
 	}, nil
 }
 
@@ -355,7 +363,7 @@ func (e *exporter) ReloadConfig() error {
 	collectorName := e.config.collectorName
 	e.content_mutex.Unlock()
 
-	c, err := LoadConfig(configFile, e.logger, collectorName)
+	c, err := LoadConfig(configFile, e.logger, collectorName, e.registry)
 	if err != nil {
 		return err
 	}

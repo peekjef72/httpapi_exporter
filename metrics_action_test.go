@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
+	"github.com/peekjef72/httpapi_exporter/template"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -24,6 +26,8 @@ func TestMetricsGoTemplate(t *testing.T) {
 		AddSource: true,
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
+
+	registry := goja_modules.InitJSRegistry(logger, nil)
 
 	// the script part to execute.
 	code := `
@@ -44,7 +48,8 @@ func TestMetricsGoTemplate(t *testing.T) {
 `
 
 	script := &YAMLScript{
-		name: "test",
+		name:     "test",
+		registry: registry,
 	}
 	// parse the code and build AST to execute.
 	err := yaml.Unmarshal([]byte(code), &script)
@@ -120,7 +125,7 @@ func TestMetricsGoTemplate(t *testing.T) {
 
 	// build a var to obtain member to compare metrics and initial data
 	var_name := `$results.members[$idx]`
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, nil)
 	if err != nil {
 		t.Errorf(`TestMetricsScript("%s") error: %s`, var_name, err.Error())
 		return
@@ -195,6 +200,8 @@ func TestMetricsJSTemplate(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
+	registry := goja_modules.InitJSRegistry(logger, template.Js_func_map())
+
 	// the script part to execute.
 	code := `
     - name: collect disks
@@ -217,7 +224,8 @@ func TestMetricsJSTemplate(t *testing.T) {
 `
 
 	script := &YAMLScript{
-		name: "test",
+		name:     "test",
+		registry: registry,
 	}
 	// parse the code and build AST to execute.
 	err := yaml.Unmarshal([]byte(code), &script)
@@ -293,7 +301,7 @@ func TestMetricsJSTemplate(t *testing.T) {
 
 	// build a var to obtain member to compare metrics and initial data
 	var_name := `js: results.members[idx]`
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, registry)
 	if err != nil {
 		t.Errorf(`TestMetricsScript("%s") error: %s`, var_name, err.Error())
 		return
@@ -368,6 +376,8 @@ func TestMetricsRegressionPSF(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
+	registry := goja_modules.InitJSRegistry(logger, nil)
+
 	// the script part to execute.
 	code := `
     - name: proceed elements
@@ -408,7 +418,8 @@ func TestMetricsRegressionPSF(t *testing.T) {
 `
 
 	script := &YAMLScript{
-		name: "test",
+		name:     "test",
+		registry: registry,
 	}
 	// parse the code and build AST to execute.
 	err := yaml.Unmarshal([]byte(code), &script)
@@ -489,7 +500,7 @@ func TestMetricsRegressionPSF(t *testing.T) {
 
 	// build a var to obtain member to compare metrics and initial data
 	var_name := `js: results[idx]`
-	name, err := NewField(var_name, nil)
+	name, err := NewField(var_name, nil, registry)
 	if err != nil {
 		t.Errorf(`TestMetricsRegressionPSF("%s") error: %s`, var_name, err.Error())
 		return
@@ -618,6 +629,8 @@ func TestMetricsJSTempo(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
+	registry := goja_modules.InitJSRegistry(logger, nil)
+
 	// the script part to execute.
 	code := `
     - name: extract device
@@ -668,7 +681,8 @@ func TestMetricsJSTempo(t *testing.T) {
 `
 
 	script := &YAMLScript{
-		name: "test",
+		name:     "test",
+		registry: registry,
 	}
 	// parse the code and build AST to execute.
 	err := yaml.Unmarshal([]byte(code), &script)

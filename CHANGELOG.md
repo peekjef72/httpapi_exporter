@@ -5,7 +5,34 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.2 / 2025-07-20
+## 0.4.2 / 2026-05-14
+
+### 2026-05-14 - not release
+
+- fixed spellings (again)
+- improve metric definition : allow to set metric type by variable (before only static sting);
+
+  ```yaml
+  - name: proceed elements
+    scope: none
+    loop: >-
+      js: [ {
+            "name": "connections_active",
+            "type": "gauge",
+            "help": "Active client connections.", 
+            "value": results["connections_active"] 
+        }]
+    loop_var: metric
+    metrics:
+      - metric_name: $metric.name
+        help: $metric.help
+        type: $metric.type
+        values:
+          _: $metric.value
+  ```
+
+- improve javascript integration (registry)
+- add javascript modules: need additional works (read from local files, read/require js modules from files)
 
 ### 2025-07-27 - not release
 

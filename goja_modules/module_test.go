@@ -15,6 +15,7 @@ import (
 )
 
 func TestJSModuleVarDefined(t *testing.T) {
+	registry := InitJSRegistry(nil, nil)
 
 	code := `
 		var ret = false
@@ -24,7 +25,7 @@ func TestJSModuleVarDefined(t *testing.T) {
 		ret
 	`
 
-	js, err := NewJSCode(code, nil)
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleVarDefined compilation error: %s`, err.Error()))
 		return
@@ -45,6 +46,8 @@ func TestJSModuleVarDefined(t *testing.T) {
 }
 
 func TestJSModuleVarExists(t *testing.T) {
+
+	registry := InitJSRegistry(nil, nil)
 
 	code := `
 		var ret = false
@@ -72,7 +75,7 @@ func TestJSModuleVarExists(t *testing.T) {
 		ret
 	`
 
-	js, err := NewJSCode(code, template.Js_func_map())
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleVarExists compilation error: %s`, err.Error()))
 		return
@@ -107,11 +110,13 @@ func TestJSModuleVarExists(t *testing.T) {
 
 func TestJSModuleCondComplex(t *testing.T) {
 
+	registry := InitJSRegistry(nil, nil)
+
 	code := `
 	typeof config !== 'undefined' && 
   		config.ts_next_check <= Math.floor(new Date().getTime() / 1000)
 `
-	js, err := NewJSCode(code, template.Js_func_map())
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleCondComplex compilation error: %s`, err.Error()))
 		return
@@ -136,7 +141,7 @@ func TestJSModuleCondComplex(t *testing.T) {
 
 	code = `config.svclb = {}; config.svcgrplb = {}; true`
 
-	js, err = NewJSCode(code, template.Js_func_map())
+	js, err = NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleCondComplex compilation error: %s`, err.Error()))
 		return
@@ -163,6 +168,8 @@ func TestJSModuleCondComplex(t *testing.T) {
 
 func TestJSModuleAnalyzeComplex(t *testing.T) {
 
+	registry := InitJSRegistry(nil, nil)
+
 	code := `
 		var status = -1;
 		if( results.length > 0 ) {
@@ -185,7 +192,7 @@ func TestJSModuleAnalyzeComplex(t *testing.T) {
 		}
 		status
 	`
-	js, err := NewJSCode(code, nil)
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleAnalyzeComplex compilation error: %s`, err.Error()))
 		return
@@ -212,21 +219,25 @@ func TestJSModuleAnalyzeComplex(t *testing.T) {
 }
 
 func TestJSModuleConsole(t *testing.T) {
-	code := `
-	console.log('js: console.log(a)')
-	console.error('js: console.error(b)')
-	console.warn('js: console.warn(c)')
-	console.info('js: console.info(d)')
-	console.debug('js: console.debug(e)')
-	"ok"
-`
+
 	logHandlerOpts := &slog.HandlerOptions{
 		Level:     slog.LevelDebug,
 		AddSource: true,
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
-	js, err := NewJSCode(code, nil)
+	registry := InitJSRegistry(logger, nil)
+
+	code := `
+	console.log('js: console.log(a)');
+	console.error('js: console.error(b)');
+	console.warn('js: console.warn(c)');
+	console.info('js: console.info(d)');
+	console.debug('js: console.debug(e)');
+	"ok"
+`
+
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleConsole compilation error: %s`, err.Error()))
 		return
@@ -234,7 +245,7 @@ func TestJSModuleConsole(t *testing.T) {
 	//	logger.Info("a")
 	v, err := js.Run(nil, logger)
 	if err != nil {
-		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleConsole compilation error: %s`, err.Error()))
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleConsole execution error: %s`, err.Error()))
 		return
 	}
 	if value, ok := v.(string); !ok {
@@ -245,9 +256,11 @@ func TestJSModuleConsole(t *testing.T) {
 }
 
 func TestJSModuleExporterConvertToBytes(t *testing.T) {
+	registry := InitJSRegistry(nil, template.Js_func_map())
+
 	code := `exporter.convertToBytes( 13.45, "Mb" )`
 
-	js, err := NewJSCode(code, template.Js_func_map())
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterConvertToBytes compilation error: %s`, err.Error()))
 		return
@@ -266,6 +279,7 @@ func TestJSModuleExporterConvertToBytes(t *testing.T) {
 }
 
 func TestJSModuleExporterDefault(t *testing.T) {
+	registry := InitJSRegistry(nil, template.Js_func_map())
 	code := `
 		"node:" + exporter.default(item.node, "undef") +
 		 "-port:" + exporter.default(item.port, "undef") 
@@ -275,7 +289,7 @@ func TestJSModuleExporterDefault(t *testing.T) {
 	item["node"] = "node1"
 	symtab["item"] = item
 
-	js, err := NewJSCode(code, template.Js_func_map())
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDefault compilation error: %s`, err.Error()))
 		return
@@ -301,6 +315,8 @@ func TestJSModuleExporterDefault(t *testing.T) {
 }
 
 func TestJSModuleExporterDecryptPass(t *testing.T) {
+	registry := InitJSRegistry(nil, template.Js_func_map())
+
 	// code := `
 	// 	var res = ''
 	// 	try {
@@ -315,7 +331,7 @@ func TestJSModuleExporterDecryptPass(t *testing.T) {
 
 	// test 1
 	code := `exporter.decryptPass( password, shared_key )`
-	js, err := NewJSCode(code, template.Js_func_map())
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDecryptPass compilation error: %s`, err.Error()))
 		return
@@ -347,6 +363,8 @@ func TestJSModuleExporterDecryptPass(t *testing.T) {
 }
 
 func TestJSModuleExporterGetDurationSecond(t *testing.T) {
+	registry := InitJSRegistry(nil, template.Js_func_map())
+
 	symtab := make(map[string]any)
 
 	// test 1
@@ -354,7 +372,7 @@ func TestJSModuleExporterGetDurationSecond(t *testing.T) {
 	Math.floor(new Date('2025-06-05T07:20:00+0000').getTime()/1000) + exporter.getDurationSecond( configCacheDuration )
 	`
 
-	js, err := NewJSCode(code, template.Js_func_map())
+	js, err := NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterGetDurationSecond compilation error: %s`, err.Error()))
 		return
@@ -385,7 +403,7 @@ func TestJSModuleExporterGetDurationSecond(t *testing.T) {
 		Math.floor(new Date( lastDate ).getTime()/1000) + exporter.getDurationSecond( configCacheDuration )
 	`
 
-	js, err = NewJSCode(code, template.Js_func_map())
+	js, err = NewJSCode(registry, code)
 	if err != nil {
 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterGetDurationSecond compilation error: %s`, err.Error()))
 		return
@@ -395,6 +413,6 @@ func TestJSModuleExporterGetDurationSecond(t *testing.T) {
 
 	_, err = js.Run(symtab, nil)
 	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "TestJSModuleExporterGetDurationSecond: can't extract duration"), "invalid error:", err.Error())
+	assert.True(t, strings.Contains(err.Error(), "can't extract duration"), "invalid error:", err.Error())
 
 }

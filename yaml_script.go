@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/dop251/goja_nodejs/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,6 +22,7 @@ type YAMLScript struct {
 	metricsActions  []*MetricsAction
 	setStatsActions []*SetStatsAction
 	queryActions    []*QueryAction
+	registry        *require.Registry
 }
 
 //******************************************************************
@@ -48,7 +50,7 @@ type Action interface {
 	BaseAction
 	Type() int
 	TypeName() string
-	setBasicElement(nameField *Field, vars [][]any, with []any, loopVar string, when []*Field, until []*Field) error
+	setBasicElement(registry *require.Registry, nameField *Field, vars [][]any, with []any, loopVar string, when []*Field, until []*Field) error
 	PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
 	CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
 
@@ -129,8 +131,8 @@ type BaseAction interface {
 
 	GetNameField() *Field
 	SetNameField(*Field)
-	GetWidth() []any
-	SetWidth([]any)
+	GetWith() []any
+	SetWith([]any)
 	GetWhen() []*Field
 	SetWhen([]*Field)
 	GetLoopVar() string
@@ -143,6 +145,7 @@ type BaseAction interface {
 
 func setBasicElement(
 	ba BaseAction,
+	registry *require.Registry,
 	nameField *Field,
 	vars [][]any,
 	with []any,
@@ -167,7 +170,7 @@ func setBasicElement(
 				if tt != -1 {
 					curval = curval[:tt] + " | toRawJson " + curval[tt:]
 				}
-				field, err := NewField(curval, nil)
+				field, err := NewField(curval, nil, registry)
 				if err != nil {
 					return err
 				}
@@ -176,7 +179,7 @@ func setBasicElement(
 				baWith[idx] = elmt
 			case int:
 				tmp := fmt.Sprintf("%d", curval)
-				field, err := NewField(tmp, nil)
+				field, err := NewField(tmp, nil, registry)
 				if err != nil {
 					return err
 				}
@@ -189,7 +192,7 @@ func setBasicElement(
 				return fmt.Errorf("with_items: invalid type: '%s'", reflect.TypeOf(elmt))
 			}
 		}
-		ba.SetWidth(baWith)
+		ba.SetWith(baWith)
 		if loopVar != "" {
 			ba.SetLoopVar(loopVar)
 		}
@@ -245,7 +248,7 @@ func AddCustomTemplate(ba BaseAction, customTemplate *exporterTemplate) error {
 			return err
 		}
 	}
-	baWith := ba.GetWidth()
+	baWith := ba.GetWith()
 	for idx, with := range baWith {
 		if err := AddCustomTemplateElement(with, customTemplate); err != nil {
 			return fmt.Errorf("error in with[%d]: %s", idx, err)
@@ -546,7 +549,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 	set_loops_var := false
 
 	final_items := make([]any, 0)
-	baWith := ba.GetWidth()
+	baWith := ba.GetWith()
 	if len(baWith) > 0 {
 		// build a list of element from ba.With list of Field
 		items = baWith
@@ -757,11 +760,11 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 // * metric_name: a metric definition
 type tmpActions []map[string]yaml.Node
 
-func build_WithItems(raw yaml.Node) ([]any, error) {
+func build_WithItems(registry *require.Registry, raw yaml.Node) ([]any, error) {
 	var listElmt []any
 	switch raw.Tag {
 	case "!!str":
-		with_field, err := NewField(raw.Value, nil)
+		with_field, err := NewField(raw.Value, nil, registry)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for var name (set_fact) %q: %s", raw.Value, err)
 		}
@@ -777,7 +780,7 @@ func build_WithItems(raw yaml.Node) ([]any, error) {
 		if err = raw.Decode(&raw_mapElmt); err != nil {
 			return nil, err
 		}
-		if mapElmt, err = buildMapField(raw_mapElmt); err != nil {
+		if mapElmt, err = buildMapField(registry, raw_mapElmt); err != nil {
 			return nil, err
 		}
 		listElmt = make([]any, 1)
@@ -791,7 +794,7 @@ func build_WithItems(raw yaml.Node) ([]any, error) {
 		if err = raw.Decode(&str_listElmt); err != nil {
 			return nil, err
 		}
-		if listElmt, err = buildSliceField(str_listElmt); err != nil {
+		if listElmt, err = buildSliceField(registry, str_listElmt); err != nil {
 			return nil, err
 		}
 	default:
@@ -820,7 +823,7 @@ func build_Cond(script *YAMLScript, raw yaml.Node) ([]*Field, error) {
 		for i, cond := range listElmt {
 
 			if strings.HasPrefix(cond, "js:") || cond[0] == '$' {
-				if tmp_cond, err := NewField(cond, nil); err != nil {
+				if tmp_cond, err := NewField(cond, nil, script.registry); err != nil {
 					return nil, err
 				} else {
 					cond_var[i] = tmp_cond
@@ -829,7 +832,7 @@ func build_Cond(script *YAMLScript, raw yaml.Node) ([]*Field, error) {
 				if !strings.Contains(cond, "{{") {
 					cond = "{{ " + cond + " }}"
 				}
-				if tmp_cond, err := NewField(cond, (*exporterTemplate)(script.customTemplate)); err != nil {
+				if tmp_cond, err := NewField(cond, (*exporterTemplate)(script.customTemplate), script.registry); err != nil {
 					return nil, err
 				} else {
 					cond_var[i] = tmp_cond
@@ -840,11 +843,11 @@ func build_Cond(script *YAMLScript, raw yaml.Node) ([]*Field, error) {
 	return cond_var, nil
 }
 
-func buildMapField(raw_maps map[string]any) (map[any]any, error) {
+func buildMapField(registry *require.Registry, raw_maps map[string]any) (map[any]any, error) {
 	var err error
 	final_res := make(map[any]any)
 	for key, r_value := range raw_maps {
-		res, err := buildFields(key, r_value)
+		res, err := buildFields(registry, key, r_value)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for var key %s: %s", key, err)
 		}
@@ -855,11 +858,11 @@ func buildMapField(raw_maps map[string]any) (map[any]any, error) {
 	return final_res, err
 }
 
-func buildSliceField(raw_slice []any) ([]any, error) {
+func buildSliceField(registry *require.Registry, raw_slice []any) ([]any, error) {
 	var err error
 	final_res := make([]any, len(raw_slice))
 	for idx, r_value := range raw_slice {
-		res, err := buildValueField(r_value)
+		res, err := buildValueField(registry, r_value)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for var key %q: %s", res, err)
 		}
@@ -869,18 +872,18 @@ func buildSliceField(raw_slice []any) ([]any, error) {
 	return final_res, err
 }
 
-func buildFields(key string, val any) (map[any]any, error) {
+func buildFields(registry *require.Registry, key string, val any) (map[any]any, error) {
 	var err error
 	var key_field *Field
 	var value_field any
 	// Check required fields
 	res := make(map[any]any)
 
-	key_field, err = NewField(key, nil)
+	key_field, err = NewField(key, nil, registry)
 	if err != nil {
 		return nil, fmt.Errorf("invalid template for var name (set_fact) %q: %s", key, err)
 	}
-	value_field, err = buildValueField(val)
+	value_field, err = buildValueField(registry, val)
 	if err != nil {
 		return nil, fmt.Errorf("invalid template for var name (set_fact) %q: %s", key, err)
 	}
@@ -889,11 +892,11 @@ func buildFields(key string, val any) (map[any]any, error) {
 	return res, nil
 }
 
-func buildValueField(val any) (any, error) {
+func buildValueField(registry *require.Registry, val any) (any, error) {
 
 	switch curval := val.(type) {
 	case string:
-		value_field, err := NewField(curval, nil)
+		value_field, err := NewField(curval, nil, registry)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for var value (set_fact) %q: %s", curval, err)
 		}
@@ -901,14 +904,14 @@ func buildValueField(val any) (any, error) {
 
 	// value is a map
 	case map[string]any:
-		tmp, err := buildMapField(curval)
+		tmp, err := buildMapField(registry, curval)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for map value (set_fact) %q: %s", curval, err)
 		}
 		return tmp, nil
 	// value is a slice
 	case []any:
-		tmp, err := buildSliceField(curval)
+		tmp, err := buildSliceField(registry, curval)
 		if err != nil {
 			return nil, fmt.Errorf("invalid template for map value (set_fact) %q: %s", curval, err)
 		}
@@ -923,6 +926,10 @@ func buildValueField(val any) (any, error) {
 // UnmarshalYAML implements the yaml.Unmarshaler interface for YAMLScript.
 func (script *YAMLScript) UnmarshalYAML(value *yaml.Node) error {
 	var tmp tmpActions
+	if script.registry == nil {
+		return fmt.Errorf("registry for script is nil")
+	}
+
 	if err := value.Decode(&tmp); err != nil {
 		return err
 	}
@@ -960,7 +967,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 		// parse name
 		if raw, ok := cur_act["name"]; ok {
 			nameVal = raw.Value
-			name, err = NewField(nameVal, nil)
+			name, err = NewField(nameVal, nil, script.registry)
 			if err != nil {
 				return nil, fmt.Errorf("name for action invalid %q: %s", raw.Value, err)
 			}
@@ -977,7 +984,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				for key, val := range tmp_vars {
 					// Check required fields
 					vars[idx] = make([]any, 2)
-					if new_map, err := buildFields(key, val); err != nil {
+					if new_map, err := buildFields(script.registry, key, val); err != nil {
 						return nil, err
 					} else {
 						for key, val := range new_map {
@@ -992,13 +999,13 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 
 		// parse with_items
 		if raw, ok := cur_act["with_items"]; ok {
-			listElmt, err := build_WithItems(raw)
+			listElmt, err := build_WithItems(script.registry, raw)
 			if err != nil {
 				return nil, err
 			}
 			with_items = listElmt
 		} else if raw, ok := cur_act["loop"]; ok {
-			listElmt, err := build_WithItems(raw)
+			listElmt, err := build_WithItems(script.registry, raw)
 			if err != nil {
 				return nil, err
 			}
@@ -1039,14 +1046,16 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 		// debug
 		if raw, ok := cur_act["debug"]; ok {
 			checker["debug"] = true
-			da := &DebugActionConfig{}
+			da := &DebugActionConfig{
+				registry: script.registry,
+			}
 			if err := raw.Decode(da); err != nil {
 				err = fmt.Errorf("%v: for action '%s'", err, name.String())
 				return nil, err
 			}
 			a := &DebugAction{}
 			a.Debug = da
-			if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)
@@ -1068,7 +1077,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				for key, val := range a.SetFact {
 					// Check required fields
 					a.setFact[idx] = make([]any, 2)
-					if new_map, err := buildFields(key, val); err != nil {
+					if new_map, err := buildFields(script.registry, key, val); err != nil {
 						return nil, err
 					} else {
 						for key, val := range new_map {
@@ -1079,7 +1088,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 					idx++
 				}
 			}
-			if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)
@@ -1087,14 +1096,16 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			// ***********************************************
 			// url/query
 			checker["query"] = true
-			qa := &QueryActionConfig{}
+			qa := &QueryActionConfig{
+				registry: script.registry,
+			}
 			if err := raw.Decode(qa); err != nil {
 				err = fmt.Errorf("%v: for action '%s'", err, name.String())
 				return nil, err
 			}
 			a := &QueryAction{}
 			a.Query = qa
-			if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)
@@ -1113,7 +1124,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			a := &PlayScriptAction{
 				PlayScriptActionName: script_name,
 			}
-			if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)
@@ -1121,7 +1132,9 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			// ***********************************************
 			// play_script
 			checker["metric_name"] = true
-			mc := &MetricConfig{}
+			mc := &MetricConfig{
+				registry: script.registry,
+			}
 			if err := parentNode.Content[i].Decode(mc); err != nil {
 				return nil, err
 			}
@@ -1130,7 +1143,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				mc: mc,
 			}
 
-			if err = a.setBasicElement(mc.name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(script.registry, mc.name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)
@@ -1160,7 +1173,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 
 				a := &ActionsAction{}
 				a.Actions = acta
-				if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+				if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 					return nil, err
 				}
 				actions = append(actions, a)
@@ -1185,7 +1198,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				}
 				a := &MetricsAction{}
 				a.Actions = acta
-				if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+				if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 					return nil, err
 				}
 				actions = append(actions, a)
@@ -1252,7 +1265,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				for key, val := range a.SetStats {
 					// Check required fields
 					a.setStats[idx] = make([]any, 2)
-					if new_map, err := buildFields(key, val); err != nil {
+					if new_map, err := buildFields(script.registry, key, val); err != nil {
 						return nil, err
 					} else {
 						for key, val := range new_map {
@@ -1263,7 +1276,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 					idx++
 				}
 			}
-			if err = a.setBasicElement(name, vars, with_items, loopVar, when, until); err != nil {
+			if err = a.setBasicElement(script.registry, name, vars, with_items, loopVar, when, until); err != nil {
 				return nil, err
 			}
 			actions = append(actions, a)

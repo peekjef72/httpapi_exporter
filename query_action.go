@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dop251/goja_nodejs/require"
 )
 
 // ***************************************************************************************
@@ -28,6 +30,8 @@ type QueryActionConfig struct {
 	Parser     string             `yaml:"parser,omitempty" json:"parser,omitempty"`
 	Trace      ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
 	Status     ConvertibleBoolean `yaml:"status,omitempty" json:"status,omitempty"`
+
+	registry *require.Registry
 
 	query    *Field
 	method   *Field
@@ -53,7 +57,7 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 		return err
 	}
 	// Check required fields
-	qc.query, err = NewField(qc.Query, nil)
+	qc.query, err = NewField(qc.Query, nil, qc.registry)
 	if err != nil {
 		return fmt.Errorf("invalid template for query %q: %s", qc.Query, err)
 	}
@@ -61,12 +65,12 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 	if qc.Method == "" {
 		qc.Method = "GET"
 	}
-	qc.method, err = NewField(qc.Method, nil)
+	qc.method, err = NewField(qc.Method, nil, qc.registry)
 	if err != nil {
 		return fmt.Errorf("invalid template for method %q: %s", qc.Method, err)
 	}
 	if qc.Data != "" {
-		qc.data, err = NewField(qc.Data, nil)
+		qc.data, err = NewField(qc.Data, nil, qc.registry)
 		if err != nil {
 			return fmt.Errorf("invalid template for data %q: %s", qc.Data, err)
 		}
@@ -77,7 +81,7 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 	if qc.VarName == "" {
 		qc.VarName = "_root"
 	}
-	qc.var_name, err = NewField(qc.VarName, nil)
+	qc.var_name, err = NewField(qc.VarName, nil, qc.registry)
 	if err != nil {
 		return fmt.Errorf("invalid template for var_name %q: %s", qc.VarName, err)
 	}
@@ -92,25 +96,25 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 
 	if qc.AuthConfig != (*AuthConfig)(nil) {
 		if qc.AuthConfig.Mode != "" {
-			qc.auth_mode, err = NewField(qc.AuthConfig.Mode, nil)
+			qc.auth_mode, err = NewField(qc.AuthConfig.Mode, nil, qc.registry)
 			if err != nil {
 				return fmt.Errorf("invalid template for query auth_mode %q: %s", qc.AuthConfig.Mode, err)
 			}
 		}
 		if qc.AuthConfig.Username != "" {
-			qc.user, err = NewField(qc.AuthConfig.Username, nil)
+			qc.user, err = NewField(qc.AuthConfig.Username, nil, qc.registry)
 			if err != nil {
 				return fmt.Errorf("invalid template for query username %q: %s", qc.AuthConfig.Username, err)
 			}
 		}
 		if qc.AuthConfig.Password != "" {
-			qc.passwd, err = NewField(string(qc.AuthConfig.Password), nil)
+			qc.passwd, err = NewField(string(qc.AuthConfig.Password), nil, qc.registry)
 			if err != nil {
 				return fmt.Errorf("invalid template for query password %q: %s", qc.AuthConfig.Password, err)
 			}
 		}
 		if qc.AuthConfig.Token != "" {
-			qc.token, err = NewField(string(qc.AuthConfig.Token), nil)
+			qc.token, err = NewField(string(qc.AuthConfig.Token), nil, qc.registry)
 			if err != nil {
 				return fmt.Errorf("invalid template for query auth_token %q: %s", qc.AuthConfig.Token, err)
 			}
@@ -201,10 +205,10 @@ func (a *QueryAction) SetNameField(name *Field) {
 	a.Name = name
 }
 
-func (a *QueryAction) GetWidth() []any {
+func (a *QueryAction) GetWith() []any {
 	return a.With
 }
-func (a *QueryAction) SetWidth(with []any) {
+func (a *QueryAction) SetWith(with []any) {
 	a.With = with
 }
 
@@ -238,13 +242,14 @@ func (a *QueryAction) SetUntil(until []*Field) {
 }
 
 func (a *QueryAction) setBasicElement(
+	registry *require.Registry,
 	nameField *Field,
 	vars [][]any,
 	with []any,
 	loopVar string,
 	when []*Field,
 	until []*Field) error {
-	return setBasicElement(a, nameField, vars, with, loopVar, when, until)
+	return setBasicElement(a, registry, nameField, vars, with, loopVar, when, until)
 }
 
 func (a *QueryAction) PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {

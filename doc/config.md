@@ -23,12 +23,12 @@ global:
 #
 profiles: # list of profile_configs
   # profile_config definition : map of profile names with  metric_prefix and scripts mapping.
-  <profie_name>:
-    # global metrics ofthe profile will be named using the formula "[metric_prefix]_[metric_name]"
+  <profile_name>:
+    # global metrics of the profile will be named using the formula "[metric_prefix]_[metric_name]"
     # so this affect the metric's names of: up, scrape_duration, query_status, collector_status
     metric_prefix: <profile_global_metric_prefix> # optional
 
-    # dictionnary of scripts definitions to handle connections to REST API
+    # dictionary of scripts definitions to handle connections to REST API
     # some script names are use internally to perform actions:
     # "init": script used to initialize connections parameters like headers, vars, etc...
     # "login": script used if connection to the API requires a login phase; by e.g. to obtain a token after sending login/password.
@@ -52,7 +52,7 @@ profiles: # list of profile_configs
           # cookies: map
           # if you set them in init script they will overwrite the values specified in GlobalConfig or in target config
           #
-          # you can set your own vars here too, if they are usefull somewhere else in your scripts later...
+          # you can set your own vars here too, if they are useful somewhere else in your scripts later...
           set_fact:
             session_id: ''
             headers:
@@ -100,7 +100,7 @@ profiles: # list of profile_configs
                 # obtain decrypted password from encrypted one set in config
                 #  (.password) and from query parameter auth_key (.auth_key)
                 # build a dict obj $data = { "username": "<user>", "password": "<decrypted_password>"}
-                # return json reprensation of $data as data of login query
+                # return json representation of $data as data of login query
                 data: >-
                   js:
                   var tmp_pass = exporter.decryptPass(password, auth_key),
@@ -117,7 +117,7 @@ profiles: # list of profile_configs
                 ok_status: 201
                 # store the result object in variable "login", so we can handle value in "login" object.
                 var_name: login
-            # play the "auth_check" script to analyse query
+            # play the "auth_check" script to analyze query
             # the actions should also be set here instead of in an another script...
             - name: analyze login response
               play_script: auth_check
@@ -152,7 +152,7 @@ profiles: # list of profile_configs
           # when:
           #   - and (and (ne .status_code 201) (ne .status_code 401)) (ne .status_code 403)
 
-# alternative to add profiles via config files: set a list of filepath accepting wildcards '*' (golang filegob ()) to "profiles".
+# alternative to add profiles via config files: set a list of filepath accepting wildcards '*' (golang fileglob ()) to "profiles".
 # the content of each file must be a profile_config (see above or contribs)
 profiles_file_config:
   - "*_profile.yml"
@@ -168,7 +168,7 @@ httpapi_config:
   #     ...
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
-# so the collector file contains only one collectore_config (see below)
+# so the collector file contains only one collector_config (see below)
 collector_files:
   - "metrics/*.collector.yml"
 
@@ -180,7 +180,7 @@ collectors:
     # optional metric prefix for that specific collector, generally a sub section of export name.
     metric_prefix: <global_prefix>_<name>
 
-    # optional dictionnary of go templates definition used by this collector.
+    # optional dictionary of go templates definition used by this collector.
     # here templates are used as "function" to transform values
     templates:
       # e.g. define masterState template; it translates a map of label to a corresponding (string) value, that can be used later in process
@@ -198,14 +198,14 @@ collectors:
       #   set_fact:
       #     hastate : '{{- template "masterState" ( .node.state | upper) -}}'
 
-    # a dictionnary of script to perform.
+    # a dictionary of script to perform.
     # a script is a list of actions to perform for the collector:
-    # it is generally a query on a specific url of the API, then an analizis of the results an a format on them.
-    # at leat one acion is necessary
+    # it is generally a query on a specific url of the API, then an analysis of the results an a format on them.
+    # at least one action is necessary
     scripts:
       # see contribs for working example
 
-# optional dictionnary of authentication parameters (name: AuthConfig)
+# optional dictionary of authentication parameters (name: AuthConfig)
 # they can be used in local target definitions, or used in dynamic target scrapping
 # user, password or token can be set to use system environment variable
 #  e.g.:
@@ -222,7 +222,7 @@ auth_configs:
   name_entry_2:
     mode: basic
     user: <login>
-    password: /encrypted/<encryped_password>
+    password: /encrypted/<encrypted_password>
     # allow to disable warning messages from RESTY if auth is basic and connection is http.
     disable_warn: <true>
 
@@ -248,14 +248,14 @@ targets:
     # if target needs to authenticate, define here the auth params
     # either use an auth_name or a statically defined params:
     # auth_name: default
-    # or has its own auth paramaters
+    # or has its own auth parameters
     # auth_config:
     #   # mode: basic|token|[anything else:=> user defined login script]
     #   mode: <mode>
     #   user: <login> | $env:ENV_VARNAME
     #   password: <password> | $env:env_VARNAME
 
-    # the profile to use for the targer. by default use "default".
+    # the profile to use for the target. by default use "default".
     # profile: <profile_name>
 
     # list of collector names (not collector file names!) to compute for the target.

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/dop251/goja_nodejs/require"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/spf13/cast"
@@ -34,6 +35,7 @@ type MetricFamily struct {
 	config       *MetricConfig
 	name         string
 	help         string
+	value_type   dto.MetricType
 	constLabels  []*dto.LabelPair
 	labels       []*Label // raw string or template
 	valuesLabels []*Label // raw string or template for key and value
@@ -72,7 +74,7 @@ func NewMetricFamily(
 
 		i := 0
 		for key, val := range mc.key_labels_map {
-			labels[i], err = NewLabel(key, val, mc.Name, "key_label", customTemplate)
+			labels[i], err = NewLabel(key, val, mc.Name, "key_label", customTemplate, mc.registry)
 			if err != nil {
 				return nil, err
 			}
@@ -80,7 +82,7 @@ func NewMetricFamily(
 		}
 		// add an element in labels for value_label (the name of the label); value will be set later
 		if len(mc.Values) > 1 {
-			labels[i], err = NewLabel(mc.ValueLabel, "", mc.Name, "value_label", customTemplate)
+			labels[i], err = NewLabel(mc.ValueLabel, "", mc.Name, "value_label", customTemplate, mc.registry)
 			if err != nil {
 				return nil, err
 			}
@@ -92,7 +94,7 @@ func NewMetricFamily(
 
 	i := 0
 	for key, val := range mc.Values {
-		valuesLabels[i], err = NewLabel(key, val, mc.Name, "'values'", customTemplate)
+		valuesLabels[i], err = NewLabel(key, val, mc.Name, "'values'", customTemplate, mc.registry)
 		if err != nil {
 			return nil, err
 		}
@@ -203,6 +205,9 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 			ch <- NewInvalidMetric(mf.logContext, err)
 			return
 		} else {
+			if mf.config.prefix != "" {
+				name = fmt.Sprintf("%s_%s", mf.config.prefix, name)
+			}
 			mf.name = name
 		}
 	}
@@ -220,6 +225,21 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 		} else {
 			mf.help = help
 		}
+	}
+	if mf.value_type == 255 {
+		value_type, err := mf.config.ValueType(symtab, logger)
+		if err != nil {
+			err := fmt.Errorf("metric %s can't get metric type", mf.config.metric_type.String())
+			logger.Warn(err.Error(),
+				"coll", CollectorId(root_symtab, logger),
+				"script", ScriptName(root_symtab, logger),
+			)
+			ch <- NewInvalidMetric(mf.logContext, err)
+			return
+		} else {
+			mf.value_type = value_type
+		}
+
 	}
 	mf.logContext[1] = mf.name
 
@@ -242,7 +262,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 					mf.labels[i], err = NewLabel(
 						RawGetValueString(raw_key),
 						RawGetValueString(raw_value),
-						mf.name, "key_label", nil)
+						mf.name, "key_label", nil, mf.config.registry)
 					if err != nil {
 						logger.Warn(fmt.Sprintf("invalid template for key_values for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
 							"coll", CollectorId(root_symtab, logger),
@@ -254,7 +274,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 				}
 				// add an element in labels for value_label (the name of the label); value will be set later
 				if len(mf.config.Values) > 1 {
-					mf.labels[i], err = NewLabel(mf.config.ValueLabel, "", mf.name, "value_label", nil)
+					mf.labels[i], err = NewLabel(mf.config.ValueLabel, "", mf.name, "value_label", nil, mf.config.registry)
 					if err != nil {
 						logger.Warn(fmt.Sprintf("invalid template for value_label for metric %s: %s (maybe use |toRawJson.)", mf.name, err),
 							"coll", CollectorId(root_symtab, logger),
@@ -431,7 +451,7 @@ func (mf MetricFamily) Help() string {
 
 // ValueType implements MetricDesc.
 func (mf MetricFamily) ValueType() dto.MetricType {
-	return mf.config.ValueType()
+	return mf.value_type
 }
 
 // ConstLabels implements MetricDesc.
@@ -635,17 +655,17 @@ type Label struct {
 	Value *Field
 }
 
-func NewLabel(key string, value string, mName string, errStr string, customTemplate *exporterTemplate) (*Label, error) {
+func NewLabel(key string, value string, mName string, errStr string, customTemplate *exporterTemplate, registry *require.Registry) (*Label, error) {
 	var (
 		keyField, valueField *Field
 		err                  error
 	)
 
-	keyField, err = NewField(key, customTemplate)
+	keyField, err = NewField(key, customTemplate, registry)
 	if err != nil {
 		return nil, fmt.Errorf("NewMetricFamily(): name of %s for metric %q: %s", errStr, mName, err)
 	}
-	valueField, err = NewField(value, customTemplate)
+	valueField, err = NewField(value, customTemplate, registry)
 	if err != nil {
 		return nil, fmt.Errorf("NewMetricFamily(): value of %s for metric %q: %s", errStr, mName, err)
 	}

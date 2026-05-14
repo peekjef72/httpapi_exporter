@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/dop251/goja_nodejs/require"
 	"github.com/peekjef72/httpapi_exporter/goja_modules"
 
 	"github.com/spf13/cast"
@@ -42,7 +43,7 @@ const (
 )
 
 // create a new key or value Field that can be a GO template
-func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
+func NewField(name string, customTemplate *exporterTemplate, registry *require.Registry) (*Field, error) {
 	var (
 		tmpl    *ttemplate.Template
 		err     error
@@ -76,7 +77,7 @@ func NewField(name string, customTemplate *exporterTemplate) (*Field, error) {
 	} else if strings.HasPrefix(name, "js:") {
 		code := strings.TrimPrefix(name, "js:")
 
-		jscode, err = goja_modules.NewJSCode(code, mytemplate.Js_func_map())
+		jscode, err = goja_modules.NewJSCode(registry, code)
 		if err != nil {
 			return nil, fmt.Errorf("field js code %s is invalid: %s", code, err)
 		}
