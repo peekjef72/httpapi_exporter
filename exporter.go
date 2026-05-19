@@ -52,21 +52,22 @@ type exporter struct {
 	config  *Config
 	targets []Target
 
-	registry      *require.Registry
-	cur_target    Target
-	ctx           context.Context
-	logger        *slog.Logger
-	start_time    string
-	reload_time   string
-	logLevel      string
-	health_only   bool
-	content_mutex *sync.Mutex
+	registry       *require.Registry
+	consolePrinter goja_modules.LoggerPrinter
+	cur_target     Target
+	ctx            context.Context
+	logger         *slog.Logger
+	start_time     string
+	reload_time    string
+	logLevel       string
+	health_only    bool
+	content_mutex  *sync.Mutex
 }
 
 // NewExporter returns a new Exporter with the provided config.
 func NewExporter(configFile string, logger *slog.Logger, collectorName string) (Exporter, error) {
 
-	registry := goja_modules.InitJSRegistry(logger, template.Js_func_map())
+	registry, consolePrinter := goja_modules.InitJSRegistry(logger, template.Js_func_map())
 	c, err := LoadConfig(configFile, logger, collectorName, registry)
 	if err != nil {
 		return nil, err
@@ -93,12 +94,13 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string) (
 	}
 
 	return &exporter{
-		config:        c,
-		targets:       targets,
-		ctx:           context.Background(),
-		logger:        logger,
-		content_mutex: &sync.Mutex{},
-		registry:      registry,
+		config:         c,
+		targets:        targets,
+		ctx:            context.Background(),
+		logger:         logger,
+		content_mutex:  &sync.Mutex{},
+		registry:       registry,
+		consolePrinter: consolePrinter,
 	}, nil
 }
 
@@ -341,9 +343,13 @@ func (e *exporter) IncreaseLogLevel(new_lvl string) {
 	}
 	logConfig.Level.Set(e.logLevel)
 	e.logger = promslog.New(&logConfig)
+	if e.consolePrinter != nil {
+		e.consolePrinter.SetLogger(e.logger)
+	}
 	for _, t := range e.targets {
 		t.SetLogger(e.logger)
 	}
+
 	switch e.logLevel {
 	case "debug":
 		log = e.logger.Debug

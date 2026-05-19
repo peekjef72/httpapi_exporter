@@ -5,12 +5,17 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.2 / 2026-05-14
+## 0.4.2 / 2026-05-19
+
+### 2026-05-19 - released
+
+- update modules and go version to 1.26.3
+- fixed logging/js module console and loglevel has changed.
 
 ### 2026-05-14 - not release
 
 - fixed spellings (again)
-- improve metric definition : allow to set metric type by variable (before only static sting);
+- improve metric definition : allow to set metric type by variable (before only static string);
 
   ```yaml
   - name: proceed elements
@@ -32,7 +37,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   ```
 
 - improve javascript integration (registry)
-- add javascript modules: need additional works (read from local files, read/require js modules from files)
+- add javascript modules: additional works and docs is needed (read from local files, read/require js modules from files, examples...)
 
 ### 2025-07-27 - not release
 

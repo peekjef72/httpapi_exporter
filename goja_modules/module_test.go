@@ -15,7 +15,7 @@ import (
 )
 
 func TestJSModuleVarDefined(t *testing.T) {
-	registry := InitJSRegistry(nil, nil)
+	registry, _ := InitJSRegistry(nil, nil)
 
 	code := `
 		var ret = false
@@ -47,7 +47,7 @@ func TestJSModuleVarDefined(t *testing.T) {
 
 func TestJSModuleVarExists(t *testing.T) {
 
-	registry := InitJSRegistry(nil, nil)
+	registry, _ := InitJSRegistry(nil, nil)
 
 	code := `
 		var ret = false
@@ -110,7 +110,7 @@ func TestJSModuleVarExists(t *testing.T) {
 
 func TestJSModuleCondComplex(t *testing.T) {
 
-	registry := InitJSRegistry(nil, nil)
+	registry, _ := InitJSRegistry(nil, nil)
 
 	code := `
 	typeof config !== 'undefined' && 
@@ -168,7 +168,7 @@ func TestJSModuleCondComplex(t *testing.T) {
 
 func TestJSModuleAnalyzeComplex(t *testing.T) {
 
-	registry := InitJSRegistry(nil, nil)
+	registry, _ := InitJSRegistry(nil, nil)
 
 	code := `
 		var status = -1;
@@ -226,7 +226,7 @@ func TestJSModuleConsole(t *testing.T) {
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
-	registry := InitJSRegistry(logger, nil)
+	registry, _ := InitJSRegistry(logger, nil)
 
 	code := `
 	console.log('js: console.log(a)');
@@ -256,7 +256,7 @@ func TestJSModuleConsole(t *testing.T) {
 }
 
 func TestJSModuleExporterConvertToBytes(t *testing.T) {
-	registry := InitJSRegistry(nil, template.Js_func_map())
+	registry, _ := InitJSRegistry(nil, template.Js_func_map())
 
 	code := `exporter.convertToBytes( 13.45, "Mb" )`
 
@@ -279,7 +279,7 @@ func TestJSModuleExporterConvertToBytes(t *testing.T) {
 }
 
 func TestJSModuleExporterDefault(t *testing.T) {
-	registry := InitJSRegistry(nil, template.Js_func_map())
+	registry, _ := InitJSRegistry(nil, template.Js_func_map())
 	code := `
 		"node:" + exporter.default(item.node, "undef") +
 		 "-port:" + exporter.default(item.port, "undef") 
@@ -315,7 +315,7 @@ func TestJSModuleExporterDefault(t *testing.T) {
 }
 
 func TestJSModuleExporterDecryptPass(t *testing.T) {
-	registry := InitJSRegistry(nil, template.Js_func_map())
+	registry, _ := InitJSRegistry(nil, template.Js_func_map())
 
 	// code := `
 	// 	var res = ''
@@ -363,7 +363,7 @@ func TestJSModuleExporterDecryptPass(t *testing.T) {
 }
 
 func TestJSModuleExporterGetDurationSecond(t *testing.T) {
-	registry := InitJSRegistry(nil, template.Js_func_map())
+	registry, _ := InitJSRegistry(nil, template.Js_func_map())
 
 	symtab := make(map[string]any)
 

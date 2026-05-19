@@ -27,7 +27,7 @@ func TestMetricsGoTemplate(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
-	registry := goja_modules.InitJSRegistry(logger, nil)
+	registry, _ := goja_modules.InitJSRegistry(logger, nil)
 
 	// the script part to execute.
 	code := `
@@ -200,7 +200,7 @@ func TestMetricsJSTemplate(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
-	registry := goja_modules.InitJSRegistry(logger, template.Js_func_map())
+	registry, _ := goja_modules.InitJSRegistry(logger, template.Js_func_map())
 
 	// the script part to execute.
 	code := `
@@ -376,7 +376,7 @@ func TestMetricsRegressionPSF(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
-	registry := goja_modules.InitJSRegistry(logger, nil)
+	registry, _ := goja_modules.InitJSRegistry(logger, nil)
 
 	// the script part to execute.
 	code := `
@@ -629,7 +629,7 @@ func TestMetricsJSTempo(t *testing.T) {
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stderr, logHandlerOpts))
 
-	registry := goja_modules.InitJSRegistry(logger, nil)
+	registry, _ := goja_modules.InitJSRegistry(logger, nil)
 
 	// the script part to execute.
 	code := `

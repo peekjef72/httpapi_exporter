@@ -259,7 +259,7 @@ func NewJSCode(registry *require.Registry, code string) (*JSCode, error) {
 	return jsCode, nil
 }
 
-func InitJSRegistry(logger *slog.Logger, func_map map[string]any) *require.Registry {
+func InitJSRegistry(logger *slog.Logger, func_map map[string]any) (*require.Registry, LoggerPrinter) {
 	registry := new(require.Registry)
 
 	// console module init
@@ -279,7 +279,7 @@ func InitJSRegistry(logger *slog.Logger, func_map map[string]any) *require.Regis
 	// fs module init
 	registry.RegisterNativeModule(goja_fs.ModuleName, nil)
 
-	return registry
+	return registry, print
 
 }
 
@@ -294,6 +294,16 @@ func (jsCode *JSCode) initRunTime() {
 
 	goja_fs.Enable(jsCode.vm)
 
+}
+
+// LoggerPrinter is the interface for printing log messages from JavaScript console module
+type LoggerPrinter interface {
+	Log(string)
+	Debug(string)
+	Info(string)
+	Warn(string)
+	Error(string)
+	SetLogger(*slog.Logger)
 }
 
 type logger_printer struct {
@@ -335,6 +345,10 @@ func (p *logger_printer) Error(msg string) {
 		p.logger.Error(msg)
 	}
 }
+func (p *logger_printer) SetLogger(logger *slog.Logger) {
+	p.logger = logger
+}
+
 func (js *JSCode) SetSymbolTable(symtab map[string]any, logger *slog.Logger) {
 
 	// set console.xx to logger.xx function
@@ -369,8 +383,7 @@ func (js *JSCode) Run(symtab map[string]any, logger *slog.Logger) (val any, err 
 			// trap goja error message
 			if err != nil {
 				err_str := err.Error()
-				if strings.HasPrefix(err_str, "GoError") {
-					err_str = strings.TrimPrefix(err_str, "GoError")
+				if err_str, ok = strings.CutPrefix(err_str, "GoError"); ok {
 					err = errors.New(err_str)
 				}
 			}
