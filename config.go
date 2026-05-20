@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"reflect"
 	"regexp"
 
@@ -240,7 +241,7 @@ collectors:
 		c.Profiles["default"] = profile
 	}
 
-	// Load any externally defined collectors.
+	// Load any externally defined profiles.
 	if err := c.loadProfileFiles(); err != nil {
 		return err
 	}
@@ -535,7 +536,11 @@ func (c *Config) loadProfileFiles() error {
 			if err != nil {
 				return fmt.Errorf("reading %s: %s", pf, err)
 			}
-			c.Profiles = profiles.profiles
+			if c.Profiles == nil {
+				c.Profiles = profiles.profiles
+			} else {
+				maps.Copy(c.Profiles, profiles.profiles)
+			}
 			// c.Profiles = make(map[string]*Profile)
 			// if len(profiles.profiles) > 0 {
 			// 	for profile_name, profile_Parser := range profiles.profiles {

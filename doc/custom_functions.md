@@ -60,3 +60,47 @@ exporter.getCookie( [varmap] ) | | |
 exporter.lookupAddr( hostname string ) | obtain hostname from string representing an ip address ; like sprig/getHostByName but for string ip | 'js: exporter.lookupAddr( node.ipaddress)' |
 exporter.queryEscape( url string ) | | |
 exporter.getDurationSecond( string ) | | "js: exporter.getDurationSecond( '1d2h30s' )" |
+
+### modules
+
+#### console
+
+Used to log information with level from javascript code to exporter console.
+Initialization is not required.
+
+name | usage | e.g. |
+-- | --- | --- |
+console.log | log with info loglevel; synonym console.info | console.log(...) |
+console.error | log with error loglevel | console.error(...) |
+console.warn | log with warn loglevel | console.warn(...) |
+console.info | log with info loglevel | console.info(...) |
+console.debug | log with debug loglevel | console.debug(...) |
+
+#### dns
+
+Used to make dns lookup queries
+Initialized by:
+
+```js
+
+ var dns=require('dns')
+```
+
+name | usage | e.g. |
+-- | --- | --- |
+dns.lookup( ... ) | perform a system dns lookup on sent parameter and return a list of object [ {"family": 4\|6, "address": "ip_string"}, ... ] | var entry=dns.lookup( 'www.google.com' ); |
+
+#### fs
+
+used to read local file.
+
+Initialized by:
+
+```js
+
+ var fs=require('fs')
+```
+
+name | usage | e.g. |
+-- | --- | --- |
+fs.readFileSync( ... ) | | var buf=fs.readFileSync( 'myfile' ); |

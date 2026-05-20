@@ -228,6 +228,7 @@ func (e *exporter) FindTarget(tName string) (Target, error) {
 		if tName == t.Name() {
 			t_found = t
 			found = true
+			break
 		}
 	}
 	if !found {
@@ -239,7 +240,7 @@ func (e *exporter) FindTarget(tName string) (Target, error) {
 // AddTarget implements Exporter AddTarget.
 // add a new dynamically created target to config
 func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
-	var logContext []interface{}
+	var logContext []any
 
 	target, err := NewTarget(logContext, tg_config, e.config.Globals, tg_config.profile, e.logger)
 	if err != nil {
