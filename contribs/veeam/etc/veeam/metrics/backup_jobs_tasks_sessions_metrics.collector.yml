@@ -124,25 +124,25 @@ scripts:
     #   debug:
     #     msg: "tasks count: {{ len .results.Entities.BackupTaskSessions.BackupTaskSessions }}"
 
-    - name: procceed elements
+    - name: proceed elements
       # to debug first task
       # loop: "{{ list ( index .results.Entities.BackupTaskSessions.BackupTaskSessions 0 )| toRawJson }}"
-      loop: "{{ .results.Entities.BackupTaskSessions.BackupTaskSessions | toRawJson }}"
+      loop: $results.Entities.BackupTaskSessions.BackupTaskSessions
       actions:
         - name: determine last task status from all tasks starts
           set_fact:
             # parse to time.Time, then convert to second unix epoch
             item_start: '{{ mustToDate "2006-01-02T15:04:05Z" .item.CreationTimeUTC | unixEpoch }}'
 
-        - name: determine hask key & state of task
+        - name: determine hash key & state of task
           set_fact:
             # job.backupserver + job.jobname + item.VmDisplayName 
             hash: "{{ print .item.BackupServerName .item.JobName .item.VmDisplayName | sha1sum }}"
             current_state: '{{ template "currentTaskStatus" .item }}'
 
-        - name: determine hask key & state of task
+        - name: determine hash key & state of task 2
           set_fact:
-            # obtain corrsponding numerical value of string state
+            # obtain corresponding numerical value of string state
             current_state: '{{ template "taskStatus" .current_state }}'
 
         - name: update task state
@@ -162,8 +162,9 @@ scripts:
 
     - name: loop on aggregate tasks (values) to generate metric
       # to debug: build a list with first element of the result
-      # loop: "{{ list (index (exporterValues .tasks) 0) | toRawJson }}"
-      loop: "{{ exporterValues .tasks | toRawJson }}"
+      # loop: 'js: [ (Object.values(tasks))[0] ]'
+      # loop: "{{ exporterValues .tasks | toRawJson }}"
+      loop: 'js: Object.values(tasks)'
       loop_var: task
       # default: scope: cur_var=> task
       actions:
@@ -189,7 +190,7 @@ scripts:
               type: gauge
               key_labels: $root.key_labels
               values: 
-                _: "{{ sub .endtimestamp .starttimestamp }}"
+                _: "js: endtimestamp - starttimestamp"
 
             - metric_name: retries
               help: "number of times of the vm backup task has been retried (0: no retry)"
@@ -213,9 +214,9 @@ scripts:
                 jobname:      _
                 taskname:     _
                 vmname:       _
-                message:      reason
+                message:      $reason
               values: 
                 _: $state
               when:
-                - or ( EQ (toString .task.state) "2" ) ( EQ (toString .task.state) "3" )
+                - 'js: task.state == "2"  || task.state == "3"'
 ...

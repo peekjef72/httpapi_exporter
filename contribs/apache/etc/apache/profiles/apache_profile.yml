@@ -2,7 +2,10 @@
     # all metrics will be named "[metric_prefix]_[metric_name]"
     metric_prefix: "apache"
     scripts:
-      init: ~
+      init:
+        - name: init default value for apache httpd mod_status url
+          set_fact:
+            status_url: /server-status?auto
       login: ~
       logout: ~
 
@@ -10,7 +13,7 @@
       ping:
         - name: check if API is replying
           query:
-            url: /server-status?auto
+            url: $status_url
             method: GET
             # headers:
             ok_status: 200

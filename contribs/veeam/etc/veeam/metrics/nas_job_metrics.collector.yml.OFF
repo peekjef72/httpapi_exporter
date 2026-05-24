@@ -20,19 +20,18 @@ scripts:
         debug: true
         var_name: results
 
-    - name: procceed elements
+    - name: proceed elements
       scope: results
       metrics:
         - metric_name: config
           help: total size of the repository in bytes
           type: gauge
           key_labels:
-            name: Name
-            type: Kind
-            # item.Links[0].Name !
-            backupserver: "{{ (index .Links 0).Name }}"
+            name: $Name
+            type: $Kind
+            backupserver: $Links[0].Name
           values: 
             _: 1
-          loop: NASJobs
+          loop: $NASJobs
 
 ...

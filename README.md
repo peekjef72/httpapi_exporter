@@ -147,7 +147,7 @@ The auth parameters are:
 - password
 - token
 
-The user, password and token values can be raw strings or retrieve the values from environment variables. To use env var the value must be prefixed by "$env:" followed by the name of the variable.
+The host, user, password and token values can be raw strings or retrieve the values from environment variables. To use env var the value must be prefixed by "$env:" followed by the name of the variable. The values are read load/reload time only, so changes made in env vars are not detected until a reload!
 
 ```yml
   # use this auth_config to authenticate via env vars

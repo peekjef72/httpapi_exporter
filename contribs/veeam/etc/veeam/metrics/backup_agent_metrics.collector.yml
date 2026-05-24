@@ -11,15 +11,6 @@ collector_name: veeam_agent_metrics
 # min_interval: 0s
 metric_prefix: veeam_em_agents
 
-templates:
-  agentStatus: '
-    {{- $agentStatusDef := dict
-        "Online"  "1"
-        "Offline" "2"
-        "Unknown" "0"
-    }}
-    {{ pluck . $agentStatusDef | first | default "0" -}}'
-
 scripts:
   get veeam_agents:
     - name: collect elements
@@ -40,23 +31,36 @@ scripts:
           loop_var: agent
           actions:
             - name: add element
-              when: not (exporterHasKey .agents .agent.UID)
+              when: 'js: agent.UID != undefined && agents[agent.UID] == undefined'
               metrics:
                 - metric_name: status
                   help: backup agent status 0 Unknown / 1 Online / 2 Offline
                   type: gauge
                   key_labels:
-                    # item.Links[0].Name !
-                    backupserver: "{{ (index .Links 0).Name }}"
-                    name: $Name
-                    version: $AgentVersion
-                    osversion: $OsVersion
+                    backupserver: $Links[0].Name
+                    name:         $Name
+                    version:      $AgentVersion
+                    osversion:    $OsVersion
                   values: 
-                    _: '{{ template "agentStatus" .HostStatus }}'
+                    _: >
+                      js:
+                        var val = "0";
+                        switch (HostStatus) {
+                          case "Online":
+                            val = "1";
+                            break;
+                          case "Offline":
+                            val = "2";
+                            break;
+                        }
+                        val;
 
             - name: set element presence
               set_fact:
-                _: '{{ $_ := exporterSet .agents .agent.UID 1 }}'
+                _: >
+                  js:
+                    agents[agent.UID] = 1;
+                    0
 
 ...
 

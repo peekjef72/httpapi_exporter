@@ -19,7 +19,7 @@ scripts:
         var_name: results
         # debug: true
 
-    - name: procceed repositories config elements
+    - name: proceed repositories config elements
       loop: $results.Repositories
       actions:
         - name: build labels
@@ -30,15 +30,7 @@ scripts:
               uid:  $item.UID
 
         - name: build metrics
-          # default scope: item
           metrics:
-            # - name: build metric
-            #   vars:
-            #     labels:
-            #       - name: name
-            #         value: "{{ item.Name }}"
-            #       - name: type
-            #         value: "{{ item.Kind }}"
             # implicit scope to item element [=> repository]
             - metric_name: capacity_total_bytes
               help: total size in bytes of each repository by name and type

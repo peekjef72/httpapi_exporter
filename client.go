@@ -131,6 +131,7 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Log
 		VerifySSLUserSet: target.verifySSLUserSet,
 		ScrapeTimeout:    time.Duration(target.ScrapeTimeout),
 		QueryRetry:       target.QueryRetry,
+		CustomProperties: target.CustomProperties,
 	}
 	cl.symtab["__collector_id"] = target.Name
 	cl.Init(params)
@@ -186,6 +187,7 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 		VerifySSLUserSet: target.verifySSLUserSet,
 		ScrapeTimeout:    time.Duration(target.ScrapeTimeout),
 		QueryRetry:       target.QueryRetry,
+		CustomProperties: target.CustomProperties,
 	}
 	cl.Init(params)
 
@@ -1385,6 +1387,7 @@ type ClientInitParams struct {
 	VerifySSLUserSet bool
 	ScrapeTimeout    time.Duration
 	QueryRetry       int
+	CustomProperties map[string]string
 }
 
 func (cl *Client) Init(params *ClientInitParams) error {
@@ -1443,6 +1446,9 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	}
 	if query_retry != params.QueryRetry {
 		query_retry = params.QueryRetry
+	}
+	for key, val := range params.CustomProperties {
+		cl.symtab[key] = val
 	}
 	apiendpoint := fmt.Sprintf("%s://%s:%s", scheme, params.Host, port)
 	baseurl := strings.TrimPrefix(base_url, "/")

@@ -66,23 +66,23 @@ type Profile struct {
 
 // Config is a collection of targets and collectors.
 type Config struct {
-	Globals        *GlobalConfig          `yaml:"global"`
-	CollectorFiles []string               `yaml:"collector_files,omitempty"`
-	Targets        []*TargetConfig        `yaml:"targets,omitempty"`
-	Collectors     []*CollectorConfig     `yaml:"collectors,omitempty"`
-	Profiles       map[string]*Profile    `yaml:"profiles"`
-	ProfileFiles   []string               `yaml:"profiles_file_config"`
-	AuthConfigs    map[string]*AuthConfig `yaml:"auth_configs,omitempty"`
+	Globals        *GlobalConfig             `yaml:"global"`
+	CollectorFiles []string                  `yaml:"collector_files,omitempty"`
+	Targets        []*TargetConfig           `yaml:"targets,omitempty"`
+	Collectors     []*CollectorConfig        `yaml:"collectors,omitempty"`
+	Profiles       map[string]*profileParser `yaml:"profiles"`
+	ProfileFiles   []string                  `yaml:"profiles_file_config"`
+	AuthConfigs    map[string]*AuthConfig    `yaml:"auth_configs,omitempty"`
 	// obsolete will be remove in next version
-	HttpAPIConfigOld map[string]*YAMLScript `yaml:"httpapi_config"`
+	HttpAPIConfigOld map[string]yaml.Node `yaml:"httpapi_config"`
 
 	configFile string
 	logger     *slog.Logger
 	// collectorName is a restriction: collectors set for a target are replaced by this only one.
 	collectorName string
 	collectors    map[string]*CollectorConfig
-
-	registry *require.Registry
+	profiles      map[string]*Profile
+	registry      *require.Registry
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -228,17 +228,46 @@ collectors:
 
 	// convert old format HttpAPIConfig to new one
 	if c.HttpAPIConfigOld != nil {
-		if c.Profiles == nil {
-			c.Profiles = make(map[string]*Profile)
+		if c.profiles == nil {
+			c.profiles = make(map[string]*Profile)
 		}
 		if _, found := c.Profiles["default"]; found {
 			return fmt.Errorf("incompatible: old config httpapi_config and profiles[\"default\"] found")
 		}
 		profile := &Profile{
 			MetricPrefix: c.Globals.MetricPrefix,
-			Scripts:      (ScriptConfig)(c.HttpAPIConfigOld),
+			registry:     c.registry,
 		}
-		c.Profiles["default"] = profile
+		if len(c.HttpAPIConfigOld) > 0 {
+			var err error
+			profile.Scripts, err = build_YAMLScript(c.registry, c.HttpAPIConfigOld)
+			if err != nil {
+				return err
+			}
+		}
+		c.profiles["default"] = profile
+	}
+
+	// build profiles from config definition
+	profiles := make(map[string]*Profile)
+	for profile_name, profile := range c.Profiles {
+		tmp := &Profile{
+			MetricPrefix: profile.MetricPrefix,
+			registry:     c.registry,
+		}
+		if len(profile.ScriptsNodes) > 0 {
+			var err error
+			tmp.Scripts, err = build_YAMLScript(c.registry, profile.ScriptsNodes)
+			if err != nil {
+				return err
+			}
+		}
+		profiles[profile_name] = tmp
+	}
+	if c.profiles == nil {
+		c.profiles = profiles
+	} else {
+		maps.Copy(c.profiles, profiles)
 	}
 
 	// Load any externally defined profiles.
@@ -247,7 +276,7 @@ collectors:
 	}
 
 	// check each profile scripts:
-	for profile_name, profile := range c.Profiles {
+	for profile_name, profile := range c.profiles {
 		if profile.MetricPrefix == "" {
 			profile.MetricPrefix = c.Globals.MetricPrefix
 		}
@@ -276,8 +305,8 @@ collectors:
 		default_profile      *Profile
 		default_profile_name string
 	)
-	if len(c.Profiles) == 1 {
-		for profile_name, profile := range c.Profiles {
+	if len(c.profiles) == 1 {
+		for profile_name, profile := range c.profiles {
 			default_profile = profile
 			default_profile_name = profile_name
 			break
@@ -303,7 +332,7 @@ collectors:
 		if t.QueryRetry == -1 {
 			t.QueryRetry = c.Globals.QueryRetry
 		}
-		if profile, found := c.Profiles[t.ProfileName]; !found {
+		if profile, found := c.profiles[t.ProfileName]; !found {
 			if default_profile != nil {
 				var msg string
 				if t.ProfileName != "" {
@@ -392,7 +421,7 @@ func (c *Config) YAML() ([]byte, error) {
 		AuthConfigs:    c.AuthConfigs,
 		CollectorFiles: c.CollectorFiles,
 		Collectors:     GetCollectorsDef(c.Collectors),
-		Profiles:       GetProfilesDef(c.Profiles),
+		Profiles:       GetProfilesDef(c.profiles),
 		//		HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
 	}
 	return yaml.Marshal(dc)
@@ -409,7 +438,7 @@ func (c *Config) JSON() ([]byte, error) {
 			AuthConfigs:    c.AuthConfigs,
 			CollectorFiles: c.CollectorFiles,
 			Collectors:     GetCollectorsDef(c.Collectors),
-			Profiles:       GetProfilesDef(c.Profiles),
+			Profiles:       GetProfilesDef(c.profiles),
 			//			HttpAPIConfig:  GetScriptsDef(c.HttpAPIConfig),
 		},
 	}
@@ -420,7 +449,7 @@ type profileParser struct {
 	MetricPrefix string               `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
 	ScriptsNodes map[string]yaml.Node `yaml:"scripts" json:"scripts"`
 	registry     *require.Registry
-	scripts      map[string]*YAMLScript
+	// scripts      map[string]*YAMLScript
 }
 
 // func (p *profileParser) UnmarshalYAML(value *yaml.Node) error {
@@ -536,10 +565,10 @@ func (c *Config) loadProfileFiles() error {
 			if err != nil {
 				return fmt.Errorf("reading %s: %s", pf, err)
 			}
-			if c.Profiles == nil {
-				c.Profiles = profiles.profiles
+			if c.profiles == nil {
+				c.profiles = profiles.profiles
 			} else {
-				maps.Copy(c.Profiles, profiles.profiles)
+				maps.Copy(c.profiles, profiles.profiles)
 			}
 			// c.Profiles = make(map[string]*Profile)
 			// if len(profiles.profiles) > 0 {
@@ -752,21 +781,22 @@ const (
 
 // TargetConfig defines a url and a set of collectors to be executed on it.
 type TargetConfig struct {
-	Name            string            `yaml:"name" json:"name"` // target name to connect to from prometheus
-	Scheme          string            `yaml:"scheme" json:"scheme"`
-	Host            string            `yaml:"host" json:"host"`
-	Port            string            `yaml:"port,omitempty" json:"port,omitempty"`
-	BaseUrl         string            `yaml:"baseUrl,omitempty" json:"baseUrl,omitempty"`
-	AuthName        string            `yaml:"auth_name,omitempty" json:"auth_name,omitempty"`
-	AuthConfig      AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
-	ProxyUrl        string            `yaml:"proxy,omitempty" json:"proxy,omitempty"`
-	VerifySSLString string            `yaml:"verifySSL,omitempty" json:"verifySSL,omitempty"`
-	ScrapeTimeout   model.Duration    `yaml:"scrape_timeout" json:"scrape_timeout"`                   // per-scrape timeout, global
-	Labels          map[string]string `yaml:"labels,omitempty" json:"labels,omitempty"`               // labels to apply to all metrics collected from the targets
-	CollectorRefs   []string          `yaml:"collectors" json:"collectors"`                           // names of collectors to execute on the target
-	TargetsFiles    []string          `yaml:"targets_files,omitempty" json:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
-	QueryRetry      int               `yaml:"query_retry,omitempty" json:"query_retry,omitempty"`     // target specific number of times to retry a query
-	ProfileName     string            `yaml:"profile" json:"profile"`
+	Name             string            `yaml:"name" json:"name"` // target name to connect to from prometheus
+	Scheme           string            `yaml:"scheme" json:"scheme"`
+	Host             string            `yaml:"host" json:"host"`
+	Port             string            `yaml:"port,omitempty" json:"port,omitempty"`
+	BaseUrl          string            `yaml:"baseUrl,omitempty" json:"baseUrl,omitempty"`
+	AuthName         string            `yaml:"auth_name,omitempty" json:"auth_name,omitempty"`
+	AuthConfig       AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
+	ProxyUrl         string            `yaml:"proxy,omitempty" json:"proxy,omitempty"`
+	VerifySSLString  string            `yaml:"verifySSL,omitempty" json:"verifySSL,omitempty"`
+	ScrapeTimeout    model.Duration    `yaml:"scrape_timeout" json:"scrape_timeout"`                   // per-scrape timeout, global
+	Labels           map[string]string `yaml:"labels,omitempty" json:"labels,omitempty"`               // labels to apply to all metrics collected from the targets
+	CollectorRefs    []string          `yaml:"collectors" json:"collectors"`                           // names of collectors to execute on the target
+	TargetsFiles     []string          `yaml:"targets_files,omitempty" json:"targets_files,omitempty"` // slice of path and pattern for files that contains targets
+	QueryRetry       int               `yaml:"query_retry,omitempty" json:"query_retry,omitempty"`     // target specific number of times to retry a query
+	ProfileName      string            `yaml:"profile" json:"profile"`
+	CustomProperties map[string]string `yaml:"customs,omitempty" json:"customs,omitempty"` // customs properties to add to target symbols table to they can be used in scripts
 
 	collectors       []*CollectorConfig // resolved collector references
 	fromFile         string             // filepath if loaded from targets_files pattern

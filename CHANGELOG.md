@@ -5,12 +5,64 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.3 / 2026-05-24
+
+### 2026-05-23 - not release
+
+- fixed loading error with profiles set directly in config file (not profile file) [see issue #13](https://github.com/peekjef72/httpapi_exporter/issues/13)
+- add new property `customs` in Target definition that allows to set a map of \<key>: \<value> that will be available in collect scripts; use case is to be able to set a specific url for a target; by example for Apache httpd server mod_status entry point.
+- apache contrib has been updated:
+
+  ```yaml
+  ...
+      init:
+        - name: init default value for apache httpd mod_status url
+          set_fact:
+            status_url: /server-status?auto
+      login: ~
+      logout: ~
+
+      # method call to determine if a target is responding; will call login() if necessary
+      ping:
+        - name: check if API is replying
+          query:
+            url: $status_url
+            method: GET
+            # headers:
+            ok_status: 200
+            var_name: status
+            debug: true
+            parser: text-lines
+            trace: true
+  ...
+  ```
+
+  and for a target:
+
+  ```yaml
+  name: localhost
+  scheme: https
+  host: localhost
+  port: 443
+  # proxy: ""
+  # verifySSL: false
+  # custom constant labels add to all metrics
+  # labels:
+    #  - name: value
+  customs:
+    status_url: /Status?auto
+
+  profile: apache
+  collectors:
+    - ~ apache_*
+  ```
+
 ## 0.4.2 / 2026-05-19
 
 ### 2026-05-19 - released
 
 - update modules and go version to 1.26.3
-- fixed logging/js module console and loglevel has changed.
+- fixed logging/js module console error when loglevel changes.
 
 ### 2026-05-14 - not release
 

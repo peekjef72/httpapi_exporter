@@ -9,22 +9,11 @@
 collector_name: netscaler_hanode_metrics
 metric_prefix: citrixadc_ha
 
-templates:
-  masterState: '
-    {{- $masterStateDef := dict
-          "PRIMARY"       "1"
-          "SECONDARY"     "2"
-          "STAYSECONDARY" "3"
-          "CLAIMING "     "4"
-          "FORCE CHANGE"  "5"
-    }}
-    {{ pluck . $masterStateDef | first | default "0" }}'
-
 scripts:
   get stat_hanode:
     - name: collect cluster info
       when:
-        - EQ (LEN .config.cluster) 0
+        - js: config != undefined && config.cluster != undefined && config.cluster.length == 0
       actions:
         - name: collect config hanode
           query:
@@ -32,31 +21,47 @@ scripts:
             var_name: results
             debug: true
         - name: build cluster conf
-          # loop: "{{ .results.hanode | toRawJson }}"
           loop: $results.hanode
           loop_var: node
           actions:
             - name: build node
               set_fact:
-                hastate : '{{- template "masterState" ( .node.state | upper) -}}'
-                state: '{{ if eq .node.hastatus "UP" }}1{{ else }}0{{ end }}'
-            - name: build node2
-              set_fact:
-                _:  '{{- $node := dict
-                    "id"      .node.id
-                    "name"    ( lookupAddr .node.ipaddress )
-                    "ip"      .node.ipaddress
-                    "state"   .state
-                    "hastate" .hastate
-                    -}}
-                    {{- exporterSet .config.cluster .node.id $node -}}'
+                _: >
+                  js:
+                    var hastate = "0";
+                    switch ( node.state.toUpperCase() ) {
+                      case "PRIMARY":
+                        hastate = "1"; break;
+                      case "SECONDARY":
+                        hastate = "2"; break;
+                      case "STAYSECONDARY":
+                        hastate = "3"; break;
+                      case "CLAIMING":
+                        hastate = "4"; break;
+                      case "FORCE CHANGE":
+                        hastate = "5"; break;
+                    }
+
+                    var state = 0;
+                    if( node.hastatus == "UP" ) {
+                      state = 1;
+                    }
+
+                    var new_node = {
+                      "id":     node.id,
+                      "name:":  exporter.lookupAddr( node.ipaddress ),
+                      "ip":     node.ipaddress,
+                      "state":  state,
+                      "hastate" hastate,
+                    }
+                    config.cluster[node.id] = node
+                    1
         - name: keep config[cluster]
           set_stats:
-            # config.cluster : '{{ .config.cluster | toRawJson }}'
             config.cluster : $config.cluster
 
     - name: proceed cluster config elements
-      loop: '{{ (exporterValues .config.cluster) | toRawJson }}'
+      loop: $config.cluster
       loop_var: node
       actions:
         - name: build labels
@@ -90,34 +95,40 @@ scripts:
         debug: true
 
     - name: proceed elements
-      when: eq .results.hanode.hacurstatus "YES"
+      when: 'js: results.hanode.hacurstatus == "YES"'
       scope: results.hanode
       metrics:
         - metric_name: available
           help: "Whether a NetScaler appliance is configured for high availability."
           type: gauge
           key_labels:
-            status: "{{ .hacurstatus | toString }}"
+            status: 'js: hacurstatus.toString()'
           values:
-            _: '{{ if eq .hacurstatus "YES" }}1{{ else }}0{{ end }}'
+            _: >
+              js:
+                var val = 0;
+                if( hacurstatus == "YES" ) { val = 1; }
+                val
 
         - metric_name: node_state
           help: "State of the HA node, based on its health, in a high availability setup 1 UP / 0 else"
           type: gauge
           key_labels:
-            state: "{{ .hacurstate | toString }}"
+            state: 'js: hacurstate.toString()'
           values:
-            _: '{{ if eq .hacurstate "UP" }}1{{ else }}0{{ end }}'
-          # when: eq .hacurstatus "YES"
+            _: >
+              js:
+                var val = 0;
+                if( hacurstate == "YES" ) { val = 1; }
+                val
 
         - metric_name: node_hastate
           help: "Indicates the high availability state of the node. 0 Other - 1 Primary - 2 Secondary"
           type: gauge
           key_labels:
-            node_state: "{{ .hacurmasterstate | toString | lower }}"
+            node_state: 'js: hacurmasterstate.toString().toLowerCase()'
           values:
             _: '{{ template "masterState" (.hacurmasterstate | upper) }}'
-          # when: eq .hacurstatus "YES"
 
         - metric_name: node_start_timestamp
           help: "Timestamp when the last master state transition occurred."
@@ -126,21 +137,18 @@ scripts:
             node_transtime: $transtime
           values:
             _: '{{ mustToDate "Mon Jan _2 15:04:05 2006" .transtime | unixEpoch }}'
-          # when: eq .hacurstatus "YES"
 
         - metric_name: node_propagation_timeout
           help: "Number of times propagation timed out."
           type: counter
           values:
             _: $haerrproptimeout
-          # when: eq .hacurstatus "YES"
 
         - metric_name: node_sync_failure
           help: "Number of times synchronization failed since that last transition."
           type: counter
           values: 
             _: $haerrsyncfailure
-          # when: eq .hacurstatus "YES"
 
 ...
 

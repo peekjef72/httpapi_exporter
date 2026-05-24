@@ -5,7 +5,9 @@ port: 443
 # proxy: ""
 # verifySSL: false
 # custom constant labels add to all metrics
-#labels:
+# labels:
   # - name: value
+# customs:
+#  status_url: /server-status?auto
 collectors:
   - ~ apache_*

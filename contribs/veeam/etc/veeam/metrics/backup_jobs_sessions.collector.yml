@@ -134,14 +134,14 @@ scripts:
               {{ $args := list .jobs .item .hash .item_start }}
               {{ template "buildJobs" $args }}'
 
-        - name: debug job
-          debug:
-            msg: "job: {{ toRawJson (exporterGet .jobs .hash) }}"
+        # - name: debug job
+        #   debug:
+        #     msg: "job: {{ toRawJson (exporterGet .jobs .hash) }}"
 
     - name: loop on aggregate jobs (values) to generate metric
       # to debug: build a list with first element of the result
-      # loop: "{{ list (index (exporterValues .jobs) 0) | toRawJson }}"
-      loop: "{{ exporterValues .jobs | toRawJson }}"
+      # loop: 'js: [ (Object.values(jobs))[0] ]'
+      loop: 'js: Object.values(jobs)'
       loop_var: job
       # default: scope: cur_var=> job
       actions:
@@ -173,8 +173,8 @@ scripts:
               help: 'operation duration in second'
               type: gauge
               key_labels: $root.key_labels
-              values: 
-                _: "{{ sub .endtimestamp .starttimestamp }}"
+              values:
+                _: "js: endtimestamp - starttimestamp"
 
             - metric_name: retries
               help: "number of times of the job has been retried (0: no retry)"

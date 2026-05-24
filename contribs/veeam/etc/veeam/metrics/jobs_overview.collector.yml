@@ -40,7 +40,7 @@ scripts:
       with_items: 
           - type: total
             value: $results.TotalJobRuns
-          - type: successfull
+          - type: successful
             value: $results.SuccessfulJobRuns
           - type: warning
             value: $results.WarningsJobRuns
@@ -57,9 +57,15 @@ scripts:
 
     - name: proceed elements duration
       with_items: 
-          - { type: "job", jobname: "", value: "{{ .results.MaxJobDuration }}" }
-          - { type: "backupjob", jobname: "{{ .results.MaxDurationBackupJobName }}", value: "{{ .results.MaxBackupJobDuration }}" }
-          - { type: "replicajob", jobname: "{{ .results.MaxDurationReplicaJobName }}", value: "{{ .results.MaxReplicaJobDuration }}" }
+          - type: job
+            jobname: ""
+            value: $results.MaxJobDuration
+          - type: backupjob
+            jobname: $results.MaxDurationBackupJobName
+            value: $results.MaxBackupJobDuration
+          - type: replicajob
+            jobname: $results.MaxDurationReplicaJobName
+            value: $results.MaxReplicaJobDuration
       metrics:
         - metric_name: max_duration
           help: max duration for job by type and name of longest
@@ -68,6 +74,6 @@ scripts:
             type: _
             jobname: _
           values: 
-            _: value
+            _: $value
 
 ...

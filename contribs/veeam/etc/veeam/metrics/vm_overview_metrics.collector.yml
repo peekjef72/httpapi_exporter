@@ -60,9 +60,9 @@ scripts:
 
     - name: proceed elements total_bytes
       metrics:
-        - metric_name: sucess_backup_percent
+        - metric_name: success_backup_percent
           scope: none
-          help: percent of sucessful backup of VMs
+          help: percent of successful backup of VMs
           type: gauge
           values:
             _: $results.SuccessBackupPercents
