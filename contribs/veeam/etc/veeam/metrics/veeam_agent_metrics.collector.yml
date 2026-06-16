@@ -1,0 +1,70 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Agent Status. Overview of the Veeam Agents. Really useful to display if an Agent it is uo to date and also the status
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/agents.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/vbr/em_rest/agents_discoveredcomputers.html?ver=13
+###
+
+collector_name: veeam_agent_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_agents
+
+scripts:
+  get veeam_agents:
+    - name: init names
+      when: "js: typeof agentsNames === 'undefined'"
+      set_fact:
+        agentNames: 'js: veeam.agentsNames(veeam_version)'
+
+    - name: collect elements
+      query:
+        url: /agents/discoveredComputers?format=Entity
+        # debug: true
+        var_name: results
+
+    - name: init loop
+      set_fact:
+        agents:  {}
+        # uid : 'js: (veeam_version == 13) ? "uid" : "UID"'
+        # name : 'js: (veeam_version == 13) ? "name" : "Name"'
+        # version : 'js: (veeam_version == 13) ? "agentVersion" : "AgentVersion"'
+        # osVersion: 'js: (veeam_version == 13) ? "osVersion" : "OsVersion"'
+        # hostStatus: 'js: (veeam_version == 13) ? "hostStatus" : "HostStatus"'
+
+    - name: loop elements
+      actions:
+        - name: proceed elements
+          # scope: results
+          # loop: 'js: (veeam_version == 13) ? results.discoveredComputers : results.DiscoveredComputers'
+          loop: $results[$agentNames.discoveredComputers]
+          loop_var: agent
+          actions:
+            - name: add element
+              when: 'js: agent[agentNames.uid] != undefined && agents[agent[agentNames.uid]] == undefined'
+              scope: none
+              vars:
+                backupServer: 'js: (veeam_version == 13) ? agent.links[0].name : agent.Links[0].Name'
+              metrics:
+                - metric_name: status
+                  help: backup agent status 0 Unknown / 1 Online / 2 Offline
+                  type: gauge
+                  key_labels:
+                    backupserver: backupServer
+                    name:         $agent[$agentNames.name]
+                    version:      $agent[$agentNames.version]
+                    osversion:    $agent[$agentNames.osVersion]
+                  values: 
+                    _: 'js: veeam.backupAgentJobStatus(agent[agentNames.hostStatus])'
+
+            - name: set element presence
+              set_fact:
+                _: >
+                  js:
+                    agents[agent[agentNames.uid]] = 1;
+                    0
+
+...
+

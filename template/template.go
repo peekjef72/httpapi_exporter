@@ -420,6 +420,24 @@ func js_getDurationSecond(duration_str string) (int, error) {
 	return sec, nil
 }
 
+func js_toDate(format string, str string) (int64, error) {
+	ret_t, err := time.ParseInLocation(format, str, time.Local)
+	if err != nil {
+		err := fmt.Errorf("can't parse date from string: %s", err.Error())
+		return time.Now().Unix(), err
+	}
+	return ret_t.Unix(), nil
+}
+
+// func js_toDate(format string, str string) (time.Time, error) {
+// 	ret_t, err := time.ParseInLocation(format, str, time.Local)
+// 	if err != nil {
+// 		err := fmt.Errorf("can't parse date from string: %s", err.Error())
+// 		return time.Now(), err
+// 	}
+// 	return ret_t, nil
+// }
+
 func MyMap() ttemplate.FuncMap {
 	sprig_map := sprig.FuncMap()
 	sprig_map["convertToBytes"] = convertToBytes
@@ -462,10 +480,23 @@ func Js_func_map() map[string]any {
 	js_map["getHeader"] = getHeader
 	js_map["getCookie"] = getCookie
 
+	js_map["length"] = exporterLEN
 	js_map["lookupAddr"] = exportLookupAddr
 
 	js_map["queryEscape"] = QueryEscape
 	js_map["getDurationSecond"] = js_getDurationSecond
+	js_map["toDate"] = js_toDate
+
+	// import some sprig functions in js map
+	sprig_map := sprig.FuncMap()
+	import_sprig := []string{
+		"date",
+		"sha1sum", "sha256sum", "sha512sum"}
+	for _, func_name := range import_sprig {
+		if f, ok := sprig_map[func_name]; ok {
+			js_map[func_name] = f
+		}
+	}
 
 	return js_map
 }

@@ -1,0 +1,237 @@
+{
+    "refs": null,
+    "entities": {
+        "jobs": null,
+        "failoverPlans": null,
+        "backups": null,
+        "replicas": null,
+        "repositories": null,
+        "restorePoints": null,
+        "vmRestorePoints": null,
+        "vAppRestorePoints": null,
+        "vmReplicaPoints": null,
+        "backupJobSessions": null,
+        "replicaJobSessions": null,
+        "replicaTaskSessions": null,
+        "restoreSessions": null,
+        "hierarchyRoots": null,
+        "backupTaskSessions": {
+            "backupTaskSessions": [
+                {
+                    "jobSessionUid": "urn:veeam:BackupJobSession:bc6b105b-7e45-4e86-8f41-5d177d78d273",
+                    "creationTimeUTC": "2026-06-16T06:22:59.39912Z",
+                    "endTimeUTC": "2026-06-16T06:23:52.728467Z",
+                    "state": "Completed",
+                    "result": "Failed",
+                    "reason": "Processing myhost Error: An error occurred while quiescing the virtual machine. See the virtual machine's event log for details. (An error occurred while saving the snapshot: Failed to quiesce the virtual machine., An error occurred while taking a snapshot: Failed to quiesce the virtual machine.)",
+                    "totalSize": 0,
+                    "vmUid": "urn:VMware:Vm:fc1c33f4-14af-4ba6-9449-6416e58ab946.vm-201661",
+                    "vmDisplayName": "myhost",
+                    "name": "myhost@2026-06-16 06:22:59.39912",
+                    "uid": "urn:veeam:BackupTaskSession:0bae7844-d3d7-4097-95b8-893315310c51",
+                    "links": [
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupServers/e030cc0d-fcd8-4e19-bd38-a09ebbe8132b",
+                            "name": "myhost2.mydomain.org",
+                            "type": "BackupServerReference"
+                        },
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupSessions/bc6b105b-7e45-4e86-8f41-5d177d78d273",
+                            "name": "H3_BACKUP_DDH_ORACLE_DEV_SYSONLY@2026-06-16 06:22:07.193292",
+                            "type": "BackupJobSessionReference"
+                        },
+                        {
+                            "rel": "Alternate",
+                            "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/0bae7844-d3d7-4097-95b8-893315310c51",
+                            "name": "myhost@2026-06-16 06:22:59.39912",
+                            "type": "BackupTaskSessionReference"
+                        }
+                    ],
+                    "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/0bae7844-d3d7-4097-95b8-893315310c51?format=Entity",
+                    "type": "BackupTaskSession"
+                },
+                {
+                    "jobSessionUid": "urn:veeam:BackupJobSession:7e9fd38b-10bd-4943-8c4f-f3fd991da78d",
+                    "creationTimeUTC": "2026-06-16T06:33:49.98683Z",
+                    "endTimeUTC": "2026-06-16T06:38:46.47437Z",
+                    "state": "Completed",
+                    "result": "Success",
+                    "reason": "",
+                    "totalSize": 214748364800,
+                    "vmUid": "urn:VMware:Vm:fc1c33f4-14af-4ba6-9449-6416e58ab946.vm-201661",
+                    "vmDisplayName": "myhost",
+                    "name": "myhost@2026-06-16 06:33:49.98683",
+                    "uid": "urn:veeam:BackupTaskSession:146cd940-7c0c-4aaa-a4d7-8bcc634ad28a",
+                    "links": [
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupServers/e030cc0d-fcd8-4e19-bd38-a09ebbe8132b",
+                            "name": "myhost2.mydomain.org",
+                            "type": "BackupServerReference"
+                        },
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupSessions/7e9fd38b-10bd-4943-8c4f-f3fd991da78d",
+                            "name": "H3_BACKUP_DDH_ORACLE_DEV_SYSONLY@2026-06-16 06:33:10.659559",
+                            "type": "BackupJobSessionReference"
+                        },
+                        {
+                            "rel": "Alternate",
+                            "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/146cd940-7c0c-4aaa-a4d7-8bcc634ad28a",
+                            "name": "myhost@2026-06-16 06:33:49.98683",
+                            "type": "BackupTaskSessionReference"
+                        },
+                        {
+                            "rel": "Related",
+                            "href": "https://myhost.mydomain.org:9398/api/vmRestorePoints/c3b90e05-0e94-4d7e-a1b5-c4120d24851b?format=Entity",
+                            "name": "myhost@2026-06-16 06:34:38.450192",
+                            "type": "VmRestorePoint"
+                        }
+                    ],
+                    "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/146cd940-7c0c-4aaa-a4d7-8bcc634ad28a?format=Entity",
+                    "type": "BackupTaskSession"
+                },
+                {
+                    "jobSessionUid": "urn:veeam:BackupJobSession:bc6b105b-7e45-4e86-8f41-5d177d78d273",
+                    "creationTimeUTC": "2026-06-16T06:22:59.4006Z",
+                    "endTimeUTC": "2026-06-16T06:27:21.837979Z",
+                    "state": "Completed",
+                    "result": "Success",
+                    "reason": "",
+                    "totalSize": 214748364800,
+                    "vmUid": "urn:VMware:Vm:fc1c33f4-14af-4ba6-9449-6416e58ab946.vm-201672",
+                    "vmDisplayName": "myhost3",
+                    "name": "myhost3@2026-06-16 06:22:59.4006",
+                    "uid": "urn:veeam:BackupTaskSession:8d730b9d-1102-40ed-8fae-345bc6d03b7b",
+                    "links": [
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupServers/e030cc0d-fcd8-4e19-bd38-a09ebbe8132b",
+                            "name": "myhost2.mydomain.org",
+                            "type": "BackupServerReference"
+                        },
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupSessions/bc6b105b-7e45-4e86-8f41-5d177d78d273",
+                            "name": "H3_BACKUP_DDH_ORACLE_DEV_SYSONLY@2026-06-16 06:22:07.193292",
+                            "type": "BackupJobSessionReference"
+                        },
+                        {
+                            "rel": "Alternate",
+                            "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/8d730b9d-1102-40ed-8fae-345bc6d03b7b",
+                            "name": "myhost3@2026-06-16 06:22:59.4006",
+                            "type": "BackupTaskSessionReference"
+                        },
+                        {
+                            "rel": "Related",
+                            "href": "https://myhost.mydomain.org:9398/api/vmRestorePoints/0ce8a64c-34f5-43cb-8eaf-76bae27abd3e?format=Entity",
+                            "name": "myhost3@2026-06-16 06:23:48.450023",
+                            "type": "VmRestorePoint"
+                        }
+                    ],
+                    "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/8d730b9d-1102-40ed-8fae-345bc6d03b7b?format=Entity",
+                    "type": "BackupTaskSession"
+                },
+                {
+                    "jobSessionUid": "urn:veeam:BackupJobSession:bc6b105b-7e45-4e86-8f41-5d177d78d273",
+                    "creationTimeUTC": "2026-06-16T06:22:59.359539Z",
+                    "endTimeUTC": "2026-06-16T06:27:10.226232Z",
+                    "state": "Completed",
+                    "result": "Success",
+                    "reason": "",
+                    "totalSize": 214748364800,
+                    "vmUid": "urn:VMware:Vm:fc1c33f4-14af-4ba6-9449-6416e58ab946.vm-201671",
+                    "vmDisplayName": "myhost2",
+                    "name": "myhost2@2026-06-16 06:22:59.359539",
+                    "uid": "urn:veeam:BackupTaskSession:b30ba205-609d-40ed-8775-715d7a007974",
+                    "links": [
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupServers/e030cc0d-fcd8-4e19-bd38-a09ebbe8132b",
+                            "name": "myhost2.mydomain.org",
+                            "type": "BackupServerReference"
+                        },
+                        {
+                            "rel": "Up",
+                            "href": "https://myhost.mydomain.org:9398/api/backupSessions/bc6b105b-7e45-4e86-8f41-5d177d78d273",
+                            "name": "H3_BACKUP_DDH_ORACLE_DEV_SYSONLY@2026-06-16 06:22:07.193292",
+                            "type": "BackupJobSessionReference"
+                        },
+                        {
+                            "rel": "Alternate",
+                            "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/b30ba205-609d-40ed-8775-715d7a007974",
+                            "name": "myhost2@2026-06-16 06:22:59.359539",
+                            "type": "BackupTaskSessionReference"
+                        },
+                        {
+                            "rel": "Related",
+                            "href": "https://myhost.mydomain.org:9398/api/vmRestorePoints/6e7c38b3-9ef8-4961-8782-8d2aa6d46446?format=Entity",
+                            "name": "myhost2@2026-06-16 06:23:48.287136",
+                            "type": "VmRestorePoint"
+                        }
+                    ],
+                    "href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/b30ba205-609d-40ed-8775-715d7a007974?format=Entity",
+                    "type": "BackupTaskSession"
+                }
+            ]
+        },
+        "backupServers": null,
+        "managedServers": null,
+        "enterpiseRoles": null,
+        "enterpiseAccounts": null,
+        "wanAccelerators": null,
+        "cloudGateways": null,
+        "cloudTenants": null,
+        "cloudReplicas": null,
+        "vCloudOrganizationConfigs": null,
+        "backupFiles": null,
+        "vSphereSelfServiceConfigs": null,
+        "cloudPublicIps": null,
+        "cloudHardwarePlans": null,
+        "cloudVmReplicaPoints": null,
+        "agentRestorePoints": null,
+        "agentBackupJob": null,
+        "cloudGatewayPools": null,
+        "cloudFailoverPlans": null,
+        "externalRepositories": null,
+        "vlanConfigurations": null,
+        "cloudFailoverSessions": null,
+        "agentProtectionGroups": null,
+        "discoveredComputers": null,
+        "fileServers": null,
+        "nasJobs": null,
+        "cdpReplicas": null,
+        "cdpReplicaVms": null,
+        "cdpPolicies": null,
+        "cdpReplicaSessions": null,
+        "cdpReplicaTaskSessions": null,
+        "vAppReplicaPoints": null,
+        "vmCdpReplicas": null,
+        "vAppCdpReplicas": null,
+        "vAppCdpReplicaVms": null,
+        "systemSessions": null
+    },
+    "resources": null,
+    "links": null,
+    "pagingInfo": {
+        "links": [
+            {
+                "rel": "First",
+                "href": "https://myhost.mydomain.org:9398/api/query?type=BackupTaskSession&format=Entities&filter=CreationTime%3E%3D%222026-06-15T23%3A20%3A45%22&pageSize=100&page=1",
+                "name": null,
+                "type": null
+            },
+            {
+                "rel": "Last",
+                "href": "https://myhost.mydomain.org:9398/api/query?type=BackupTaskSession&format=Entities&filter=CreationTime%3E%3D%222026-06-15T23%3A20%3A45%22&pageSize=100&page=1",
+                "name": null,
+                "type": null
+            }
+        ],
+        "pageNum": 1,
+        "pageSize": 100,
+        "pagesCount": 1
+    }
+}

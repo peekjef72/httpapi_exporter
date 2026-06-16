@@ -3,16 +3,22 @@
 # https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
 ###
 ## Veeam Enterprise Manager Repositories. Overview of Repositories
+## docs: https://helpcenter.veeam.com/docs/vbr/em_rest/get_repositories.html?ver=13
 ###
 
 
-collector_name: repositories_overview_metrics
+collector_name: veeam_repositories_overview_metrics
 # no cache
 # min_interval: 0s
 metric_prefix: veeam_em_overview_repositories
 
 scripts:
   get repositories_overview_metrics:
+    - name: init names
+      when: "js: typeof repositoriesNames === 'undefined'"
+      set_fact:
+        repositoriesNames: 'js: veeam.repositoriesNames(veeam_version)'
+
     - name: collect elements
       query:
         url: /repositories?format=Entity
@@ -20,29 +26,30 @@ scripts:
         # debug: true
 
     - name: proceed repositories config elements
-      loop: $results.Repositories
+      loop: $results[$repositoriesNames.repositories]
       actions:
         - name: build labels
           set_fact:
             key_labels:
-              name: $item.Name
-              type: $item.Kind
-              uid:  $item.UID
+              name: $item[$repositoriesNames.name]
+              type: $item[$repositoriesNames.kind]
+              uid:  $item[$repositoriesNames.uid]
 
         - name: build metrics
+          scope: none
           metrics:
             # implicit scope to item element [=> repository]
             - metric_name: capacity_total_bytes
               help: total size in bytes of each repository by name and type
               type: gauge
-              values: 
-                _: $Capacity
-              key_labels: $root.key_labels
+              values:
+                _: $item[$repositoriesNames.capacity]
+              key_labels: $key_labels
 
             - metric_name: capacity_free_bytes
               help: free size in bytes of each repository by name and type
               type: gauge
-              key_labels: $root.key_labels
+              key_labels: $key_labels
               values:
-                value: $FreeSpace
+                value: $item[$repositoriesNames.freeSpace]
 ...

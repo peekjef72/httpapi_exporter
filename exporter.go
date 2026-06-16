@@ -10,7 +10,6 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/dop251/goja_nodejs/require"
 	"github.com/peekjef72/httpapi_exporter/goja_modules"
 	"github.com/peekjef72/httpapi_exporter/template"
 
@@ -52,7 +51,7 @@ type exporter struct {
 	config  *Config
 	targets []Target
 
-	registry       *require.Registry
+	registry       *goja_modules.JSRegistry
 	consolePrinter goja_modules.LoggerPrinter
 	cur_target     Target
 	ctx            context.Context

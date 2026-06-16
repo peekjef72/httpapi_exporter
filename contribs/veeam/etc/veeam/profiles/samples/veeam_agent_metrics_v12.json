@@ -1,0 +1,68 @@
+{
+    "DiscoveredComputers": [
+        {
+            "HostStatus": "Online",
+            "AgentVersion": "6.3.2.1307",
+            "AgentStatus": "Installed",
+            "OsVersion": "Red Hat Enterprise Linux 9.6 (Plow)",
+            "IpAddress": "1.2.3.4",
+            "HierarchyObjRef": "urn:AgentForWindows:VeeamAgent:00000000-0000-0000-0000-000000000000.535612d0-3406-4afc-90ad-1200fdf493e3",
+            "Name": "myhost1.mydomain.org",
+            "UID": "urn:veeam:DiscoveredComputer:535612d0-3406-4afc-90ad-1200fdf493e3",
+            "Links": [
+                {
+                    "Rel": "Up",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/4539f94d-28f2-492f-9d08-bc76739d1ce2",
+                    "Name": "myhost2.mydomain.org",
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Alternate",
+                    "Href": "https://myhost.mydomain.org:9398/api/agents/discoveredComputers/535612d0-3406-4afc-90ad-1200fdf493e3",
+                    "Name": "myhost1.mydomain.org",
+                    "Type": "DiscoveredComputerReference"
+                },
+                {
+                    "Rel": "Up",
+                    "Href": "https://myhost.mydomain.org:9398/api/agents/protectionGroups/58d6fd5d-e48d-4f27-acc7-c8703f800a66",
+                    "Name": "Agents_Oper_Linux",
+                    "Type": "AgentProtectionGroupReference"
+                }
+            ],
+            "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/535612d0-3406-4afc-90ad-1200fdf493e3?format=Entity",
+            "Type": "DiscoveredComputer"
+        },
+        {
+            "HostStatus": "Online",
+            "AgentVersion": "6.3.3.38",
+            "AgentStatus": "Installed",
+            "OsVersion": "Microsoft Windows Server 2022 (21H2, 64-bit)",
+            "IpAddress": "1.2.3.5",
+            "HierarchyObjRef": "urn:AgentForWindows:VeeamAgent:00000000-0000-0000-0000-000000000000.c84d9c58-bf67-4570-989f-15824e2bbaa3",
+            "Name": "myhostx.mydomain.org",
+            "UID": "urn:veeam:DiscoveredComputer:c84d9c58-bf67-4570-989f-15824e2bbaa3",
+            "Links": [
+                {
+                    "Rel": "Up",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/4539f94d-28f2-492f-9d08-bc76739d1ce2",
+                    "Name": "myhost1.mydomain.org",
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Alternate",
+                    "Href": "https://myhost.mydomain.org:9398/api/agents/discoveredComputers/c84d9c58-bf67-4570-989f-15824e2bbaa3",
+                    "Name": "myhostx.mydomain.org",
+                    "Type": "DiscoveredComputerReference"
+                },
+                {
+                    "Rel": "Up",
+                    "Href": "https://myhost.mydomain.org:9398/api/agents/protectionGroups/2e8e0994-0105-4da3-9f83-bd945fb7d36b",
+                    "Name": "Agents_OPER",
+                    "Type": "AgentProtectionGroupReference"
+                }
+            ],
+            "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/c84d9c58-bf67-4570-989f-15824e2bbaa3?format=Entity",
+            "Type": "DiscoveredComputer"
+        }
+    ]
+}

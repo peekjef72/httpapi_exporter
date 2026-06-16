@@ -1,0 +1,120 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Job Sessions. Overview of Backup Job Sessions
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/get_query_backupjobsession.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/backupsessions.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/vbr/em_rest/backupsessions.html?ver=13
+###
+#
+collector_name: veeam_backup_jobs_sessions_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_jobs_sessions
+
+scripts:
+  get backup_job_session:
+    - name: init names
+      when: "js: typeof jobSessionNames === 'undefined'"
+      set_fact:
+        jobSessionNames: 'js: veeam.jobSessionNames(veeam_version)'
+
+    - name: init vars
+      set_fact:
+        # warning sprig doc is wrong: format is time.Duration so
+        # Valid time units are only: "ns", "us" (or "µs"), "ms", "s", "m", "h".
+        timestart: >
+          js:
+            var duration = exporter.getDurationSecond( jobHistory );
+            var startTime = Math.floor( ( Date.now() + (duration * 1000) ) / 1000 );
+            startTime;
+        jobs: {}
+    - name: init vars 2
+      set_fact:
+        datestart: 'js: exporter.date("2006-01-02T15:04:05", timestart )'
+
+    - name: 'js: "collect elements from last " + jobHistory'
+      query:
+        # consider only last jobs : restricting query to now (-)jobHistory hours
+        url: >
+          js:
+           '/query?type=BackupJobSession&format=Entities&filter=CreationTime>="' + datestart + '"'
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      loop: $results[$jobSessionNames.entities][$jobSessionNames.backupJobSessions][$jobSessionNames.backupJobSessions]
+      actions:
+        - name: build raw job from data
+          set_fact:
+            job:
+              backupserver: $item[$jobSessionNames.links][0][$jobSessionNames.name],
+              name: $item[$jobSessionNames.name]
+              jobName: $item[$jobSessionNames.jobName]
+              jobType: $item[$jobSessionNames.jobType]
+              creationTimeUTC: $item[$jobSessionNames.creationTimeUTC]
+              endTimeUTC: "js: item[jobSessionNames.endTimeUTC] != undefined ? item[jobSessionNames.endTimeUTC] : 0"
+              progress: $item[$jobSessionNames.progress]
+              uid: $item[$jobSessionNames.uid]
+              result: $item[$jobSessionNames.result]
+              state: $item[$jobSessionNames.state]
+
+        - name: update jobs map
+          set_fact:
+            _: 'js: veeam.buildJobs( jobs, job )'
+        # - name: debug job
+        #   debug:
+        #     msg: 'js: "new job: " + JSON.stringify(jobs[hash]) '
+
+    - name: loop on aggregate jobs (values) to generate metric
+      # to debug: build a list with first element of the result
+      # loop: 'js: [ (Object.values(jobs))[0] ]'
+      loop: 'js: Object.values(jobs)'
+      loop_var: job
+      when: 'js: exporter.length( jobs ) > 0'
+      # default: scope: cur_var=> job
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              backupserver: $job.backupserver
+              name:         $job.name
+              jobname:      $job.jobname
+              jobtype:      $job.jobtype
+
+        - name: debug job content
+          debug:
+            msg: "job: {{ .job }}"
+        - name: build metrics from computed jobs
+          metrics:
+            - metric_name: state
+              help: "resulting status of the job (0: undefined - 1: Success - 2: Warning - 3: Failed - 4: Idle - 5: Working)"
+              type: gauge
+              key_labels: $root.key_labels
+              values: 
+                _: $state
+
+            - metric_name: progress
+              help: "progress percent of the job"
+              type: gauge
+              key_labels: $root.key_labels
+              values:
+                _: $progress
+
+            - metric_name: duration
+              help: 'operation duration in second'
+              type: gauge
+              key_labels: $root.key_labels
+              values:
+                _: "js: endtimestamp - starttimestamp"
+
+            - metric_name: retries
+              help: "number of times of the job has been retried (0: no retry)"
+              type: gauge
+              key_labels: $root.key_labels
+              values: 
+                _: $retries
+
+
+...

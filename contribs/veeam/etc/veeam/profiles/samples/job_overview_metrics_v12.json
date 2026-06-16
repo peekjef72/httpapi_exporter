@@ -1,0 +1,19 @@
+{
+    "RunningJobs": 3,
+    "ScheduledJobs": 79,
+    "ScheduledBackupJobs": 79,
+    "ScheduledReplicaJobs": 0,
+    "TotalJobRuns": 81,
+    "SuccessfulJobRuns": 70,
+    "WarningsJobRuns": 1,
+    "FailedJobRuns": 10,
+    "MaxJobDuration": 52860,
+    "MaxBackupJobDuration": 52860,
+    "MaxReplicaJobDuration": 0,
+    "MaxDurationBackupJobName": "BACKUP_H2_OPER_WIN_BIG_VM",
+    "MaxDurationReplicaJobName": "",
+    "BackupJobStatusReportLink": "Workspace/ViewReport.aspx?definition=7962844d-db6c-4d29-8b6e-4e0f7db0785f&ShowParams=1",
+    "Links": null,
+    "Href": null,
+    "Type": null
+}

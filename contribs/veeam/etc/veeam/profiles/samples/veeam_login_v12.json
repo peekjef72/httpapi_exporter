@@ -1,0 +1,416 @@
+{
+    "UserName": "myuser",
+    "SessionId": "b9a759dd-4496-4f50-8fc0-f925aa283f8d",
+    "Links": [
+        {
+            "Rel": "Up",
+            "Href": "https://myhost.mydomain.org:9398/api/",
+            "Name": null,
+            "Type": "EnterpriseManager"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupServers",
+            "Name": null,
+            "Type": "BackupServerReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/managedServers",
+            "Name": null,
+            "Type": "ManagedServerReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/jobs",
+            "Name": null,
+            "Type": "JobReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/failoverPlans",
+            "Name": null,
+            "Type": "FailoverPlanReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/hierarchyRoots",
+            "Name": null,
+            "Type": "HierarchyRootReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/repositories",
+            "Name": null,
+            "Type": "RepositoryReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backups",
+            "Name": null,
+            "Type": "BackupReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/restorePoints",
+            "Name": null,
+            "Type": "RestorePointReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vmRestorePoints",
+            "Name": null,
+            "Type": "VmRestorePointReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vAppRestorePoints",
+            "Name": null,
+            "Type": "VAppRestorePointReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/replicas",
+            "Name": null,
+            "Type": "ReplicaReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vmReplicaPoints",
+            "Name": null,
+            "Type": "VmReplicaPointReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/catalog/vms",
+            "Name": null,
+            "Type": "CatalogVmReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupSessions",
+            "Name": null,
+            "Type": "BackupJobSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/restoreSessions",
+            "Name": null,
+            "Type": "RestoreSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/replicaSessions",
+            "Name": null,
+            "Type": "ReplicaJobSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions",
+            "Name": null,
+            "Type": "BackupTaskSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/replicaTaskSessions",
+            "Name": null,
+            "Type": "ReplicaTaskSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/security",
+            "Name": null,
+            "Type": "EnterpriseSecuritySettings"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/wanAccelerators",
+            "Name": null,
+            "Type": "WanAcceleratorReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupFiles",
+            "Name": null,
+            "Type": "BackupFileReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/externalRepositories",
+            "Name": null,
+            "Type": "ExternalRepositoryReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpPolicies",
+            "Name": null,
+            "Type": "CdpPolicyReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplicaSessions",
+            "Name": null,
+            "Type": "CdpReplicaSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplicaTaskSessions",
+            "Name": null,
+            "Type": "CdpReplicaTaskSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vAppReplicaPoints",
+            "Name": null,
+            "Type": "VAppReplicaPointReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplica/vms",
+            "Name": null,
+            "Type": "VmCdpReplicaReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplica/vApps",
+            "Name": null,
+            "Type": "VAppCdpReplicaReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/systemSessions",
+            "Name": null,
+            "Type": "BackupJobSessionReferenceList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/tasks",
+            "Name": null,
+            "Type": "TaskList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/querySvc",
+            "Name": null,
+            "Type": "QueryService"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/lookupSvc",
+            "Name": null,
+            "Type": "LookupService"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/reports/summary",
+            "Name": "Summary",
+            "Type": "Report"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupServers?format=Entity",
+            "Name": null,
+            "Type": "BackupServerList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/managedServers?format=Entity",
+            "Name": null,
+            "Type": "ManagedServerList"
+        },
+        {
+            "Rel": "Create",
+            "Href": "https://myhost.mydomain.org:9398/api/backupServers?action=create",
+            "Name": null,
+            "Type": null
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/jobs?format=Entity",
+            "Name": null,
+            "Type": "JobList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/failoverPlans?format=Entity",
+            "Name": null,
+            "Type": "FailoverPlanList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/hierarchyRoots?format=Entity",
+            "Name": null,
+            "Type": "HierarchyRootList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/repositories?format=Entity",
+            "Name": null,
+            "Type": "RepositoryList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backups?format=Entity",
+            "Name": null,
+            "Type": "BackupList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/restorePoints?format=Entity",
+            "Name": null,
+            "Type": "RestorePointList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vmRestorePoints?format=Entity",
+            "Name": null,
+            "Type": "VmRestorePointList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vAppRestorePoints?format=Entity",
+            "Name": null,
+            "Type": "VAppRestorePointList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/replicas?format=Entity",
+            "Name": null,
+            "Type": "ReplicaList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vmReplicaPoints?format=Entity",
+            "Name": null,
+            "Type": "VmReplicaPointList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/catalog/vms?format=Entity",
+            "Name": null,
+            "Type": "CatalogVmList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupSessions?format=Entity",
+            "Name": null,
+            "Type": "BackupJobSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/restoreSessions?format=Entity",
+            "Name": null,
+            "Type": "RestoreSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/replicaSessions?format=Entity",
+            "Name": null,
+            "Type": "ReplicaJobSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions?format=Entity",
+            "Name": null,
+            "Type": "BackupTaskSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/replicaTaskSessions?format=Entity",
+            "Name": null,
+            "Type": "ReplicaTaskSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/wanAccelerators?format=Entity",
+            "Name": null,
+            "Type": "WanAcceleratorList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vCloud",
+            "Name": null,
+            "Type": "VCloudService"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/backupFiles?format=Entity",
+            "Name": null,
+            "Type": "BackupFileList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/agents",
+            "Name": null,
+            "Type": "AgentsService"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/selfService/vSphere",
+            "Name": null,
+            "Type": "VSphereSelfService"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/externalRepositories?format=Entity",
+            "Name": null,
+            "Type": "ExternalRepositoryList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/nas",
+            "Name": null,
+            "Type": "NasService"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpPolicies?format=Entity",
+            "Name": null,
+            "Type": "CdpPolicyList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplicaSessions?format=Entity",
+            "Name": null,
+            "Type": "CdpReplicaSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplicaTaskSessions?format=Entity",
+            "Name": null,
+            "Type": "CdpReplicaTaskSessionList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/vAppReplicaPoints?format=Entity",
+            "Name": null,
+            "Type": "VAppReplicaPointList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplica/vms?format=Entity",
+            "Name": null,
+            "Type": "VmCdpReplicaList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/cdpReplica/vApps?format=Entity",
+            "Name": null,
+            "Type": "VAppCdpReplicaList"
+        },
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/systemSessions?format=Entity",
+            "Name": null,
+            "Type": "BackupJobSessionList"
+        },
+        {
+            "Rel": "Delete",
+            "Href": "https://myhost.mydomain.org:9398/api/logonSessions/b9a759dd-4496-4f50-8fc0-f925aa283f8d",
+            "Name": null,
+            "Type": null
+        }
+    ],
+    "Href": "https://myhost.mydomain.org:9398/api/logonSessions/b9a759dd-4496-4f50-8fc0-f925aa283f8d",
+    "Type": "LogonSession"
+}

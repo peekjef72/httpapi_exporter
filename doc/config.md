@@ -19,8 +19,14 @@ global:
   # list of allowed tls version, meaning authorized ciphers for https connections
   #   all, tls_upto_1.2, tls_1.2 ,tls_1.3
   # tls_version: "tls_upto_1.2,tls_1.2,tls_1.3" or "all"
+  # default values for config parameters
+  # up_help: "if the target is reachable 1, or 0 if the scrape failed"
+  # scrape_duration_help: "How long it took to scrape the target in seconds"
+  # collector_status_help: "collector scripts status 0: error - 1: ok - 2: Invalid login 3: Timeout"
+  # query_status_help: "query http status label by phase(url): http return code"
+  # we take priority over command line parameter
+  # log.level: info
 
-#
 profiles: # list of profile_configs
   # profile_config definition : map of profile names with  metric_prefix and scripts mapping.
   <profile_name>:

@@ -1,0 +1,15 @@
+{
+    "ProtectedVms": 2375,
+    "BackedUpVms": 2375,
+    "ReplicatedVms": 0,
+    "RestorePoints": 2381,
+    "FullBackupPointsSize": 4288675840,
+    "IncrementalBackupPointsSize": 32273652719616,
+    "ReplicaRestorePointsSize": 0,
+    "SourceVmsSize": 388126819079242,
+    "SuccessBackupPercents": 100,
+    "ProtectedVmsReportLink": "Workspace/ViewReport.aspx?definition=8a56d84f-1790-4f54-ab20-2e0bfdefa16b&ShowParams=1",
+    "Links": null,
+    "Href": null,
+    "Type": null
+}

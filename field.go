@@ -7,9 +7,7 @@ import (
 	"html"
 	"log/slog"
 	"reflect"
-	"strconv"
 
-	"github.com/dop251/goja_nodejs/require"
 	"github.com/peekjef72/httpapi_exporter/goja_modules"
 
 	"github.com/spf13/cast"
@@ -32,6 +30,7 @@ type Field struct {
 	raw     string
 	vartype int
 	tmpl    *exporterTemplate
+	vars    *Variable
 	jscode  *goja_modules.JSCode
 }
 
@@ -43,8 +42,9 @@ const (
 )
 
 // create a new key or value Field that can be a GO template
-func NewField(name string, customTemplate *exporterTemplate, registry *require.Registry) (*Field, error) {
+func NewField(name string, customTemplate *exporterTemplate, registry *goja_modules.JSRegistry) (*Field, error) {
 	var (
+		vars    *Variable
 		tmpl    *ttemplate.Template
 		err     error
 		vartype int = field_raw
@@ -70,8 +70,9 @@ func NewField(name string, customTemplate *exporterTemplate, registry *require.R
 			vartype = field_template
 		}
 	} else if strings.HasPrefix(name, "$") {
-		if name[0] == '$' {
-			name = name[1:]
+		vars, err = ParseVariables(name)
+		if err != nil {
+			return nil, err
 		}
 		vartype = field_var
 	} else if strings.HasPrefix(name, "js:") {
@@ -89,6 +90,7 @@ func NewField(name string, customTemplate *exporterTemplate, registry *require.R
 		raw:     name,
 		vartype: vartype,
 		tmpl:    (*exporterTemplate)(tmpl),
+		vars:    vars,
 		jscode:  jscode,
 	}, nil
 }
@@ -180,7 +182,7 @@ func (f *Field) GetValueSimple(
 		// unescape string
 		raw_data = html.UnescapeString(tmp)
 	case field_var:
-		data, err := getVar(item, f.raw, logger)
+		data, err := f.vars.GetVar(item, nil, logger)
 		if err != nil {
 			return "", err
 		}
@@ -327,68 +329,6 @@ func getSliceIndex(raw_value any, index int) any {
 	return res_value
 }
 
-func buildAttrWithIndex(
-	symtab map[string]any,
-	raw_value any,
-	var_name,
-	index_str string,
-	logger *slog.Logger,
-) (any, error) {
-	vDst := reflect.ValueOf(raw_value)
-	if vDst.Kind() == reflect.Map {
-		if index_str[0] == '$' {
-			tmp_name, _ := extract_var_name(index_str[1:])
-			raw_ind, err := getVar(symtab, tmp_name, logger)
-			if err != nil {
-				return nil, err
-			} else {
-				index_str = cast.ToString(raw_ind)
-			}
-		}
-		raw_value = getMapKey(raw_value, index_str)
-		if raw_value == nil {
-			return nil, newVarError(error_var_mapkey_not_found,
-				fmt.Sprintf("key '%s' not found in %s map", index_str, var_name))
-		}
-	} else if vDst.Kind() == reflect.Slice {
-		var index int
-
-		if index_str[0] == '$' {
-			tmp_name, _ := extract_var_name(index_str[1:])
-			raw_ind, err := getVar(symtab, tmp_name, logger)
-			if err != nil {
-				return nil, err
-			} else {
-				index = cast.ToInt(raw_ind)
-			}
-		} else {
-			if i_value, err := strconv.ParseInt(index_str, 10, 0); err != nil {
-				index = 0
-			} else {
-				index = int(i_value)
-			}
-		}
-		raw_value = getSliceIndex(raw_value, index)
-		if raw_value == nil {
-			return nil, newVarError(error_var_sliceindex_not_found,
-				fmt.Sprintf("index '%s' not found in %s array", index_str, var_name))
-		}
-	}
-	return raw_value, nil
-}
-
-func extract_var_name(name string) (string, int) {
-	var pos int
-	list := pat_var_finder.FindStringSubmatch(name)
-	if len(list) > 0 {
-		name = list[1]
-		pos = len(list[0])
-	} else {
-		pos = len(name)
-	}
-	return name, pos
-}
-
 const (
 	error_var_not_found               = iota + 1
 	error_var_invalid_type            = iota
@@ -422,99 +362,6 @@ func (e *varError) Error() string {
 
 func (e *varError) Code() int {
 	return e.code
-}
-
-// ***************************************************************************************
-func getVar(
-	symtab map[string]any,
-	attr string,
-	logger *slog.Logger,
-) (any, error) {
-	var err error
-
-	tmp_symtab := symtab
-	// split the attr string into parts: attr1.attr[0].attr
-	if attr[0] == '.' {
-		attr = attr[1:]
-	}
-	vars := strings.Split(attr, ".")
-	lenattr := len(vars) - 1
-	for idx, var_name := range vars {
-		index_str := ""
-		// check if attr refers to an another variable name $X.[...].$var_name
-		if var_name[0] == '$' {
-			tmp_name, pos := extract_var_name(var_name[1:])
-			raw_value, err := getVar(symtab, tmp_name, logger)
-			if err != nil {
-				return nil, err
-			}
-			if attr_name, ok := raw_value.(string); !ok {
-				return nil, newVarError(error_var_invalid_type, fmt.Sprintf("attribute '%s' is not of 'string' type", tmp_name))
-			} else {
-				// with format ${var_name}[x] with must append [x] to computed attribute var_name => attr_name[x]
-				if len(attr_name) < pos {
-					var_name = attr_name + var_name[pos+1:]
-				} else {
-					var_name = attr_name
-				}
-			}
-
-		}
-		// check if component contains index pos: attr[x]
-		if pos := strings.Index(var_name, "["); pos != -1 {
-			pos2 := strings.Index(var_name, "]")
-			index_str = var_name[pos+1 : pos2]
-			var_name = var_name[0:pos]
-			// remove enclosing string separators if any found
-			index_str = strings.Trim(index_str, "'`\"")
-		}
-		// try to find attribute name as key name of map element
-		if raw_value, ok := tmp_symtab[var_name]; ok {
-			if value, ok := raw_value.(*Field); ok {
-				raw_value, err = value.GetValueObject(symtab, logger)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			// special case attribute name contains '[index_str]'
-			if index_str != "" {
-				raw_value, err = buildAttrWithIndex(symtab, raw_value, var_name, index_str, logger)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			// attributes chain is not over, so we check if current element is a map so we can go on on attributes
-			if idx < lenattr {
-				vDst := reflect.ValueOf(raw_value)
-
-				// check it is a map an convert it to map[string]any
-				if vDst.Kind() == reflect.Map {
-					mAny := make(map[string]any)
-					iter := vDst.MapRange()
-					for iter.Next() {
-						raw_key := iter.Key()
-						raw_value := iter.Value()
-						mAny[raw_key.String()] = raw_value.Interface()
-					}
-					tmp_symtab = mAny
-				} else {
-					tmp_symtab = nil
-					err = newVarError(error_var_invalid_type,
-						fmt.Sprintf("attribute '%s' is not of 'map' type", var_name))
-				}
-			} else {
-				return raw_value, err
-			}
-		} else {
-			err = newVarError(error_var_not_found,
-				fmt.Sprintf("%s not found", var_name))
-			tmp_symtab = nil
-			break
-		}
-	}
-	return tmp_symtab, err
 }
 
 func (f *Field) GetValueObject(
@@ -563,7 +410,7 @@ func (f *Field) GetValueObject(
 		return data, nil
 	case field_var:
 		if symtab, ok := item.(map[string]any); ok {
-			data, err := getVar(symtab, f.raw, logger)
+			data, err := f.vars.GetVar(symtab, nil, logger)
 			if err != nil {
 				return res_slice, err
 			}
@@ -595,7 +442,7 @@ func (f *Field) String() string {
 	case field_template:
 		return f.tmpl.Tree.Root.String()
 	case field_var:
-		return "$" + f.raw
+		return f.raw
 	case field_js:
 		return f.raw
 	}

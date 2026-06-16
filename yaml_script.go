@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,7 +22,7 @@ type YAMLScript struct {
 	metricsActions  []*MetricsAction
 	setStatsActions []*SetStatsAction
 	queryActions    []*QueryAction
-	registry        *require.Registry
+	registry        *goja_modules.JSRegistry
 }
 
 //******************************************************************
@@ -50,7 +50,7 @@ type Action interface {
 	BaseAction
 	Type() int
 	TypeName() string
-	setBasicElement(registry *require.Registry, nameField *Field, vars [][]any, with []any, loopVar string, when []*Field, until []*Field) error
+	setBasicElement(registry *goja_modules.JSRegistry, nameField *Field, vars [][]any, with []any, loopVar string, when []*Field, until []*Field) error
 	PlayAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
 	CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error
 
@@ -145,7 +145,7 @@ type BaseAction interface {
 
 func setBasicElement(
 	ba BaseAction,
-	registry *require.Registry,
+	registry *goja_modules.JSRegistry,
 	nameField *Field,
 	vars [][]any,
 	with []any,
@@ -760,7 +760,7 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 // * metric_name: a metric definition
 type tmpActions []map[string]yaml.Node
 
-func build_WithItems(registry *require.Registry, raw yaml.Node) ([]any, error) {
+func build_WithItems(registry *goja_modules.JSRegistry, raw yaml.Node) ([]any, error) {
 	var listElmt []any
 	switch raw.Tag {
 	case "!!str":
@@ -843,7 +843,7 @@ func build_Cond(script *YAMLScript, raw yaml.Node) ([]*Field, error) {
 	return cond_var, nil
 }
 
-func buildMapField(registry *require.Registry, raw_maps map[string]any) (map[any]any, error) {
+func buildMapField(registry *goja_modules.JSRegistry, raw_maps map[string]any) (map[any]any, error) {
 	var err error
 	final_res := make(map[any]any)
 	for key, r_value := range raw_maps {
@@ -858,7 +858,7 @@ func buildMapField(registry *require.Registry, raw_maps map[string]any) (map[any
 	return final_res, err
 }
 
-func buildSliceField(registry *require.Registry, raw_slice []any) ([]any, error) {
+func buildSliceField(registry *goja_modules.JSRegistry, raw_slice []any) ([]any, error) {
 	var err error
 	final_res := make([]any, len(raw_slice))
 	for idx, r_value := range raw_slice {
@@ -872,7 +872,7 @@ func buildSliceField(registry *require.Registry, raw_slice []any) ([]any, error)
 	return final_res, err
 }
 
-func buildFields(registry *require.Registry, key string, val any) (map[any]any, error) {
+func buildFields(registry *goja_modules.JSRegistry, key string, val any) (map[any]any, error) {
 	var err error
 	var key_field *Field
 	var value_field any
@@ -892,7 +892,7 @@ func buildFields(registry *require.Registry, key string, val any) (map[any]any, 
 	return res, nil
 }
 
-func buildValueField(registry *require.Registry, val any) (any, error) {
+func buildValueField(registry *goja_modules.JSRegistry, val any) (any, error) {
 
 	switch curval := val.(type) {
 	case string:

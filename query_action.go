@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 )
 
 // ***************************************************************************************
@@ -31,7 +31,7 @@ type QueryActionConfig struct {
 	Trace      ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
 	Status     ConvertibleBoolean `yaml:"status,omitempty" json:"status,omitempty"`
 
-	registry *require.Registry
+	registry *goja_modules.JSRegistry
 
 	query    *Field
 	method   *Field
@@ -242,7 +242,7 @@ func (a *QueryAction) SetUntil(until []*Field) {
 }
 
 func (a *QueryAction) setBasicElement(
-	registry *require.Registry,
+	registry *goja_modules.JSRegistry,
 	nameField *Field,
 	vars [][]any,
 	with []any,

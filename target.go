@@ -26,7 +26,7 @@ const (
 	capCollectChan = 100
 
 	upMetricName        = "up"
-	upMetricHelp        = "1 if the target is reachable, or 0 if the scrape failed"
+	upMetricHelp        = "if the target is reachable 1, or 0 if the scrape failed"
 	scrapeDurationName  = "scrape_duration_seconds"
 	scrapeDurationHelp  = "How long it took to scrape the target in seconds"
 	collectorStatusName = "collector_status"

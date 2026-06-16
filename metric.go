@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/spf13/cast"
@@ -655,7 +655,7 @@ type Label struct {
 	Value *Field
 }
 
-func NewLabel(key string, value string, mName string, errStr string, customTemplate *exporterTemplate, registry *require.Registry) (*Label, error) {
+func NewLabel(key string, value string, mName string, errStr string, customTemplate *exporterTemplate, registry *goja_modules.JSRegistry) (*Label, error) {
 	var (
 		keyField, valueField *Field
 		err                  error

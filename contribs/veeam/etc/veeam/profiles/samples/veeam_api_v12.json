@@ -1,0 +1,55 @@
+{
+    "SupportedVersions": {
+        "SupportedVersions": [
+            {
+                "Links": [
+                    {
+                        "Rel": "Create",
+                        "Href": "https://myhost.mydomain.org:9398/api/sessionMngr/?v=v1_5",
+                        "Name": null,
+                        "Type": "LogonSession"
+                    }
+                ],
+                "Name": "v1_5"
+            },
+            {
+                "Links": [
+                    {
+                        "Rel": "Create",
+                        "Href": "https://myhost.mydomain.org:9398/api/sessionMngr/?v=v1_6",
+                        "Name": null,
+                        "Type": "LogonSession"
+                    }
+                ],
+                "Name": "v1_6"
+            },
+            {
+                "Links": [
+                    {
+                        "Rel": "Create",
+                        "Href": "https://myhost.mydomain.org:9398/api/sessionMngr/?v=v1_7",
+                        "Name": null,
+                        "Type": "LogonSession"
+                    }
+                ],
+                "Name": "v1_7"
+            }
+        ]
+    },
+    "Links": [
+        {
+            "Rel": "Down",
+            "Href": "https://myhost.mydomain.org:9398/api/logonSessions",
+            "Name": null,
+            "Type": "LogonSessionList"
+        },
+        {
+            "Rel": "Create",
+            "Href": "https://myhost.mydomain.org:9398/api/sessionMngr/?v=latest",
+            "Name": null,
+            "Type": "LogonSession"
+        }
+    ],
+    "Href": null,
+    "Type": null
+}

@@ -1,0 +1,149 @@
+{
+    "Refs": null,
+    "Entities": {
+        "Jobs": null,
+        "FailoverPlans": null,
+        "Backups": null,
+        "Replicas": null,
+        "Repositories": null,
+        "RestorePoints": null,
+        "VmRestorePoints": null,
+        "VAppRestorePoints": null,
+        "VmReplicaPoints": null,
+        "BackupJobSessions": null,
+        "ReplicaJobSessions": null,
+        "ReplicaTaskSessions": null,
+        "RestoreSessions": null,
+        "HierarchyRoots": null,
+        "BackupTaskSessions": {
+            "BackupTaskSessions": [
+                {
+                    "JobSessionUid": "urn:veeam:BackupJobSession:ddf1d66d-0ee8-4964-8da3-3780f3f9775f",
+                    "CreationTimeUTC": "2026-06-15T05:50:19.807Z",
+                    "EndTimeUTC": "2026-06-15T05:50:44.62Z",
+                    "State": "Completed",
+                    "Result": "Success",
+                    "Reason": "",
+                    "TotalSize": 0,
+                    "VmUid": "urn:VMware:Vm:5b08bf82-530a-4cca-ac1a-8327b68250bd.vm-1411027",
+                    "VmDisplayName": "MYHOST",
+                    "Name": "MYHOST@2026-06-15 05:50:19",
+                    "UID": "urn:veeam:BackupTaskSession:5c8add49-6b08-4147-bc38-00293667728a",
+                    "Links": [
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupServers/4539f94d-28f2-492f-9d08-bc76739d1ce2",
+                            "Name": "myhost.mydomain.org",
+                            "Type": "BackupServerReference"
+                        },
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/ddf1d66d-0ee8-4964-8da3-3780f3f9775f",
+                            "Name": "COPY_OPER_WIN_S3\\\\BACKUP_C2_OPER_WIN@2026-06-15 05:46:47",
+                            "Type": "BackupJobSessionReference"
+                        },
+                        {
+                            "Rel": "Alternate",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/5c8add49-6b08-4147-bc38-00293667728a",
+                            "Name": "MYHOST@2026-06-15 05:50:19",
+                            "Type": "BackupTaskSessionReference"
+                        }
+                    ],
+                    "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/5c8add49-6b08-4147-bc38-00293667728a?format=Entity",
+                    "Type": "BackupTaskSession"
+                },
+                {
+                    "JobSessionUid": "urn:veeam:BackupJobSession:ddf1d66d-0ee8-4964-8da3-3780f3f9775f",
+                    "CreationTimeUTC": "2026-06-15T05:49:18.99Z",
+                    "EndTimeUTC": "2026-06-15T05:49:37.723Z",
+                    "State": "Completed",
+                    "Result": "Success",
+                    "Reason": "",
+                    "TotalSize": 0,
+                    "VmUid": "urn:VMware:Vm:5b08bf82-530a-4cca-ac1a-8327b68250bd.vm-3355073",
+                    "VmDisplayName": "MYHOST2",
+                    "Name": "MYHOST2@2026-06-15 05:49:18",
+                    "UID": "urn:veeam:BackupTaskSession:63f5c565-ef34-441f-ad7f-005efb16ca91",
+                    "Links": [
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupServers/4539f94d-28f2-492f-9d08-bc76739d1ce2",
+                            "Name": "myhost.mydomain.org",
+                            "Type": "BackupServerReference"
+                        },
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/ddf1d66d-0ee8-4964-8da3-3780f3f9775f",
+                            "Name": "COPY_OPER_WIN_S3\\\\BACKUP_C2_OPER_WIN@2026-06-15 05:46:47",
+                            "Type": "BackupJobSessionReference"
+                        },
+                        {
+                            "Rel": "Alternate",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/63f5c565-ef34-441f-ad7f-005efb16ca91",
+                            "Name": "MYHOST2@2026-06-15 05:49:18",
+                            "Type": "BackupTaskSessionReference"
+                        }
+                    ],
+                    "Href": "https://myhost.mydomain.org:9398/api/backupTaskSessions/63f5c565-ef34-441f-ad7f-005efb16ca91?format=Entity",
+                    "Type": "BackupTaskSession"
+                }
+            ]
+        },
+        "BackupServers": null,
+        "ManagedServers": null,
+        "EnterpiseRoles": null,
+        "EnterpiseAccounts": null,
+        "WanAccelerators": null,
+        "CloudGateways": null,
+        "CloudTenants": null,
+        "CloudReplicas": null,
+        "VCloudOrganizationConfigs": null,
+        "BackupFiles": null,
+        "VSphereSelfServiceConfigs": null,
+        "CloudPublicIps": null,
+        "CloudHardwarePlans": null,
+        "CloudVmReplicaPoints": null,
+        "AgentRestorePoints": null,
+        "AgentBackupJob": null,
+        "CloudGatewayPools": null,
+        "CloudFailoverPlans": null,
+        "ExternalRepositories": null,
+        "VlanConfigurations": null,
+        "CloudFailoverSessions": null,
+        "AgentProtectionGroups": null,
+        "DiscoveredComputers": null,
+        "FileServers": null,
+        "NASJobs": null,
+        "CdpReplicas": null,
+        "CdpReplicaVms": null,
+        "CdpPolicies": null,
+        "CdpReplicaSessions": null,
+        "CdpReplicaTaskSessions": null,
+        "VAppReplicaPoints": null,
+        "VmCdpReplicas": null,
+        "VAppCdpReplicas": null,
+        "VAppCdpReplicaVms": null,
+        "SystemSessions": null
+    },
+    "Resources": null,
+    "Links": null,
+    "PagingInfo": {
+        "Links": [
+            {
+                "Rel": "First",
+                "Href": "https://myhost.mydomain.org:9398/api/query?type=BackupTaskSession&format=Entities&filter=CreationTime%3e%3d%222026-06-15T00%3a21%3a49%22&pageSize=100&page=1",
+                "Name": null,
+                "Type": null
+            },
+            {
+                "Rel": "Last",
+                "Href": "https://myhost.mydomain.org:9398/api/query?type=BackupTaskSession&format=Entities&filter=CreationTime%3e%3d%222026-06-15T00%3a21%3a49%22&pageSize=100&page=1",
+                "Name": null,
+                "Type": null
+            }
+        ],
+        "PageNum": 1,
+        "PageSize": 100,
+        "PagesCount": 1
+    }
+}

@@ -226,9 +226,15 @@ func GetIdentifiers(p *ast.Program) map[string]string {
 
 //********************************************************************
 
+type JSRegistry struct {
+	Modules  map[string]string
+	registry *require.Registry
+}
+
 // to store info on a js prog
 type JSCode struct {
-	registry *require.Registry
+	registry *JSRegistry
+	modules  map[string]string
 	prog     *goja.Program
 	vm       *goja.Runtime
 	logger   *slog.Logger
@@ -236,7 +242,7 @@ type JSCode struct {
 	// func_map map[string]any
 }
 
-func NewJSCode(registry *require.Registry, code string) (*JSCode, error) {
+func NewJSCode(registry *JSRegistry, code string) (*JSCode, error) {
 	jsCode := &JSCode{
 		registry: registry,
 	}
@@ -254,13 +260,19 @@ func NewJSCode(registry *require.Registry, code string) (*JSCode, error) {
 	jsCode.prog = prog
 	// jsCode.func_map = func_map
 
-	jsCode.initRunTime()
+	if err := jsCode.initRunTime(); err != nil {
+		return nil, err
+	}
 
 	return jsCode, nil
 }
 
-func InitJSRegistry(logger *slog.Logger, func_map map[string]any) (*require.Registry, LoggerPrinter) {
-	registry := new(require.Registry)
+func InitJSRegistry(logger *slog.Logger, func_map map[string]any) (*JSRegistry, LoggerPrinter) {
+
+	reg := &JSRegistry{
+		registry: new(require.Registry),
+		Modules:  make(map[string]string),
+	}
 
 	// console module init
 	print := &logger_printer{
@@ -268,25 +280,25 @@ func InitJSRegistry(logger *slog.Logger, func_map map[string]any) (*require.Regi
 	}
 
 	func_val := console.RequireWithPrinter(print)
-	registry.RegisterNativeModule(console.ModuleName, func_val)
+	reg.registry.RegisterNativeModule(console.ModuleName, func_val)
 
 	// exporter module init
 	mod := &jsModExporterFunc{
 		func_map: func_map,
 	}
-	registry.RegisterNativeModule(exporter.ModuleName, exporter.RequireWithJSModFuncMap(mod))
+	reg.registry.RegisterNativeModule(exporter.ModuleName, exporter.RequireWithJSModFuncMap(mod))
 
 	// fs module init
-	registry.RegisterNativeModule(goja_fs.ModuleName, nil)
+	reg.registry.RegisterNativeModule(goja_fs.ModuleName, nil)
 
-	return registry, print
+	return reg, print
 
 }
 
-func (jsCode *JSCode) initRunTime() {
+func (jsCode *JSCode) initRunTime() error {
 	jsCode.vm = goja.New()
 
-	jsCode.registry.Enable(jsCode.vm)
+	required_modules := jsCode.registry.registry.Enable(jsCode.vm)
 
 	console.Enable(jsCode.vm)
 
@@ -294,6 +306,18 @@ func (jsCode *JSCode) initRunTime() {
 
 	goja_fs.Enable(jsCode.vm)
 
+	for module_name, module_path := range jsCode.registry.Modules {
+
+		module, err := required_modules.Require(module_path)
+		if err != nil {
+			if jsCode.logger != nil {
+				jsCode.logger.Error(err.Error())
+			}
+			return err
+		}
+		jsCode.vm.Set(module_name, module)
+	}
+	return nil
 }
 
 // LoggerPrinter is the interface for printing log messages from JavaScript console module

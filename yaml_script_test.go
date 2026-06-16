@@ -22,6 +22,421 @@ func initTest() {
 
 // doc
 //
+// parse $var
+//
+// => variable 'var' and no attribute
+func TestParseVar(t *testing.T) {
+	initTest()
+
+	test := "$var"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, variable.vartype == vartype_var,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, variable.raw, variable.vartype),
+		)
+		assert.True(t, len(variable.attributes) == 0,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, variable.raw, variable.attributes),
+		)
+	}
+}
+
+// doc2
+//
+// parse $var.attr1
+//
+// => variable 'var' and 1 attribute 'attr1'
+func TestParseVar2(t *testing.T) {
+	initTest()
+
+	test := "$var.attr1"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, variable.raw, variable.attributes),
+		)
+		assert.True(t, variable.attributes[0].raw == "attr1",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "attr1"),
+		)
+		assert.True(t, variable.attributes[0].vartype == vartype_attribute,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, variable.raw, variable.attributes[0].vartype),
+		)
+	}
+}
+
+// doc
+//
+// parse $var['attr1'] idem $var.attr1
+//
+// => variable 'var' 1 attribute 'attr1'
+func TestParseVar3(t *testing.T) {
+	initTest()
+
+	test := "$var['attr1]"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, variable.raw, variable.attributes),
+		)
+		assert.True(t, variable.attributes[0].raw == "attr1",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "attr1"),
+		)
+	}
+}
+
+// doc4
+//
+// parse $var[$var2.attr]
+//
+// => variable 'var' 1 attribute 'var2'
+//
+//	var2 type variable with 1 attribute attr
+func TestParseVar4(t *testing.T) {
+	initTest()
+
+	test := "$var[$var2.attr]"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, variable.raw, variable.attributes),
+		)
+		sub_attr := variable.attributes[0]
+
+		assert.True(t, sub_attr.raw == "var2",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "var2"),
+		)
+		assert.True(t, sub_attr.vartype == vartype_var,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+		)
+		assert.True(t, len(sub_attr.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, sub_attr.raw, sub_attr.attributes),
+		)
+		assert.True(t, sub_attr.attributes[0].raw == "attr",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.attributes[0].raw, "attr"),
+		)
+		assert.True(t, sub_attr.attributes[0].vartype == vartype_attribute,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.attributes[0].vartype),
+		)
+	}
+}
+
+// doc5
+//
+// parse $var[$var2.attr].attr2
+//
+// => variable 'var' 2 attributes, 'var2.XXX', attr2
+//
+// - var2 type variable with 1 attribute attr
+//
+// - attr2 type attr without attribute
+func TestParseVar5(t *testing.T) {
+	initTest()
+
+	test := "$var[$var2.attr].attr2"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 2,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 2: %v`, variable.raw, variable.attributes),
+		)
+
+		sub_attr := variable.attributes[0]
+
+		assert.True(t, sub_attr.raw == "var2",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "var2"),
+		)
+		assert.True(t, sub_attr.vartype == vartype_var,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+		)
+		assert.True(t, len(sub_attr.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, sub_attr.raw, sub_attr.attributes),
+		)
+		assert.True(t, sub_attr.attributes[0].raw == "attr",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.attributes[0].raw, "attr"),
+		)
+		assert.True(t, sub_attr.attributes[0].vartype == vartype_attribute,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.attributes[0].vartype),
+		)
+
+		sub_attr = variable.attributes[1]
+		assert.True(t, sub_attr.raw == "attr2",
+			fmt.Sprintf(`TestParseVar("%s") attribute2 value differ: %s`, variable.attributes[0].raw, "attr2"),
+		)
+		assert.True(t, sub_attr.vartype == vartype_attribute,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+		)
+		assert.True(t, len(sub_attr.attributes) == 0,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
+		)
+
+	}
+}
+
+// doc6
+//
+// parse $var[$var2.attr].attr2['attr3']
+//
+// => variable 'var' 3 attributes, 'var2.XXX', attr2, attr3
+//
+// - var2 type variable with 1 attribute attr
+//
+// - attr2 type attr without attribute
+//
+// - attr3 type attr without attribute
+func TestParseVar6(t *testing.T) {
+	initTest()
+
+	test := "$var[$var2.attr].attr2['attr3']"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 3,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 3: %v`, variable.raw, variable.attributes),
+		)
+		var sub_attr *Variable
+
+		if len(variable.attributes) > 0 {
+			sub_attr = variable.attributes[0]
+
+			assert.True(t, sub_attr.raw == "var2",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "var2"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_var,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 1,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+			assert.True(t, sub_attr.attributes[0].raw == "attr",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.attributes[0].raw, "attr"),
+			)
+			assert.True(t, sub_attr.attributes[0].vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.attributes[0].vartype),
+			)
+		}
+
+		if len(variable.attributes) > 1 {
+			sub_attr = variable.attributes[1]
+			assert.True(t, sub_attr.raw == "attr2",
+				fmt.Sprintf(`TestParseVar("%s") attribute2 value differ: %s`, sub_attr.raw, "attr2"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 0,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+		}
+		if len(variable.attributes) > 2 {
+
+			sub_attr = variable.attributes[2]
+			assert.True(t, sub_attr.raw == "attr3",
+				fmt.Sprintf(`TestParseVar("%s") attribute3 value differ: %s`, sub_attr.raw, "attr2"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 0,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+		}
+	}
+}
+
+// doc7
+// parse "$var1[$var2.attr1.attr2[$var3.attr3.attr4.attr5]].attr6.attr7"
+//
+// => variable 'var' 3 attributes, 'var2.XXX', attr6, attr7
+//
+// - var2 type variable with 3 attributes attr1, attr2, var3[xxx]
+//
+// - attr6 type attr without attribute
+//
+// - attr7 type attr without attribute
+func TestParseVar7(t *testing.T) {
+	initTest()
+
+	test := "$var1[$var2.attr1.attr2[$var3.attr3.attr4.attr5]].attr6.attr7"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var1",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var1"),
+		)
+		assert.True(t, len(variable.attributes) == 3,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 3: %v`, variable.raw, variable.attributes),
+		)
+		var sub_attr *Variable
+
+		if len(variable.attributes) > 0 {
+			sub_attr = variable.attributes[0]
+
+			assert.True(t, sub_attr.raw == "var2",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "var2"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_var,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 3,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 3: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+			assert.True(t, sub_attr.attributes[0].raw == "attr1",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.attributes[0].raw, "attr1"),
+			)
+			assert.True(t, sub_attr.attributes[0].vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.attributes[0].vartype),
+			)
+
+			if len(sub_attr.attributes) > 2 {
+				sub_attr = sub_attr.attributes[2]
+				assert.True(t, sub_attr.raw == "var3",
+					fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.raw, "var3"),
+				)
+				assert.True(t, sub_attr.vartype == vartype_var,
+					fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+				)
+				assert.True(t, len(sub_attr.attributes) == 3,
+					fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 3: %v`, sub_attr.raw, sub_attr.attributes),
+				)
+			}
+		}
+
+		if len(variable.attributes) > 2 {
+
+			sub_attr = variable.attributes[2]
+			assert.True(t, sub_attr.raw == "attr7",
+				fmt.Sprintf(`TestParseVar("%s") attribute4 value differ: %s`, sub_attr.raw, "attr7"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 0,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+		}
+
+	}
+}
+
+// doc8
+//
+// parse $var.$attr1
+//
+// => variable 'var' and 1 attribute 'attr1' of typ vartype_var
+func TestParseVar8(t *testing.T) {
+	initTest()
+
+	test := "$var.$attr1"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, variable.raw, variable.attributes),
+		)
+		assert.True(t, variable.attributes[0].raw == "attr1",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "attr1"),
+		)
+		assert.True(t, variable.attributes[0].vartype == vartype_var,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, variable.raw, variable.attributes[0].vartype),
+		)
+	}
+}
+
+// doc9
+//
+// parse $var1.${var2.attr1}.attr2
+//
+// => variable 'var1' and 2 attributes
+//
+// - 'var2' of type vartype_var with 1 attr
+//
+// - attr2 type attr without attribute
+func TestParseVar9(t *testing.T) {
+	initTest()
+
+	test := "$var1.${var2.attr1}.attr2"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var1",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var1"),
+		)
+		assert.True(t, len(variable.attributes) == 2,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 2: %v`, variable.raw, variable.attributes),
+		)
+		var sub_attr *Variable
+
+		if len(variable.attributes) > 0 {
+			sub_attr = variable.attributes[0]
+
+			assert.True(t, sub_attr.raw == "var2",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "var2"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_var,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 1,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+			if len(sub_attr.attributes) > 1 {
+				sub_attr = sub_attr.attributes[1]
+				assert.True(t, sub_attr.raw == "attr1",
+					fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.raw, "attr1"),
+				)
+				assert.True(t, sub_attr.vartype == vartype_attribute,
+					fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+				)
+				assert.True(t, len(sub_attr.attributes) == 0,
+					fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
+				)
+			}
+		}
+
+		if len(variable.attributes) > 1 {
+			sub_attr = variable.attributes[1]
+			assert.True(t, sub_attr.raw == "attr2",
+				fmt.Sprintf(`TestParseVar("%s") attribute2 value differ: %s`, sub_attr.raw, "attr2"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+			assert.True(t, len(sub_attr.attributes) == 0,
+				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
+			)
+		}
+	}
+}
+
+//******************************************
+//* valorize variables
+//******************************************
+
+// doc
+//
 //	symtab = {
 //		"var": 1,
 //	}
@@ -761,7 +1176,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 	// 	t.Errorf(`ValorizeValue("%s") error: %s`, var_name, err.Error())
 	// }
 
-	test_name := `$mymap.$var_name`
+	test_name := `$mymap[$var_name]`
 	name, err := NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
@@ -778,7 +1193,7 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 	}
 
 	symtab["var_name"] = "sub_map"
-	test_name = `$mymap.$var_name.key1_2`
+	test_name = `$mymap[$var_name].key1_2`
 	name, err = NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
@@ -812,8 +1227,8 @@ func TestValorizeValueMap2LvlVarName2Var(t *testing.T) {
 //		    "sub_list",
 //	   ],
 //	  "var_name": "sub_list",
-//	  "test": "$mymap.${var_name}[0]",
-//	  "test2": "$mymap.${test_var[0]}[1]",
+//	  "test": "$mymap[$var_name}][0]",
+//	  "test2": "$mymap[$test_var[0]][1]",
 //	}
 //
 // check:
@@ -837,7 +1252,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndex(t *testing.T) {
 
 	symtab["var_name"] = "sub_list"
 
-	test_name := `$mymap.${var_name}[0]`
+	test_name := `$mymap[$var_name][0]`
 	name, err := NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())
@@ -853,7 +1268,7 @@ func TestValorizeValueMap2LvlVarName2VarWithIndex(t *testing.T) {
 		}
 	}
 
-	test_name = `$mymap.${test_var[0]}[1]`
+	test_name = `$mymap[$test_var[0]][1]`
 	name, err = NewField(test_name, nil, nil)
 	if err != nil {
 		t.Errorf(`ValorizeValue("%s") error: %s`, test_name, err.Error())

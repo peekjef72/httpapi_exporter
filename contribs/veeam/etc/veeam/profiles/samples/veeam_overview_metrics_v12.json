@@ -1,0 +1,13 @@
+{
+    "BackupServers": 10,
+    "ProxyServers": 65,
+    "RepositoryServers": 86,
+    "RunningJobs": 0,
+    "ScheduledJobs": 79,
+    "SuccessfulVmLastestStates": 2071,
+    "WarningVmLastestStates": 0,
+    "FailedVmLastestStates": 0,
+    "Links": null,
+    "Href": null,
+    "Type": null
+}

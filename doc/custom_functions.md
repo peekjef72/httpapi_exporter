@@ -57,9 +57,13 @@ exporter.decryptPass(varstring) | | |
 exporter.getDurationSecond() | | |
 exporter.getHeader([varmap] ) | | |
 exporter.getCookie( [varmap] ) | | |
+exporter.length( Any ) | return length of element; if type is string returns length of string, else if map or slice return number of element in object | 'js: export.length( jobs ) > 0' |
 exporter.lookupAddr( hostname string ) | obtain hostname from string representing an ip address ; like sprig/getHostByName but for string ip | 'js: exporter.lookupAddr( node.ipaddress)' |
 exporter.queryEscape( url string ) | | |
 exporter.getDurationSecond( string ) | | "js: exporter.getDurationSecond( '1d2h30s' )" |
+exporter.date(string format, int timestamp) | convert the numeric timestamp into a string using go format | "js: exporter.date("2006-01-02T15:04:05", startTime);" |
+exporter.toDate(fmt, string_date) | parse string_date using pattern golang format and return a js Date object | "js: exporter.toDate("2006-01-02T15:04:05Z", item.CreationTimeUTC)" |
+exporter.sha1sum( string ) or exporter.sha256sum( string ) or exporter.sha512sum( string ) | compute sha sum of string; useful to obtain unique hash key of string | "js: exporter.sha1sum( 'my_key' )" |
 
 ### modules
 

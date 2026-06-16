@@ -1,0 +1,62 @@
+---
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+##
+## Veeam Enterprise Manager Overview. Overview of Backup Infrastructure and Job Status
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/get_reports_summary_overview.html?ver=110
+## docs: https://helpcenter.veeam.com/docs/vbr/em_rest/get_reports_summary_overview.html
+###
+#
+
+collector_name: veeam_overview_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_overview
+
+scripts:
+  get veeam_overview:
+    - name: init names
+      when: "js: typeof veeamNames === 'undefined'"
+      set_fact:
+        veeamNames: 'js: veeam.veeamNames(veeam_version)'
+
+    - name: collect elements
+      query:
+        url: /reports/summary/overview
+        var_name: results
+        # debug: true
+
+    - name: proceed elements
+      loop:
+        - type: backup
+          count_type: server
+          value: $results[$veeamNames.backupServers]
+        - type: proxy
+          count_type: server
+          value: $results[$veeamNames.proxyServers]
+        - type: repository
+          count_type: server
+          value: $results[$veeamNames.repositoryServers]
+        - type: scheduled_jobs
+          count_type: tasks
+          value: $results[$veeamNames.scheduledJobs]
+        - type: successful_vms
+          count_type: tasks
+          value: $results[$veeamNames.successfulVmLastestStates]
+        - type: warning_vms
+          count_type: tasks
+          value: $results[$veeamNames.warningVmLastestStates]
+        - type: failed_vms
+          count_type: tasks
+          value: $results[$veeamNames.failedVmLastestStates]
+
+      metrics:
+        - metric_name: element_count
+          help: count by type "backup", "proxy", "repository", "scheduled_jobs", "successful_vms", "warning_vms"
+          type: gauge
+          key_labels:
+            type: $type
+            count_type: $count_type
+          values:
+            _: $value
+
+...

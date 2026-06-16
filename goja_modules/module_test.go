@@ -416,3 +416,106 @@ func TestJSModuleExporterGetDurationSecond(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "can't extract duration"), "invalid error:", err.Error())
 
 }
+
+func TestJSModuleExporterDate(t *testing.T) {
+	registry, _ := InitJSRegistry(nil, template.Js_func_map())
+
+	symtab := make(map[string]any)
+
+	// test 1 - convert timestamp int64 s to string using go format
+	code := `
+		exporter.date("2006-01-02T15:04:05", startTime);
+	`
+
+	js, err := NewJSCode(registry, code)
+	if err != nil {
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDate compilation error: %s`, err.Error()))
+		return
+	}
+
+	// timestamp for 2026-06-07T15:32:46
+	symtab["startTime"] = 1780839166
+
+	res, err := js.Run(symtab, nil)
+	assert.Nil(t, err)
+	if date, ok := res.(string); !ok {
+		assert.True(t, ok, "invalid type for result ")
+	} else {
+		assert.True(t, date == "2026-06-07T15:32:46", "incorrect value obtained", date)
+	}
+
+	// test 2
+	symtab["startDate"] = "2026-06-07T15:32:46"
+
+	// code = `
+	// 	date = exporter.toDate("2006-01-02T15:04:05", startDate);
+	// 	Math.floor( date.getTime() / 1000 );
+	// `
+	code = `
+		exporter.toDate("2006-01-02T15:04:05", startDate)
+	`
+
+	js, err = NewJSCode(registry, code)
+	if err != nil {
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDate compilation error: %s`, err.Error()))
+		return
+	}
+
+	res, err = js.Run(symtab, nil)
+	assert.Nil(t, err)
+	if r_time, ok := res.(int64); !ok {
+		assert.True(t, ok, "invalid type for result ")
+	} else {
+		assert.True(t, int(r_time) == symtab["startTime"].(int), "incorrect value obtained", r_time)
+	}
+
+	// test 3
+	symtab["startDate"] = "2026-06-07T15:32:46Z"
+
+	code = `
+		exporter.toDate("2006-01-02T15:04:05Z", startDate);
+	`
+
+	js, err = NewJSCode(registry, code)
+	if err != nil {
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDate compilation error: %s`, err.Error()))
+		return
+	}
+
+	res, err = js.Run(symtab, nil)
+	assert.Nil(t, err)
+	if r_time, ok := res.(int64); !ok {
+		assert.True(t, ok, "invalid type for result ")
+	} else {
+		assert.True(t, int(r_time) == symtab["startTime"].(int), "incorrect value obtained", r_time)
+	}
+
+}
+
+// func TestJSModuleGetDate(t *testing.T) {
+// 	registry, _ := InitJSRegistry(nil, template.Js_func_map())
+
+// 	symtab := make(map[string]any)
+
+// 	// test 1
+// 	code := `
+// 		new Date("2026-06-07T15:32:46");
+// 	`
+
+// 	js, err := NewJSCode(registry, code)
+// 	if err != nil {
+// 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleGetDate compilation error: %s`, err.Error()))
+// 		return
+// 	}
+
+// 	// timestamp for 2026-06-07T15:32:46
+// 	symtab["startTime"] = 1780839166
+
+// 	res, err := js.Run(symtab, nil)
+// 	assert.Nil(t, err)
+// 	if date, ok := res.(time.Time); !ok {
+// 		assert.True(t, ok, "invalid type for result ")
+// 	} else {
+// 		assert.True(t, date.Format("2006-01-02T15:04:05") == "2026-06-07T15:32:46", "incorrect value obtained", date)
+// 	}
+// }

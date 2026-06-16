@@ -3,30 +3,38 @@
 # https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
 ##
 ## Veeam Enterprise Manager Overview. Overview of Job Statistics
+## doc: https://helpcenter.veeam.com/docs/vbr/em_rest/get_reports_summary_statistics.html?ver=13
 ###
+#
 
-collector_name: job_overview_metrics
+collector_name: veeam_job_overview_metrics
 # no cache
 # min_interval: 0s
 metric_prefix: veeam_em_overview_jobs
 
 scripts:
   get jobs_overview:
+    - name: init names
+      when: "js: typeof jobStatisticsNames === 'undefined'"
+      set_fact:
+        jobStatisticsNames: 'js: veeam.jobStatisticsNames(veeam_version)'
+
     - name: collect elements
       query:
         url: /reports/summary/job_statistics
         var_name: results
+        # debug: true
 
     - name: proceed elements count
       with_items: 
         - type: running
-          value: $results.RunningJobs
+          value: $results[$jobStatisticsNames.runningJobs]
         - type: scheduled
-          value: $results.ScheduledJobs
+          value: $results[$jobStatisticsNames.scheduledJobs]
         - type: scheduled_backup
-          value: $results.ScheduledBackupJobs
+          value: $results[$jobStatisticsNames.scheduledBackupJobs]
         - type: scheduled_replica
-          value: $results.ScheduledReplicaJobs
+          value: $results[$jobStatisticsNames.scheduledReplicaJobs]
       metrics:
         - metric_name: count
           help: various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"
@@ -39,13 +47,13 @@ scripts:
     - name: proceed elements count
       with_items: 
           - type: total
-            value: $results.TotalJobRuns
+            value: $results[$jobStatisticsNames.totalJobRuns]
           - type: successful
-            value: $results.SuccessfulJobRuns
+            value: $results[$jobStatisticsNames.successfulJobRuns]
           - type: warning
-            value: $results.WarningsJobRuns
+            value: $results[$jobStatisticsNames.warningsJobRuns]
           - type: failed
-            value: $results.FailedJobRuns
+            value: $results[$jobStatisticsNames.failedJobRuns]
       metrics:
         - metric_name: runs_count
           help: total number of job runs by type "total", "successful", "warning", "failed"
@@ -59,13 +67,13 @@ scripts:
       with_items: 
           - type: job
             jobname: ""
-            value: $results.MaxJobDuration
+            value: $results[$jobStatisticsNames.maxJobDuration]
           - type: backupjob
-            jobname: $results.MaxDurationBackupJobName
-            value: $results.MaxBackupJobDuration
+            jobname: $results[$jobStatisticsNames.maxDurationBackupJobName]
+            value: $results[$jobStatisticsNames.maxBackupJobDuration]
           - type: replicajob
-            jobname: $results.MaxDurationReplicaJobName
-            value: $results.MaxReplicaJobDuration
+            jobname: $results[$jobStatisticsNames.maxDurationReplicaJobName]
+            value: $results[$jobStatisticsNames.maxReplicaJobDuration]
       metrics:
         - metric_name: max_duration
           help: max duration for job by type and name of longest

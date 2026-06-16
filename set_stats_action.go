@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 )
 
 // ***************************************************************************************
@@ -93,7 +93,7 @@ func (a *SetStatsAction) SetUntil(until []*Field) {
 }
 
 func (a *SetStatsAction) setBasicElement(
-	registry *require.Registry,
+	registry *goja_modules.JSRegistry,
 	nameField *Field,
 	vars [][]any,
 	with []any,

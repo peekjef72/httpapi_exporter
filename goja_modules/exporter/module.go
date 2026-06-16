@@ -1,11 +1,43 @@
 package exporter
 
 import (
+	// "fmt"
+	// "time"
+
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
 )
 
 const ModuleName = "exporter"
+
+// type ModuleExporter struct {
+// 	runtime *goja.Runtime
+// 	module  *goja.Object
+// }
+
+// func js_toDate(format string, str string) (time.Time, error) {
+// 	ret_t, err := time.ParseInLocation(format, str, time.Local)
+// 	if err != nil {
+// 		err := fmt.Errorf("can't parse date from string: %s", err.Error())
+// 		return time.Now(), err
+// 	}
+// 	return ret_t, nil
+// }
+
+// func (e *ModuleExporter) Call(f func(string, string)) func(goja.FunctionCall) goja.Value {
+// 	return func(call goja.FunctionCall) goja.Value {
+// 		if toDate, ok := goja.AssertFunction(e.module.Get("test_func")); ok {
+// 			ret, err := toDate(call.Arguments...)
+// 			if err != nil {
+// 				panic(err)
+// 			}
+// 			return e.runtime.NewDate(ret)
+// 		} else {
+// 			panic(e.runtime.NewTypeError("util.format is not a function"))
+// 		}
+// 		// return nil
+// 	}
+// }
 
 type JSModExporterFunc interface {
 	GetJSFuncMap() map[string]any
@@ -39,7 +71,11 @@ func requireWithJSModFuncMap(func_map JSModExporterFunc) require.ModuleLoader {
 		for func_name, func_code := range func_map.GetJSFuncMap() {
 			o.Set(func_name, func_code)
 		}
-
+		// exporter := &ModuleExporter{
+		// 	runtime: runtime,
+		// 	module:  o,
+		// }
+		// o.Set("test_func", exporter.Call(js_toDate()))
 	}
 }
 

@@ -1,0 +1,19 @@
+{
+    "runningJobs": 0,
+    "scheduledJobs": 2,
+    "scheduledBackupJobs": 2,
+    "scheduledReplicaJobs": 0,
+    "totalJobRuns": 11,
+    "successfulJobRuns": 1,
+    "warningsJobRuns": 0,
+    "failedJobRuns": 10,
+    "maxJobDuration": 4140,
+    "maxBackupJobDuration": 4140,
+    "maxReplicaJobDuration": 0,
+    "maxDurationBackupJobName": "H3_BACKUP_DDH_DEV",
+    "maxDurationReplicaJobName": "",
+    "backupJobStatusReportLink": "Workspace/ViewReport.aspx?definition=7962844d-db6c-4d29-8b6e-4e0f7db0785f&ShowParams=1",
+    "links": null,
+    "href": null,
+    "type": null
+}

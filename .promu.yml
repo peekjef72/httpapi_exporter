@@ -17,4 +17,4 @@ tarball:
     files:
       - LICENSE
       - README.md
-      - passwd_encrypt
+      - cmd/passwd_encrypt

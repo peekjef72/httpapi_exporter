@@ -4,6 +4,7 @@
 ##
 ## Veeam Enterprise Manager Overview. Overview of Virtual Machines
 ## docs: https://helpcenter.veeam.com/docs/backup/em_rest/reports_summary_vms_overview.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/vbr/em_rest/reports_summary_vms_overview.html
 ###
 #
 
@@ -14,6 +15,11 @@ metric_prefix: veeam_em_overview_vms
 
 scripts:
   get veeam_overview:
+    - name: init names
+      when: "js: typeof vmNames === 'undefined'"
+      set_fact:
+        vmNames: 'js: veeam.vmNames(veeam_version)'
+
     - name: collect elements
       query:
         url: /reports/summary/vms_overview
@@ -23,13 +29,13 @@ scripts:
     - name: proceed elements count
       with_items:
         - type: protected
-          value: $results.ProtectedVms
+          value: $results[$vmNames.protectedVms]
         - type: backedup
-          value: $results.BackedUpVms
+          value: $results[$vmNames.backedUpVms]
         - type: replicated
-          value: $results.ReplicatedVms
+          value: $results[$vmNames.replicatedVms]
         - type: restore_points
-          value: $results.RestorePoints
+          value: $results[$vmNames.replicatedVms]
       metrics:
         - metric_name: count
           help: VMs count by protection type "protected","backedup","replicated","restore_points"
@@ -42,13 +48,13 @@ scripts:
     - name: proceed elements total_bytes
       with_items:
         - type: full_backup_points
-          value: $results.FullBackupPointsSize
+          value: $results[$vmNames.fullBackupPointsSize]
         - type: incremental_backup_points
-          value: $results.IncrementalBackupPointsSize
+          value: $results[$vmNames.incrementalBackupPointsSize]
         - type: replica_restore_points
-          value: $results.ReplicaRestorePointsSize
+          value: $results[$vmNames.replicaRestorePointsSize]
         - type: source_vms
-          value: $results.SourceVmsSize
+          value: $results[$vmNames.sourceVmsSize]
       metrics:
         - metric_name: total_bytes
           help: VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"
@@ -65,6 +71,6 @@ scripts:
           help: percent of successful backup of VMs
           type: gauge
           values:
-            _: $results.SuccessBackupPercents
+            _: $results[$vmNames.successBackupPercents]
 
 ...

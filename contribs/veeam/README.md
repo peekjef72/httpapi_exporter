@@ -138,14 +138,14 @@ httpapi_config:
 
 file | domain | metrics
 ---- | ------ | -------
-veeam_overview_metrics.yml | general results | count by type "backup", "proxy", "repository", "scheduled_jobs", "successful_vms", "warning_vms"
-vm_overview_metrics.yml | general vm results | VMs count by protection type "protected","backupjob","replicated","restore_points"<br>VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"<br>percent of successful backup of VMs
-repositories_metrics.yml | repositories | total and free size and in bytes of each repository by name and type
-jobs_overview_metrics.yml | jobs generics | various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"<br>total number of job runs by type "total", "successful", "warning", "failed"<br>max duration for job by type and name of longest
-backup_agent_metrics.yml | backup agent | backup agent status 1 Online / 2 Offline labeled by nae , type and version
-backup_servers_metrics.yml | backup servers | config of each backup server labeled by name, description, port, version: no value collect (1 returned)
-backup_jobs_sessions_metrics.yml | backup jobs runs | last backup job run info state, duration, retries labeled by backup server, jobname, jobtype
-vm_backup_jobs_sessions_metrics.yml| vm backup jobs runs | last vm backup job runs info state, duration, retries, total_bytes labeled by backup server, jobname, vmname, taskname, message
+veeam_overview_metrics.collector.yml | general results | count by type "backup", "proxy", "repository", "scheduled_jobs", "successful_vms", "warning_vms"
+veeam_overview_vms_metrics.collector.yml | general vm results | VMs count by protection type "protected","backupjob","replicated","restore_points"<br>VMs total size in bytes by type "full_backup_points", "incremental_backup_points", "replica_restore_points", "source_vms"<br>percent of successful backup of VMs
+veeam_repositories_overview_metrics.collector.yml | repositories | total and free size and in bytes of each repository by name and type
+veeam_jobs_overview_metrics.collector.yml | jobs generics | various count of job types "running", "scheduled", "scheduled_backup" "scheduled_replica_jobs_count"<br>total number of job runs by type "total", "successful", "warning", "failed"<br>max duration for job by type and name of longest 
+*veeam_agent_metrics.collector.yml* | backup agent | backup agent status 1 Online / 2 Offline labeled by name , type and version. **WARNING**: with version 13 required privileges!!
+veeam_backup_servers_metrics.collector.yml | backup servers | config of each backup server labeled by name, description, port, version: no value collect (1 returned) 
+veeam_backup_jobs_sessions_metrics.collector.yml | backup jobs runs | last backup job run info state, duration, retries labeled by backup server, jobname, jobtype |
+veeam__backup_jobs_sessions_metrics.collector.yml| vm backup jobs runs | last vm backup job runs info state, duration, retries, total_bytes labeled by backup server, jobname, vmname, taskname, message
 
 ## Extending metrics
 
@@ -173,7 +173,7 @@ The "attributes" are analyzed in the order specified in previous table; it means
 action | parameter | description | remark
 ------ | ----------- | ------ | ------
 url | &nbsp; |a string that's representing the entity to collect without '/api' | http\://host.domain:port/api**[url]**. e.g.: /reports/summary/overview
- &nbsp; | var_name |the name of the variable to store the results. Default is '_root' meaning that the resulting JSON object is directly store in symbols table. | &nbsp;
+ &nbsp; | var_name | the name of the variable to store the results. Default is '_root' meaning that the resulting JSON object is directly store in symbols table. | &nbsp;
  &nbsp; | &nbsp; | &nbsp; | &nbsp;
  set_fact | &nbsp; | list of variable to define | &nbsp;
  &nbsp; | var_name: value| &nbsp; | &nbsp;

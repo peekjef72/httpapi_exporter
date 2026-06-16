@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.4 / 2026-06-16
+
+- rewrite veeam profile: now support Veeam Enterprise Manager v13.
+
+### 2026-06-14 - not release
+
+- added a config directive in profile to define javascript modules to load as default. (see veeam_profile.yml)
+
+  ```yaml
+  veeam:
+    modules:
+      # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
+      # so path is absolute or ./path
+      veeam: './config/veeam/profiles/funcs/veeam.js'
+    scripts:
+      init: ...
+  ```
+
+  format is: module_name: module path. All functions from the module will be referenced by module_name.func
+- updated: rewrite parser and evaluation for default variable type; some formulas were segfaulting '$var[$var2.attr[0]]'; need this for the new version of veeam contribs.
+
+### 2026-06-09 - not release
+
+- fixed: bug in init script: errors were not trapped and caused segfault during first http call.
+- add veeam query results (json) in repo so have a reference for future changes.
+
+### 2026-06-07 - not release
+
+- migrate veeam config partial
+- add js function to exporter module: date(), toDate(), shaxsum(), length() to ease veeam config migration.
+
 ## 0.4.3 / 2026-05-24
 
 ### 2026-05-23 - not release

@@ -134,7 +134,10 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Log
 		CustomProperties: target.CustomProperties,
 	}
 	cl.symtab["__collector_id"] = target.Name
-	cl.Init(params)
+	if err := cl.Init(params); err != nil {
+		logger.Error(fmt.Sprintf("target client init error: %s", err.Error()))
+		return nil
+	}
 	delete(cl.symtab, "__collector_id")
 
 	return cl

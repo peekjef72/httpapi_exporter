@@ -1,0 +1,74 @@
+{
+    "Repositories": [
+        {
+            "Capacity": -1,
+            "FreeSpace": -1,
+            "Kind": "AmazonS3Compatible",
+            "Name": "s3-veeam-dbbackup",
+            "UID": "urn:veeam:Repository:e2018b65-7c91-4230-8517-00f27d71da24",
+            "Links": [
+                {
+                    "Rel": "Up",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/9396c19b-091e-469c-bf21-a98069616147",
+                    "Name": "c2tveeamlab.c2.dav.fr",
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Alternate",
+                    "Href": "https://myhost.mydomain.org:9398/api/repositories/e2018b65-7c91-4230-8517-00f27d71da24",
+                    "Name": "s3-veeam-dbbackup",
+                    "Type": "RepositoryReference"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/repositories/e2018b65-7c91-4230-8517-00f27d71da24/backups",
+                    "Name": null,
+                    "Type": "BackupReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/repositories/e2018b65-7c91-4230-8517-00f27d71da24/replicas",
+                    "Name": null,
+                    "Type": "ReplicaReferenceList"
+                }
+            ],
+            "Href": "https://myhost.mydomain.org:9398/api/repositories/e2018b65-7c91-4230-8517-00f27d71da24?format=Entity",
+            "Type": "Repository"
+        },
+        {
+            "Capacity": 1013246324637696,
+            "FreeSpace": 113816053481472,
+            "Kind": "DDBoost",
+            "Name": "ddb_veeam_dch_backupdb",
+            "UID": "urn:veeam:Repository:48045b24-955b-483c-b693-09b50f7d369e",
+            "Links": [
+                {
+                    "Rel": "Up",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/9396c19b-091e-469c-bf21-a98069616147",
+                    "Name": "mysite",
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Alternate",
+                    "Href": "https://myhost.mydomain.org:9398/api/repositories/48045b24-955b-483c-b693-09b50f7d369e",
+                    "Name": "ddb_veeam_dch_backupdb",
+                    "Type": "RepositoryReference"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/repositories/48045b24-955b-483c-b693-09b50f7d369e/backups",
+                    "Name": null,
+                    "Type": "BackupReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/repositories/48045b24-955b-483c-b693-09b50f7d369e/replicas",
+                    "Name": null,
+                    "Type": "ReplicaReferenceList"
+                }
+            ],
+            "Href": "https://myhost.mydomain.org:9398/api/repositories/48045b24-955b-483c-b693-09b50f7d369e?format=Entity",
+            "Type": "Repository"
+        }
+    ]
+}

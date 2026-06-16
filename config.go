@@ -17,8 +17,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/dop251/goja_nodejs/require"
-
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 	mytemplate "github.com/peekjef72/httpapi_exporter/template"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
@@ -29,7 +28,7 @@ func LoadConfig(
 	configFile string,
 	logger *slog.Logger,
 	collectorName string,
-	registry *require.Registry) (*Config, error) {
+	registry *goja_modules.JSRegistry) (*Config, error) {
 	logger.Info(fmt.Sprintf("Loading configuration from %s", configFile))
 	buf, err := os.ReadFile(configFile)
 	if err != nil {
@@ -56,10 +55,9 @@ func LoadConfig(
 type ScriptConfig map[string]*YAMLScript
 
 type Profile struct {
-	MetricPrefix string                 `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
-	Scripts      map[string]*YAMLScript `yaml:"scripts" json:"scripts"`
-
-	registry *require.Registry
+	MetricPrefix string
+	Scripts      map[string]*YAMLScript
+	registry     *goja_modules.JSRegistry
 }
 
 // Top-level config
@@ -82,7 +80,7 @@ type Config struct {
 	collectorName string
 	collectors    map[string]*CollectorConfig
 	profiles      map[string]*Profile
-	registry      *require.Registry
+	registry      *goja_modules.JSRegistry
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline" json:"-"`
@@ -447,35 +445,11 @@ func (c *Config) JSON() ([]byte, error) {
 
 type profileParser struct {
 	MetricPrefix string               `yaml:"metric_prefix,omitempty" json:"metric_prefix,omitempty"`
+	Modules      map[string]string    `yaml:"modules,omitempty" json:"modules,omitempty"`
 	ScriptsNodes map[string]yaml.Node `yaml:"scripts" json:"scripts"`
-	registry     *require.Registry
+	registry     *goja_modules.JSRegistry
 	// scripts      map[string]*YAMLScript
 }
-
-// func (p *profileParser) UnmarshalYAML(value *yaml.Node) error {
-// 	m_prefix := ""
-// 	if err := value.Content[0].Decode(&m_prefix); err != nil {
-// 		return err
-// 	}
-// 	p.MetricPrefix = m_prefix
-
-// 	for script_name, script_Node := range p.ScriptsNodes {
-// 		script := &YAMLScript{
-// 			registry: p.registry,
-// 		}
-// 		if err := script_Node.Decode(&script); err != nil {
-// 			return fmt.Errorf("script '%s' parsing error : '%s'", script_name, err.Error())
-// 		}
-// 		if script.name == "" {
-// 			script.name = script_name
-// 		}
-// 		if _, found := p.scripts[script_name]; found {
-// 			return fmt.Errorf("script '%s' already exists (redefined)", script_name)
-// 		}
-// 		p.scripts[script_name] = script
-// 	}
-// 	return nil
-// }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for GlobalConfig.
 func (p *Profile) UnmarshalYAML(value *yaml.Node) error {
@@ -493,12 +467,18 @@ func (p *Profile) UnmarshalYAML(value *yaml.Node) error {
 			return err
 		}
 	}
+	for module_name, module_path := range tmp.Modules {
+		if _, ok := p.registry.Modules[module_name]; !ok {
+			p.registry.Modules[module_name] = module_path
+		}
+	}
+
 	return nil
 }
 
 type profiles struct {
 	profiles map[string]*Profile
-	registry *require.Registry
+	registry *goja_modules.JSRegistry
 }
 
 func (p *profiles) UnmarshalYAML(value *yaml.Node) error {
@@ -995,7 +975,7 @@ type CollectorConfig struct {
 	Templates      map[string]string      `yaml:"templates,omitempty" json:"templates,omitempty"`         // share custom templates/funcs for results templating
 	CollectScripts map[string]*YAMLScript `yaml:"scripts,omitempty" json:"scripts,omitempty"`             // map of all independent scripts to collect metrics - each script can run in parallel
 	symtab         map[string]any
-	registry       *require.Registry
+	registry       *goja_modules.JSRegistry
 
 	customTemplate *exporterTemplate // to store the custom Templates used by this collector
 	// id to print in log and to follow request action
@@ -1098,7 +1078,7 @@ func (c *CollectorConfig) UnmarshalYAML(value *yaml.Node) error {
 	return checkOverflow(c.XXX, "collector")
 }
 
-func build_YAMLScript(registry *require.Registry, nodes map[string]yaml.Node) (map[string]*YAMLScript, error) {
+func build_YAMLScript(registry *goja_modules.JSRegistry, nodes map[string]yaml.Node) (map[string]*YAMLScript, error) {
 	scripts := make(map[string]*YAMLScript)
 	for script_name, script_Node := range nodes {
 		script := &YAMLScript{

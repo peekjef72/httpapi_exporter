@@ -1,0 +1,91 @@
+veeam:
+  modules:
+    # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
+    # so path is absolute or ./path
+    veeam: './config/veeam/profiles/funcs/veeam.js'
+  scripts:
+    init:
+      - name: default headers
+        set_fact:
+          headers:
+            - name: Accept
+              value: "application/json"
+          scheme: https
+          port: 9398
+          verifySSL: false
+          base_url: /api
+
+          # set default time in hours (time.Duration) to look back for jobs and tasks
+          jobHistory: -12h
+          taskHistory: -12h
+
+    auth_check:
+      - name: analyze login response ok
+        set_fact:
+          headers: 
+            - name: "X-RestSvcSessionId"
+              value: 'js: exporter.getHeader( response_headers, "X-RestSvcSessionId" )'
+          logged: true
+          login_retry: $queryRetry
+        when:
+          - 'js: status_code == 201'
+      - name: analyze login response
+        set_fact:
+          logged: false
+          login_retry: $queryRetry
+          headers: 
+            - name: "X-RestSvcSessionId"
+              action: delete
+        when:
+          - 'js: (status_code == 401) || (status_code == 403)'
+
+      - name: analyze login response not ok with retry
+        set_fact:
+          logged: false
+          login_retry: 'js: ++login_retry'
+        when:
+          - 'js: (status_code != 201) && (status_code != 401) && (status_code != 403)'
+
+    login:
+      - name: init login loop
+        vars:
+          login_retry: 0
+          status_code: 0
+        until: 'js: login_retry < queryRetry'
+
+        actions:
+          - name: login phase
+            query:
+              url: /sessionMngr/?v=latest
+              method: post
+              auth_config:
+                mode: basic
+              ok_status: 201
+              # debug: true
+              # don't store the value
+              var_name: _
+          - name: analyze login response
+            play_script: auth_check
+
+    # method called to determine if a target is responding; will call login script if necessary
+    # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
+    ping:
+      - name: check ping cnx
+        query: 
+          # will call /api in fact !
+          url: /
+          method: get
+          ok_status: 200
+          # debug: true
+          # to catch and store the result and use it later...
+          var_name: api_results
+      - name: check version
+        when: "js: typeof veeam_version === 'undefined' && api_results != undefined"
+        set_fact:
+          veeam_version: >
+            js:
+                var version = 12;
+                if( api_results['supportedVersions'] != undefined ) {
+                  version = 13
+                }
+                version

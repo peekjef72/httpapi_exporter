@@ -9,8 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dop251/goja_nodejs/require"
-
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/spf13/cast"
@@ -49,7 +48,7 @@ type MetricConfig struct {
 	// valueType_old prometheus.ValueType // TypeString converted to prometheus.ValueType
 	valueType dto.MetricType
 
-	registry       *require.Registry
+	registry       *goja_modules.JSRegistry
 	name           *Field
 	help           *Field
 	key_labels_map map[string]string
@@ -358,7 +357,7 @@ func (a *MetricAction) SetUntil(until []*Field) {
 }
 
 func (a *MetricAction) setBasicElement(
-	registry *require.Registry,
+	registry *goja_modules.JSRegistry,
 	nameField *Field,
 	vars [][]any,
 	with []any,

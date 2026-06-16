@@ -1,0 +1,259 @@
+{
+    "Refs": null,
+    "Entities": {
+        "Jobs": null,
+        "FailoverPlans": null,
+        "Backups": null,
+        "Replicas": null,
+        "Repositories": null,
+        "RestorePoints": null,
+        "VmRestorePoints": null,
+        "VAppRestorePoints": null,
+        "VmReplicaPoints": null,
+        "BackupJobSessions": {
+            "BackupJobSessions": [
+                {
+                    "IsRetry": false,
+                    "JobUid": "urn:veeam:Job:408829ea-75b1-476c-80e1-47b731952e7a",
+                    "JobName": "COPY_BACKUP_VMW_MECM_AN_TO_DD_DCH_NEW",
+                    "JobType": "ImmediateBackupCopy",
+                    "CreationTimeUTC": "2026-06-14T23:09:26.173Z",
+                    "EndTimeUTC": "2026-06-15T02:04:52.037Z",
+                    "State": "Stopped",
+                    "Result": "Success",
+                    "Progress": 0,
+                    "FailureMessage": null,
+                    "Name": "COPY_BACKUP_VMW_MECM_AN_TO_DD_DCH_NEW@2026-06-14 23:09:26",
+                    "UID": "urn:veeam:BackupJobSession:45f138d9-7e5e-4140-bd33-088cc207a0f9",
+                    "Links": [
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c",
+                            "Name": "myhost2.mydomain.org",
+                            "Type": "BackupServerReference"
+                        },
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/jobs/408829ea-75b1-476c-80e1-47b731952e7a",
+                            "Name": "COPY_BACKUP_VMW_MECM_AN_TO_DD_DCH_NEW",
+                            "Type": "JobReference"
+                        },
+                        {
+                            "Rel": "Alternate",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/45f138d9-7e5e-4140-bd33-088cc207a0f9",
+                            "Name": "COPY_BACKUP_VMW_MECM_AN_TO_DD_DCH_NEW@2026-06-14 23:09:26",
+                            "Type": "BackupJobSessionReference"
+                        },
+                        {
+                            "Rel": "Down",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/45f138d9-7e5e-4140-bd33-088cc207a0f9/taskSessions",
+                            "Name": null,
+                            "Type": "BackupTaskSessionReferenceList"
+                        },
+                        {
+                            "Rel": "Stop",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/45f138d9-7e5e-4140-bd33-088cc207a0f9?action=stop",
+                            "Name": null,
+                            "Type": null
+                        }
+                    ],
+                    "Href": "https://myhost.mydomain.org:9398/api/backupSessions/45f138d9-7e5e-4140-bd33-088cc207a0f9?format=Entity",
+                    "Type": "BackupJobSession"
+                },
+                {
+                    "IsRetry": true,
+                    "JobUid": "urn:veeam:Job:b2c92f36-ab38-4ce3-9bf6-05143080981a",
+                    "JobName": "BACKUP_DCH_C2_VMW_INF",
+                    "JobType": "Backup",
+                    "CreationTimeUTC": "2026-06-15T05:34:19.503Z",
+                    "EndTimeUTC": "2026-06-15T06:15:49.157Z",
+                    "State": "Stopped",
+                    "Result": "Success",
+                    "Progress": 100,
+                    "FailureMessage": null,
+                    "Name": "BACKUP_DCH_C2_VMW_INF@2026-06-15 05:34:19",
+                    "UID": "urn:veeam:BackupJobSession:ee36521d-f70a-4300-98ba-155cb4a40b01",
+                    "Links": [
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupServers/9396c19b-091e-469c-bf21-a98069616147",
+                            "Name": "myhost2.mydomain.org",
+                            "Type": "BackupServerReference"
+                        },
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/jobs/b2c92f36-ab38-4ce3-9bf6-05143080981a",
+                            "Name": "BACKUP_DCH_C2_VMW_INF",
+                            "Type": "JobReference"
+                        },
+                        {
+                            "Rel": "Alternate",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/ee36521d-f70a-4300-98ba-155cb4a40b01",
+                            "Name": "BACKUP_DCH_C2_VMW_INF@2026-06-15 05:34:19",
+                            "Type": "BackupJobSessionReference"
+                        },
+                        {
+                            "Rel": "Down",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/ee36521d-f70a-4300-98ba-155cb4a40b01/taskSessions",
+                            "Name": null,
+                            "Type": "BackupTaskSessionReferenceList"
+                        },
+                        {
+                            "Rel": "Stop",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/ee36521d-f70a-4300-98ba-155cb4a40b01?action=stop",
+                            "Name": null,
+                            "Type": null
+                        },
+                        {
+                            "Rel": "Related",
+                            "Href": "https://myhost.mydomain.org:9398/api/restorePoints/457eac86-dcef-45e7-8c97-04554c19ef31",
+                            "Name": "Jun 15 2026  5:34AM",
+                            "Type": "RestorePointReference"
+                        },
+                        {
+                            "Rel": "Related",
+                            "Href": "https://myhost.mydomain.org:9398/api/restorePoints/079d0003-d98a-442c-83e8-04bdee5d643b",
+                            "Name": "Jun 15 2026  5:34AM",
+                            "Type": "RestorePointReference"
+                        },
+                        {
+                            "Rel": "Related",
+                            "Href": "https://myhost.mydomain.org:9398/api/restorePoints/c5445aa0-c1dc-4ba9-8f83-06b641cffb76",
+                            "Name": "Jun 15 2026  5:34AM",
+                            "Type": "RestorePointReference"
+                        },
+                        {
+                            "Rel": "Related",
+                            "Href": "https://myhost.mydomain.org:9398/api/restorePoints/d3edc537-5f11-4418-99bd-091fdf473f8b",
+                            "Name": "Jun 15 2026  5:34AM",
+                            "Type": "RestorePointReference"
+                        },
+                        {
+                            "Rel": "Related",
+                            "Href": "https://myhost.mydomain.org:9398/api/restorePoints/95dd8033-58f8-4f0c-a52c-0a442fa9b585",
+                            "Name": "Jun 15 2026  5:34AM",
+                            "Type": "RestorePointReference"
+                        },
+                        {
+                            "Rel": "Related",
+                            "Href": "https://myhost.mydomain.org:9398/api/restorePoints/6342119f-11d0-490b-b830-0e1748e4a015",
+                            "Name": "Jun 15 2026  5:34AM",
+                            "Type": "RestorePointReference"
+                        }
+                    ],
+                    "Href": "https://myhost.mydomain.org:9398/api/backupSessions/ee36521d-f70a-4300-98ba-155cb4a40b01?format=Entity",
+                    "Type": "BackupJobSession"
+                },
+                {
+                    "IsRetry": false,
+                    "JobUid": "urn:veeam:Job:86a540d1-64db-4dac-b06e-4255f52311dd",
+                    "JobName": "COPY_OPER_WIN_S3\\\\BACKUP_DCP_C2_AGENTS_PRA_clone1 - myhost2.mydomain.org",
+                    "JobType": "ImmediateBackupCopyWorker",
+                    "CreationTimeUTC": "2026-06-15T05:46:51.473Z",
+                    "EndTimeUTC": "2026-06-15T05:47:39.7Z",
+                    "State": "Stopped",
+                    "Result": "Success",
+                    "Progress": 100,
+                    "FailureMessage": null,
+                    "Name": "COPY_OPER_WIN_S3\\\\BACKUP_DCP_C2_AGENTS_PRA_clone1 - myhost2.mydomain.org@2026-06-15 05:46:51",
+                    "UID": "urn:veeam:BackupJobSession:b83ad0b1-4fd2-49aa-9a45-2069f4ed498f",
+                    "Links": [
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupServers/4539f94d-28f2-492f-9d08-bc76739d1ce2",
+                            "Name": "myhost2.mydomain.org",
+                            "Type": "BackupServerReference"
+                        },
+                        {
+                            "Rel": "Up",
+                            "Href": "https://myhost.mydomain.org:9398/api/jobs/86a540d1-64db-4dac-b06e-4255f52311dd",
+                            "Name": "COPY_OPER_WIN_S3\\\\BACKUP_DCP_C2_AGENTS_PRA_clone1 - myhost2.mydomain.org",
+                            "Type": "JobReference"
+                        },
+                        {
+                            "Rel": "Alternate",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/b83ad0b1-4fd2-49aa-9a45-2069f4ed498f",
+                            "Name": "COPY_OPER_WIN_S3\\\\BACKUP_DCP_C2_AGENTS_PRA_clone1 - myhost2.mydomain.org@2026-06-15 05:46:51",
+                            "Type": "BackupJobSessionReference"
+                        },
+                        {
+                            "Rel": "Down",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/b83ad0b1-4fd2-49aa-9a45-2069f4ed498f/taskSessions",
+                            "Name": null,
+                            "Type": "BackupTaskSessionReferenceList"
+                        },
+                        {
+                            "Rel": "Stop",
+                            "Href": "https://myhost.mydomain.org:9398/api/backupSessions/b83ad0b1-4fd2-49aa-9a45-2069f4ed498f?action=stop",
+                            "Name": null,
+                            "Type": null
+                        }
+                    ],
+                    "Href": "https://myhost.mydomain.org:9398/api/backupSessions/b83ad0b1-4fd2-49aa-9a45-2069f4ed498f?format=Entity",
+                    "Type": "BackupJobSession"
+                }
+            ]
+        },
+        "ReplicaJobSessions": null,
+        "ReplicaTaskSessions": null,
+        "RestoreSessions": null,
+        "HierarchyRoots": null,
+        "BackupTaskSessions": null,
+        "BackupServers": null,
+        "ManagedServers": null,
+        "EnterpiseRoles": null,
+        "EnterpiseAccounts": null,
+        "WanAccelerators": null,
+        "CloudGateways": null,
+        "CloudTenants": null,
+        "CloudReplicas": null,
+        "VCloudOrganizationConfigs": null,
+        "BackupFiles": null,
+        "VSphereSelfServiceConfigs": null,
+        "CloudPublicIps": null,
+        "CloudHardwarePlans": null,
+        "CloudVmReplicaPoints": null,
+        "AgentRestorePoints": null,
+        "AgentBackupJob": null,
+        "CloudGatewayPools": null,
+        "CloudFailoverPlans": null,
+        "ExternalRepositories": null,
+        "VlanConfigurations": null,
+        "CloudFailoverSessions": null,
+        "AgentProtectionGroups": null,
+        "DiscoveredComputers": null,
+        "FileServers": null,
+        "NASJobs": null,
+        "CdpReplicas": null,
+        "CdpReplicaVms": null,
+        "CdpPolicies": null,
+        "CdpReplicaSessions": null,
+        "CdpReplicaTaskSessions": null,
+        "VAppReplicaPoints": null,
+        "VmCdpReplicas": null,
+        "VAppCdpReplicas": null,
+        "VAppCdpReplicaVms": null,
+        "SystemSessions": null
+    },
+    "Resources": null,
+    "Links": null,
+    "PagingInfo": {
+        "Links": [
+            {
+                "Rel": "First",
+                "Href": "https://myhost.mydomain.org:9398/api/query?type=BackupJobSession&format=Entities&filter=CreationTime%3e%3d%222026-06-14T21%3a07%3a25%22&pageSize=100&page=1",
+                "Name": null,
+                "Type": null
+            },
+            {
+                "Rel": "Last",
+                "Href": "https://myhost.mydomain.org:9398/api/query?type=BackupJobSession&format=Entities&filter=CreationTime%3e%3d%222026-06-14T21%3a07%3a25%22&pageSize=100&page=1",
+                "Name": null,
+                "Type": null
+            }
+        ],
+        "PageNum": 1,
+        "PageSize": 100,
+        "PagesCount": 1
+    }
+}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/peekjef72/httpapi_exporter/goja_modules"
 )
 
 // ***************************************************************************************
@@ -19,7 +19,7 @@ import (
 type DebugActionConfig struct {
 	MsgVal string `yaml:"msg" json:"msg"`
 
-	registry *require.Registry
+	registry *goja_modules.JSRegistry
 	msg      *Field
 
 	// Catches all undefined fields and must be empty after parsing.
@@ -123,7 +123,7 @@ func (a *DebugAction) SetUntil(until []*Field) {
 // }
 
 func (a *DebugAction) setBasicElement(
-	registry *require.Registry,
+	registry *goja_modules.JSRegistry,
 	nameField *Field,
 	vars [][]any,
 	with []any,

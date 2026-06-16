@@ -1,0 +1,55 @@
+{
+    "supportedVersions": {
+        "supportedVersions": [
+            {
+                "links": [
+                    {
+                        "rel": "Create",
+                        "href": "https://cctveeamop02.dav.fr:9398/api/sessionMngr/?v=v1_5",
+                        "name": null,
+                        "type": "LogonSession"
+                    }
+                ],
+                "name": "v1_5"
+            },
+            {
+                "links": [
+                    {
+                        "rel": "Create",
+                        "href": "https://cctveeamop02.dav.fr:9398/api/sessionMngr/?v=v1_6",
+                        "name": null,
+                        "type": "LogonSession"
+                    }
+                ],
+                "name": "v1_6"
+            },
+            {
+                "links": [
+                    {
+                        "rel": "Create",
+                        "href": "https://cctveeamop02.dav.fr:9398/api/sessionMngr/?v=v1_7",
+                        "name": null,
+                        "type": "LogonSession"
+                    }
+                ],
+                "name": "v1_7"
+            }
+        ]
+    },
+    "links": [
+        {
+            "rel": "Down",
+            "href": "https://cctveeamop02.dav.fr:9398/api/logonSessions",
+            "name": null,
+            "type": "LogonSessionList"
+        },
+        {
+            "rel": "Create",
+            "href": "https://cctveeamop02.dav.fr:9398/api/sessionMngr/?v=latest",
+            "name": null,
+            "type": "LogonSession"
+        }
+    ],
+    "href": null,
+    "type": null
+}

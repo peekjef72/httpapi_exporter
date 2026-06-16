@@ -1,0 +1,135 @@
+---
+
+# https://raw.githubusercontent.com/jorgedlcruz/veeam-enterprise_manager-grafana/master/veeam_enterprisemanager.sh
+###
+## Veeam Enterprise Manager Backup Job Sessions per VM. Overview of Backup Job Sessions per VM. Really useful to display if a VM it is protected or not
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/get_query_backuptasksession.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/backup/em_rest/backupsessions_id_tasksessions.html?ver=120
+## docs: https://helpcenter.veeam.com/docs/vbr/em_rest/get_backuptasksessions.html?ver=13
+###
+#
+collector_name: veeam_backup_jobs_tasks_sessions_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: veeam_em_jobs_tasks_sessions
+
+scripts:
+  get backup_job_session:
+    - name: init names
+      when: "js: typeof taskSessionNames === 'undefined'"
+      set_fact:
+        taskSessionNames: 'js: veeam.taskSessionNames(veeam_version)'
+
+    - name: init vars
+      set_fact:
+        # warning sprig doc is wrong: format is time.Duration so
+        # Valid time units are only: "ns", "us" (or "µs"), "ms", "s", "m", "h".
+        timestart: >
+          js:
+            var duration = exporter.getDurationSecond( taskHistory );
+            var startTime = Math.floor( ( Date.now() + (duration * 1000) )  / 1000 );
+            startTime
+        tasks: {}
+    - name: init vars 2
+      set_fact:
+        datestart: 'js: exporter.date("2006-01-02T15:04:05", timestart )'
+
+    - name: 'js: "collect elements from last " + taskHistory'
+      query:
+        url: >
+          js:
+            '/query?type=BackupTaskSession&format=Entities&filter=CreationTime>="' + datestart + '"'
+        var_name: results
+        timeout: 10
+        # debug: true
+
+    # - name: debug task
+    #   debug:
+    #     msg: 'js: "tasks count: " + results.Entities.BackupTaskSessions.BackupTaskSessions.length'
+
+    - name: proceed elements
+      # to debug first task
+      # loop: $results[$taskSessionNames.entities][$taskSessionNames.backupJobSessions][$taskSessionNames.backupJobSessions][0]
+      loop: $results[$taskSessionNames.entities][$taskSessionNames.backupJobSessions][$taskSessionNames.backupJobSessions]
+      actions:
+        - name: build raw task from data
+          set_fact:
+            task:
+              name: $item[$taskSessionNames.name]
+              creationTimeUTC: $item[$taskSessionNames.creationTimeUTC]
+              endTimeUTC: 'js: item[taskSessionNames.endTimeUTC] != undefined ? item[taskSessionNames.endTimeUTC] : 0'
+              uid: $item[$taskSessionNames.uid]
+              reason: $item[$taskSessionNames.reason]
+              vmDisplayName: $item[$taskSessionNames.vmDisplayName]
+              totalSize: $item[$taskSessionNames.totalSize]
+              links: $item[$taskSessionNames.links]
+              nameName: $taskSessionNames.name
+              typeName: $taskSessionNames.type
+
+        - name: update tasks map
+          set_fact:
+            _: 'js: veeam.buildTasks( tasks, task )'
+
+        # - name: debug task
+        #   debug:
+        #     msg: 'js: "new job: " + JSON.stringify(tasks[hash])'
+
+    - name: loop on aggregate tasks (values) to generate metric
+      # to debug: build a list with first element of the result
+      # loop: 'js: [ (Object.values(tasks))[0] ]'
+      loop: 'js: Object.values(tasks)'
+      loop_var: task
+      # default: scope: cur_var=> task
+      actions:
+        - name: build labels
+          set_fact:
+            key_labels:
+              backupserver: $task.backupserver
+              jobname:      $task.jobname
+              taskname:     $task.taskname
+              vmname:       $task.vmname
+
+        - name: build metrics from computed jobs
+          metrics:
+            - metric_name: state
+              help: "vm backup task status (0 undefined / 1 Success / 2 Warning / 3 Failed / 4 Pending-Idle / 5 Working-In Progress)"
+              type: gauge
+              key_labels: $root.key_labels
+              values: 
+                _: $state
+
+            - metric_name: duration
+              help: 'vm backup task operation duration in second'
+              type: gauge
+              key_labels: $root.key_labels
+              values: 
+                _: "js: endtimestamp - starttimestamp"
+
+            - metric_name: retries
+              help: "number of times of the vm backup task has been retried (0: no retry)"
+              type: gauge
+              key_labels: $root.key_labels
+              values: 
+                _: $retries
+
+            - metric_name: total_bytes
+              help: "total bytes save by the vm backup task for vm"
+              type: gauge
+              key_labels: $root.key_labels
+              values: 
+                _: $total_size_bytes
+
+            - metric_name: error
+              help: "use to set error's message label"
+              type: gauge
+              key_labels:
+                backupserver: _
+                jobname:      _
+                taskname:     _
+                vmname:       _
+                message:      $reason
+              values: 
+                _: $state
+              when:
+                - 'js: task.state == "2"  || task.state == "3"'
+...

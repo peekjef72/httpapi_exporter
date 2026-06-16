@@ -1,0 +1,198 @@
+{
+    "BackupServers": [
+        {
+            "Description": "Veeam h1",
+            "Port": 9392,
+            "Version": "12.3.2.4465",
+            "WcfPort": 9405,
+            "VbrCertificateThumbprint": "7B39B1915CBDCD77E5C0F4273F4353A18653E571",
+            "Name": "veeam01.mydomain.org",
+            "UID": "urn:veeam:BackupServer: 66122f98-3971-46f9-835d-2dbd6c16a6f0",
+            "Links": [
+                {
+                    "Rel": "Alternate",
+                    "Href": "https: //myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0",
+                    "Name": "veeam01.mydomain.org",
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Edit",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0",
+                    "Name": null,
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Delete",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0",
+                    "Name": null,
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/jobs",
+                    "Name": null,
+                    "Type": "JobReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/managedServers",
+                    "Name": null,
+                    "Type": "ManagedServerReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/repositories",
+                    "Name": null,
+                    "Type": "RepositoryReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/externalRepositories",
+                    "Name": null,
+                    "Type": "ExternalRepositoryReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/credentials",
+                    "Name": null,
+                    "Type": "CredentialsList"
+                },
+                {
+                    "Rel": "Create",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/credentials?action=create",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/passwords",
+                    "Name": null,
+                    "Type": "PasswordKeyList"
+                },
+                {
+                    "Rel": "Create",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0/passwords?action=create",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "VeeamZip",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0?action=veeamzip",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "QuickBackup",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0?action=quickbackup",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "Start",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0?action=collect",
+                    "Name": null,
+                    "Type": null
+                }
+            ],
+            "Href": "https://myhost.mydomain.org:9398/api/backupServers/66122f98-3971-46f9-835d-2dbd6c16a6f0?format=Entity",
+            "Type": "BackupServer"
+        },
+        {
+            "Description": "Veeam H2",
+            "Port": 9392,
+            "Version": "12.3.2.4465",
+            "WcfPort": 9405,
+            "VbrCertificateThumbprint": "CD20334BE4778C38504BE3D922F78F3BA74DBEE7",
+            "Name": "veeam02.mydomain.org",
+            "UID": "urn:veeam:BackupServer:3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c",
+            "Links": [
+                {
+                    "Rel": "Alternate",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c",
+                    "Name": "veeam02.mydomain.org",
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Edit",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c",
+                    "Name": null,
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Delete",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c",
+                    "Name": null,
+                    "Type": "BackupServerReference"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/jobs",
+                    "Name": null,
+                    "Type": "JobReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/managedServers",
+                    "Name": null,
+                    "Type": "ManagedServerReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/repositories",
+                    "Name": null,
+                    "Type": "RepositoryReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/externalRepositories",
+                    "Name": null,
+                    "Type": "ExternalRepositoryReferenceList"
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/credentials",
+                    "Name": null,
+                    "Type": "CredentialsList"
+                },
+                {
+                    "Rel": "Create",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/credentials?action=create",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "Down",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/passwords",
+                    "Name": null,
+                    "Type": "PasswordKeyList"
+                },
+                {
+                    "Rel": "Create",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c/passwords?action=create",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "VeeamZip",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c?action=veeamzip",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "QuickBackup",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c?action=quickbackup",
+                    "Name": null,
+                    "Type": null
+                },
+                {
+                    "Rel": "Start",
+                    "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c?action=collect",
+                    "Name": null,
+                    "Type": null
+                }
+            ],
+            "Href": "https://myhost.mydomain.org:9398/api/backupServers/3eb3d903-fb0b-4ddd-bde9-49d182aeeb0c?format=Entity",
+            "Type": "BackupServer"
+        }
+    ]
+}
