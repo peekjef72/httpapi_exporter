@@ -1,8 +1,8 @@
 package exporter
 
 import (
-	// "fmt"
-	// "time"
+	"fmt"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
@@ -10,34 +10,49 @@ import (
 
 const ModuleName = "exporter"
 
-// type ModuleExporter struct {
-// 	runtime *goja.Runtime
-// 	module  *goja.Object
-// }
+type ModuleExporter struct {
+	runtime *goja.Runtime
+	module  *goja.Object
+}
 
-// func js_toDate(format string, str string) (time.Time, error) {
-// 	ret_t, err := time.ParseInLocation(format, str, time.Local)
-// 	if err != nil {
-// 		err := fmt.Errorf("can't parse date from string: %s", err.Error())
-// 		return time.Now(), err
-// 	}
-// 	return ret_t, nil
-// }
+func (e *ModuleExporter) toDateFunc(formatStr, dateStr string, locationStr string) (goja.Value, error) {
+	var (
+		timeValue time.Time
+		err       error
+	)
+	if formatStr == "" {
+		formatStr = time.RFC3339
+	}
+	if dateStr == "" {
+		return nil, fmt.Errorf("date string to parse is empty")
+	}
+	if locationStr != "" {
+		location, err := time.LoadLocation(locationStr)
+		if err != nil {
+			return nil, fmt.Errorf("can't load location: %s", err.Error())
+		}
+		timeValue, err = time.ParseInLocation(formatStr, dateStr, location)
+	} else {
 
-// func (e *ModuleExporter) Call(f func(string, string)) func(goja.FunctionCall) goja.Value {
-// 	return func(call goja.FunctionCall) goja.Value {
-// 		if toDate, ok := goja.AssertFunction(e.module.Get("test_func")); ok {
-// 			ret, err := toDate(call.Arguments...)
-// 			if err != nil {
-// 				panic(err)
-// 			}
-// 			return e.runtime.NewDate(ret)
-// 		} else {
-// 			panic(e.runtime.NewTypeError("util.format is not a function"))
-// 		}
-// 		// return nil
-// 	}
-// }
+		timeValue, err = time.Parse(formatStr, dateStr)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("can't parse date from string: %s", err.Error())
+	}
+
+	dateConstructorObj := e.runtime.Get("Date").ToObject(e.runtime)
+	dateConstructor, ok := goja.AssertConstructor(dateConstructorObj)
+	// dateConstructor, ok := goja.AssertFunction(e.runtime.Get("Date"))
+	if !ok {
+		return nil, fmt.Errorf("impossible to find the Date constructor")
+	}
+
+	dateObj, err := dateConstructor(nil, e.runtime.ToValue(timeValue.UnixMilli()))
+	if err != nil {
+		return nil, err
+	}
+	return dateObj, nil
+}
 
 type JSModExporterFunc interface {
 	GetJSFuncMap() map[string]any
@@ -71,11 +86,11 @@ func requireWithJSModFuncMap(func_map JSModExporterFunc) require.ModuleLoader {
 		for func_name, func_code := range func_map.GetJSFuncMap() {
 			o.Set(func_name, func_code)
 		}
-		// exporter := &ModuleExporter{
-		// 	runtime: runtime,
-		// 	module:  o,
-		// }
-		// o.Set("test_func", exporter.Call(js_toDate()))
+		exporter := &ModuleExporter{
+			runtime: runtime,
+			module:  o,
+		}
+		o.Set("toDate", exporter.toDateFunc)
 	}
 }
 

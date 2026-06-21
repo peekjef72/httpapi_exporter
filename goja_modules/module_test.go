@@ -424,7 +424,7 @@ func TestJSModuleExporterDate(t *testing.T) {
 
 	// test 1 - convert timestamp int64 s to string using go format
 	code := `
-		exporter.date("2006-01-02T15:04:05", startTime);
+		exporter.date("2006-01-02T15:04:05Z", startTime);
 	`
 
 	js, err := NewJSCode(registry, code)
@@ -433,7 +433,7 @@ func TestJSModuleExporterDate(t *testing.T) {
 		return
 	}
 
-	// timestamp for 2026-06-07T15:32:46
+	// timestamp for 2026-06-07T15:32:46+0200
 	symtab["startTime"] = 1780839166
 
 	res, err := js.Run(symtab, nil)
@@ -441,19 +441,19 @@ func TestJSModuleExporterDate(t *testing.T) {
 	if date, ok := res.(string); !ok {
 		assert.True(t, ok, "invalid type for result ")
 	} else {
-		assert.True(t, date == "2026-06-07T15:32:46", "incorrect value obtained", date)
+		assert.True(t, date == "2026-06-07T15:32:46Z", "incorrect value obtained", date)
 	}
 
 	// test 2
-	symtab["startDate"] = "2026-06-07T15:32:46"
+	symtab["startDate"] = "2026-06-07T15:32:46+0200"
 
-	// code = `
-	// 	date = exporter.toDate("2006-01-02T15:04:05", startDate);
-	// 	Math.floor( date.getTime() / 1000 );
-	// `
 	code = `
-		exporter.toDate("2006-01-02T15:04:05", startDate)
+		var date = exporter.toDate("2006-01-02T15:04:05-0700", startDate);
+		Math.floor( date.getTime() / 1000 );
 	`
+	// code = `
+	// 	exporter.toDate("2006-01-02T15:04:05", startDate)
+	// `
 
 	js, err = NewJSCode(registry, code)
 	if err != nil {
@@ -470,11 +470,34 @@ func TestJSModuleExporterDate(t *testing.T) {
 	}
 
 	// test 3
-	symtab["startDate"] = "2026-06-07T15:32:46Z"
+	symtab["startDate"] = "2026-06-07T15:32:46"
 
 	code = `
-		exporter.toDate("2006-01-02T15:04:05Z", startDate);
+		Math.floor( exporter.toDate("2006-01-02T15:04:05", startDate, "Europe/Paris").getTime() / 1000 );
 	`
+
+	js, err = NewJSCode(registry, code)
+	if err != nil {
+		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDate compilation error: %s`, err.Error()))
+		return
+	}
+
+	res, err = js.Run(symtab, nil)
+	assert.Nil(t, err)
+	if r_time, ok := res.(int64); !ok {
+		assert.True(t, ok, "invalid type for result ")
+	} else {
+		assert.True(t, int(r_time) == symtab["startTime"].(int), "incorrect value obtained", r_time)
+	}
+
+	// test 4
+	symtab["startDate"] = "2026-06-07T15:32:46"
+
+	code = `
+		Math.floor( exporter.toDate("2006-01-02T15:04:05", startDate, "UTC").getTime() / 1000 );
+	`
+	// timestamp for 2026-06-07T15:32:46+0000
+	symtab["startTime"] = 1780846366
 
 	js, err = NewJSCode(registry, code)
 	if err != nil {
@@ -518,4 +541,32 @@ func TestJSModuleExporterDate(t *testing.T) {
 // 	} else {
 // 		assert.True(t, date.Format("2006-01-02T15:04:05") == "2026-06-07T15:32:46", "incorrect value obtained", date)
 // 	}
+
+// 	// test 2
+// 	symtab["startDate"] = "2026-06-07T15:32:46"
+
+// 	// code = `
+// 	// 	date = exporter.toDate("2006-01-02T15:04:05", startDate);
+// 	// 	Math.floor( date.getTime() / 1000 );
+// 	// `
+// 	code = `
+// 		console.log("Type de exp:", typeof exporter);
+//     	console.log("Type de toDate:", typeof exporter.toDate);
+// 		exporter.toDate("2006-01-02T15:04:05", startDate)
+// 	`
+
+// 	js, err = NewJSCode(registry, code)
+// 	if err != nil {
+// 		assert.Nil(t, err, fmt.Sprintf(`TestJSModuleExporterDate compilation error: %s`, err.Error()))
+// 		return
+// 	}
+
+// 	res, err = js.Run(symtab, nil)
+// 	assert.Nil(t, err)
+// 	if r_time, ok := res.(time.Time); !ok {
+// 		assert.True(t, ok, "invalid type for result ")
+// 	} else {
+// 		assert.True(t, int(r_time.Unix()) == symtab["startTime"].(int), "incorrect value obtained", r_time)
+// 	}
+
 // }

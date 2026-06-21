@@ -294,6 +294,26 @@ collectors:
 				}
 			}
 		}
+
+		for module_name, module_path := range c.registry.Modules {
+
+			code := fmt.Sprintf(`
+var ret = false;
+var %s = require('%s');
+if (typeof %s != 'undefined') {
+	ret = true
+}
+ret`,
+				module_name, module_path, module_name)
+			_, err := goja_modules.NewJSCode(c.registry, code)
+			if err != nil {
+				if strings.Contains(err.Error(), "Invalid module") {
+					return fmt.Errorf("module path for profile '%s' module '%s' is invalid: '%s'", profile_name, module_name, module_path)
+				} else {
+					return fmt.Errorf("error building code for checking module path for profile '%s' module '%s' error: %s", profile_name, module_name, err.Error())
+				}
+			}
+		}
 	}
 
 	// Check for empty/duplicate target names

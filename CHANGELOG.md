@@ -5,10 +5,13 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
-## 0.4.4 / 2026-06-21
+## 0.4.5 / 2026-06-21
 
 - added contribs: nginx basic.
 - fixed minor elements in apache contribs.
+- upgraded modules and Go version to 1.26.4
+- fixed #14: Improved module loading behavior when a path is not found or contains syntax errors.
+- fixed `exporter.toDate()` function: It now correctly returns a native JavaScript `Date` object that can be manipulated within the script.
 
 ## 0.4.4 / 2026-06-16
 
