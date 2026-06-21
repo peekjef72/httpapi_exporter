@@ -1,0 +1,450 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_THANOS-FRONTEND",
+      "label": "Thanos-FrontEnd",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.4.19"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "metrics obtained from NGINX basic",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_THANOS-FRONTEND}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "DOWN"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.4.19",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "nginx_up{host=~\"$host\"}",
+          "instant": false,
+          "legendFormat": "{{ host }}",
+          "range": true,
+          "refId": "UP"
+        }
+      ],
+      "title": "NGINX status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_THANOS-FRONTEND}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "mean",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "rate(nginx_connections_accepted{host=~\"$host\"}[2m])",
+          "instant": false,
+          "legendFormat": "{{host}} active",
+          "range": true,
+          "refId": "Accepted"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "rate(nginx_connections_handled{host=~\"$host\"}[2m])",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{host}} handled",
+          "range": true,
+          "refId": "Handled"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "rate(nginx_http_requests_total{host=~\"$host\"}[2m])",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{host}} total",
+          "range": true,
+          "refId": "Total"
+        }
+      ],
+      "title": "Connections rates over 2 min",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_THANOS-FRONTEND}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [
+            "min",
+            "max",
+            "mean",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "nginx_connections_active{host=~\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{host}} active",
+          "range": true,
+          "refId": "Active"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "nginx_connections_reading{host=~\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{host}} reading",
+          "range": true,
+          "refId": "Reading"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "nginx_connections_writing{host=~\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{host}} writing",
+          "range": true,
+          "refId": "Writing"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_THANOS-FRONTEND}"
+          },
+          "editorMode": "code",
+          "expr": "nginx_connections_waiting{host=~\"$host\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{host}} waiting",
+          "range": true,
+          "refId": "Waiting"
+        }
+      ],
+      "title": "Current Connections count",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_THANOS-FRONTEND}"
+        },
+        "definition": "label_values(nginx_up,host)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "",
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(nginx_up,host)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NGINX exporter",
+  "uid": "cfplnxgaj198gf",
+  "version": 1,
+  "weekStart": ""
+}

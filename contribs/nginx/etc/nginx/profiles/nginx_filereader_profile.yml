@@ -1,0 +1,28 @@
+---
+nginx_filereader:
+    # all metrics will be named "[metric_prefix]_[metric_name]"
+    metric_prefix: "nginx"
+    scripts:
+      init: ~
+      login: ~
+      logout: ~
+
+      # method call to determine if a target is responding; will call login() if necessary
+      ping:
+        - name: read from file, parse as json and say everything is OK
+          set_fact:
+            query_status: 200
+            logged: true
+            status: >-
+              js:
+                var fs = require('fs')
+                var buf = fs.readFileSync('profiles/nginx_status.txt')
+                if( buf === undefined ) {
+                  console.error("can't read nginx content from file")
+                }
+                else {
+                  console.log("nginx content read from file: " + buf)
+                  // build an array of lines from the file content (like from test-lines parser)
+                  buf = buf.split('\n')
+                }
+                buf

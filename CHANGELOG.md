@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.4 / 2026-06-21
+
+- added contribs: nginx basic.
+- fixed minor elements in apache contribs.
+
 ## 0.4.4 / 2026-06-16
 
 - rewrite veeam profile: now support Veeam Enterprise Manager v13.

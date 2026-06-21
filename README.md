@@ -22,6 +22,7 @@ As examples, configurations for exporters are provided (see contribs):
 - [netscaler_exporter](contribs/netscaler/README.md)
 - [aruba_exporter](contribs/arubacx/README.md)
 - [apache_exporter](contribs/apache/README.md)
+- [nginx_exporter](contribs/nginx/README.md)
 
 # Build
 

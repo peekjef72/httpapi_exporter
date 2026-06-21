@@ -14,7 +14,7 @@
     #       application: "APACHE"
     #       environment: "DEV"
 
-#--------- End prometheus arubacx exporter direct ---------#
+#--------- End prometheus apache exporter direct ---------#
 
 # or via pushprox_proxy
 #--------- Start prometheus apache exporter proxy ---------#
@@ -36,4 +36,4 @@
       - source_labels: [__tmp_collector_host]
         target_label: __address__
 
-#--------- End prometheus arubacx exporter proxy ---------#
+#--------- End prometheus apache exporter proxy ---------#

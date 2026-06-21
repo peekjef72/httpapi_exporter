@@ -1,0 +1,113 @@
+---
+###
+## 
+## status contains:
+
+# Active connections: 1
+# server accepts handled requests
+#  1 1 1
+# Reading: 0 Writing: 1 Waiting: 0
+
+###
+#
+
+collector_name: nginx_status
+# no cache
+# min_interval: 0s
+metric_prefix: nginx
+
+scripts:
+  analyze_status:
+    - name: analyze data
+      set_fact:
+        results: >-
+          js:
+            var results = {
+              "connections_active":{
+                "name": "connections_active",
+                "type": "gauge",
+                "help": "Active client connections.", 
+                "value": 0, 
+              },
+              "connections_accepted": {
+                "name": "connections_accepted",
+                "type": "counter",
+                "help": "Total accepted client connections since startup.",
+                "value": 0,
+              },
+              "connections_handled": {
+                "name": "connections_handled",
+                "type": "counter",
+                "help": "Total handled client connections since startup.",
+                "value": 0,
+              },
+              "http_requests_total": {
+                "name": "http_requests_total",
+                "type": "counter",
+                "help": "Total http requests received since startup.",
+                "value": 0,
+              },
+                "connections_reading": {
+                "name": "connections_reading",
+                "type": "gauge",
+                "help": "Current number of connections where NGINX is reading the request header.",
+                "value": 0,
+              },
+              "connections_writing": {
+                "name": "connections_writing",
+                "type": "gauge",
+                "help": "Current number of connections where NGINX is writing the response back to the client.",
+                "value": 0,
+              },
+              "connections_waiting": {
+                "name": "connections_waiting",
+                "type": "gauge",
+                "help": "Current number of idle client connections.",
+                "value": 0,
+              },
+            };
+            // console.log("status: " +status.length);
+            if( status.length>0 ) {
+              var line = status[0], res;
+              res = line.split(':', 2);
+              if( res.length > 1 ) {
+                results['connections_active'].value = res[1].trim();
+              }
+              if( status.length>2 ) {
+                line = status[2].trim()
+                res = line.split(' ', 3);
+                if( res.length > 2 ) {
+                  results['connections_accepted'].value = res[0].trim();
+                  results['connections_handled'].value = res[1].trim();
+                  results['http_requests_total'].value = res[2].trim();
+                }
+              }
+              if( status.length>3 ) {
+                line = status[3].trim()
+                var metrics = line.split(/[: ]+/);
+                if( metrics.length > 1) {
+                  results['connections_reading'].value = metrics[1].trim();
+                }
+                if( metrics.length > 3) {
+                  results['connections_writing'].value = metrics[3].trim();
+                }
+                if( metrics.length > 5) {
+                  results['connections_waiting'].value = metrics[5].trim();
+                }
+              }
+            }
+            results
+
+
+    - name: proceed elements
+      scope: none
+      loop: 'js: Object.values(results)'
+      loop_var: metric
+      metrics:
+        - metric_name: $metric.name
+          help: $metric.help
+          type: $metric.type
+          values:
+            _: $metric.value
+
+...

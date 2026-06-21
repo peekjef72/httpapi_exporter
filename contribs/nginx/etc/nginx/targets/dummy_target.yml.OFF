@@ -1,14 +1,14 @@
-name: apachehost
+name: nginxhost
 scheme: https
 host: "1.2.3.4"
-port: 443
+port: 8080
 # proxy: ""
 # verifySSL: false
 # custom constant labels add to all metrics
 # labels:
   # - name: value
 # customs:
-#  status_url: /server-status?auto
-profile: apache
+#  status_url: /server_status
+profile: nginx
 collectors:
-  - ~ apache_*
+  - ~ nginx_*

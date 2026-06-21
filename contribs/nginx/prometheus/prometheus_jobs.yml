@@ -1,0 +1,29 @@
+#--------- Start prometheus nginx exporter direct ---------#
+  - job_name: "nginx"
+    metrics_path: /metrics
+    file_sd_configs:
+      - files: [ "/etc/prometheus/nginx_nodes/*.yml" ]
+
+    # or static configs...
+    # static_configs:
+    #   - targets: [ 1.2.3.4 ]
+    #     labels:
+    #       __param_auth_key: "__shared__auth_passphrase__"
+    #       host: "nginx.server.dom:9117"
+    #       # optional labels for dashboard
+    #       application: "NGINX"
+    #       environment: "DEV"
+
+#--------- End prometheus nginx exporter direct ---------#
+
+# or via pushprox_proxy
+#--------- Start prometheus nginx exporter proxy ---------#
+  - job_name: "nginx"
+    proxy_url: "http://pushprox_proxy:9101/"
+    scrape_interval: 60s
+    scrape_timeout: 5s
+    file_sd_configs:
+      - files: [ "/etc/prometheus/nginx_nodes/*.yml" ]
+
+
+#--------- End prometheus nginx exporter proxy ---------#
