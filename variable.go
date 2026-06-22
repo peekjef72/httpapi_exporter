@@ -57,12 +57,53 @@ func parseVariables(expression string, level int) (*Variable, int, error) {
 	}
 
 	startup := true
+	element_end := false
+	begin_double_quote := false
+	begin_simple_quote := false
 
 	for i := 0; i < len(expression); i++ {
 		char := rune(expression[i])
 
 		switch char {
+		case '"':
+			// start new string
+			if !begin_double_quote {
+				if currentVar.Len() > 0 {
+					return nil, 0, fmt.Errorf("invalid char '\"' in lexeme definition at pos %d", i)
+				}
+				begin_double_quote = true
+				element_end = false
+				startup = false
+				continue
+			} else {
+				// end new string
+				begin_double_quote = false
+				element_end = true
+
+			}
+		case '\'':
+			// start new string
+			if !begin_simple_quote {
+				if currentVar.Len() > 0 {
+					return nil, 0, fmt.Errorf("invalid char '\"' in lexeme definition at pos %d", i)
+				}
+				begin_simple_quote = true
+				startup = false
+				continue
+			} else {
+				// end new string
+				begin_simple_quote = false
+				element_end = true
+			}
+
 		case '$':
+			if begin_double_quote || begin_simple_quote {
+				currentVar.WriteRune(char)
+				continue
+			}
+			if element_end {
+				return nil, 0, fmt.Errorf("invalid char '$' after string in definition at pos %d", i)
+			}
 			// found a '$': it is a new var
 			// check current "stack" type and status: $ is allowed only at startup of word
 			if !startup {
@@ -85,14 +126,22 @@ func parseVariables(expression string, level int) (*Variable, int, error) {
 				startup = false
 				// reduce current element and start a new var
 				if currentVar.Len() > 0 {
-					current.raw = currentVar.String()
+					current.raw = strings.TrimSpace(currentVar.String())
 					currentVar.Reset()
 					startup = true
+					element_end = false
 				}
 			}
 			// eat up the $ (remove from stack)
 
 		case '.':
+			if begin_double_quote || begin_simple_quote {
+				currentVar.WriteRune(char)
+				continue
+			}
+			// if element_end {
+			// 	return nil, 0, fmt.Errorf("invalid char '.' after string in definition at pos %d", i)
+			// }
 			// found a '.': it is a new attribute; reduce previous content
 			// $var.<-attr or $var.attr1.<-attr2 : collect  'var' as var name or 'attr1' as attribute element
 			// if level > 0 .attr is only authorized if current has type var $var[attr1.attr2] ko : only $var[$var2.attr]
@@ -101,30 +150,35 @@ func parseVariables(expression string, level int) (*Variable, int, error) {
 			}
 			if currentVar.Len() > 0 {
 				if !isAttribute {
-					current.raw = currentVar.String()
+					current.raw = strings.TrimSpace(currentVar.String())
 				} else {
 					attribute := &Variable{
-						raw:     currentVar.String(),
+						raw:     strings.TrimSpace(currentVar.String()),
 						vartype: vartype_attribute,
 					}
 					current.attributes = append(current.attributes, attribute)
 				}
 				currentVar.Reset()
 				startup = true
+				element_end = false
 			}
 			isAttribute = true
 
 		case '[':
+			if begin_double_quote || begin_simple_quote {
+				currentVar.WriteRune(char)
+				continue
+			}
 			// found a '[': it is a new name or var; reduce previous content
 			// $var[<-sub] or $var.attr[<-sub] : get 'var' as var name or 'attr' as attribute element
 			// var dst_var *Variable
 			if currentVar.Len() > 0 {
 				if !isAttribute {
-					current.raw = currentVar.String()
+					current.raw = strings.TrimSpace(currentVar.String())
 					// dst_var = current
 				} else {
 					attribute := &Variable{
-						raw:     currentVar.String(),
+						raw:     strings.TrimSpace(currentVar.String()),
 						vartype: vartype_attribute,
 					}
 					current.attributes = append(current.attributes, attribute)
@@ -142,8 +196,13 @@ func parseVariables(expression string, level int) (*Variable, int, error) {
 				return nil, pos, err
 			}
 			startup = true
+			element_end = false
 
 		case ']':
+			if begin_double_quote || begin_simple_quote {
+				currentVar.WriteRune(char)
+				continue
+			}
 			// found a closing bracket ]: reduce previous var and return
 			// check if level is enough
 			if level < 0 {
@@ -152,38 +211,42 @@ func parseVariables(expression string, level int) (*Variable, int, error) {
 			// {level 0} '$var[' {level 1}0]<-sub] or {level 1}$var.attr]<-sub : get '0' as var name or 'attr' as attribute element
 			if currentVar.Len() > 0 {
 				if !isAttribute {
-					current.raw = currentVar.String()
+					current.raw = strings.TrimSpace(currentVar.String())
 				} else {
 					attribute := &Variable{
-						raw:     currentVar.String(),
+						raw:     strings.TrimSpace(currentVar.String()),
 						vartype: vartype_attribute,
 					}
 					current.attributes = append(current.attributes, attribute)
 				}
 				currentVar.Reset()
+				element_end = false
 			} else if len(current.attributes) == 0 {
 				return nil, i + 1, fmt.Errorf("empty attribute in definition at pos: %d", i)
 			}
 			return current, i + 1, nil
 
 		default:
-			startup = false
-			// add rune into the current var content
-			// remove " or ' or blank
-			if char != ' ' && char != '"' && char != '\'' {
-				currentVar.WriteRune(char)
+			if element_end {
+				return nil, 0, fmt.Errorf("invalid char '%c' after string in definition at pos %d", char, i)
 			}
+			// add rune into the current var content
+			startup = false
+			currentVar.WriteRune(char)
 		}
 	}
 
 	if currentVar.Len() > 0 {
+		if begin_double_quote || begin_simple_quote {
+			return nil, 0, fmt.Errorf("string not terminated")
+		}
 		// at level 0 "$var" => get $var / at other level  'index' or 'attr' => get 'index'
 		if !isAttribute {
-			current.raw = currentVar.String()
+			current.raw = strings.TrimSpace(currentVar.String())
 		} else {
 			// $var.attr => get attr as attribute
 			attribute := &Variable{
-				raw:     currentVar.String(),
+				raw:     strings.TrimSpace(currentVar.String()),
 				vartype: vartype_attribute,
 			}
 			current.attributes = append(current.attributes, attribute)

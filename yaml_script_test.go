@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,7 @@ func TestParseVar2(t *testing.T) {
 func TestParseVar3(t *testing.T) {
 	initTest()
 
-	test := "$var['attr1]"
+	test := "$var['attr1']"
 	if variable, err := ParseVariables(test); err != nil {
 		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
 	} else {
@@ -428,6 +429,115 @@ func TestParseVar9(t *testing.T) {
 				fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 0: %v`, sub_attr.raw, sub_attr.attributes),
 			)
 		}
+	}
+}
+
+// doc10
+//
+// parse $var1["name with blank"]
+//
+// => variable 'var' and 1 attribute "name with blank"
+func TestParseVar10(t *testing.T) {
+	initTest()
+
+	test := "$var[\"name with blank\"]"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, variable.raw, variable.attributes),
+		)
+		assert.True(t, variable.attributes[0].raw == "name with blank",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "name with blank"),
+		)
+		assert.True(t, variable.attributes[0].vartype == vartype_attribute,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, variable.raw, variable.attributes[0].vartype),
+		)
+	}
+
+	test = "$var[\"name $ blank\"]"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 1,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 1: %v`, variable.raw, variable.attributes),
+		)
+		assert.True(t, variable.attributes[0].raw == "name $ blank",
+			fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, variable.attributes[0].raw, "name $ blank"),
+		)
+		assert.True(t, variable.attributes[0].vartype == vartype_attribute,
+			fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, variable.raw, variable.attributes[0].vartype),
+		)
+	}
+
+	test = "$var.\"name with blank\".val]"
+	if variable, err := ParseVariables(test); err != nil {
+		t.Errorf(`TestParseVar("%s") error: %s`, test, err.Error())
+	} else {
+		assert.True(t, variable.raw == "var",
+			fmt.Sprintf(`TestParseVar("%s") value differ: %s`, variable.raw, "var"),
+		)
+		assert.True(t, len(variable.attributes) == 2,
+			fmt.Sprintf(`TestParseVar("%s") attributes count differ - must be 2: %v`, variable.raw, variable.attributes),
+		)
+		var sub_attr *Variable
+
+		if len(variable.attributes) > 0 {
+			sub_attr = variable.attributes[0]
+			assert.True(t, sub_attr.raw == "name with blank",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.raw, "name with blank"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+		}
+
+		if len(variable.attributes) > 1 {
+			sub_attr = variable.attributes[1]
+			assert.True(t, sub_attr.raw == "val",
+				fmt.Sprintf(`TestParseVar("%s") attribute value differ: %s`, sub_attr.raw, "val"),
+			)
+			assert.True(t, sub_attr.vartype == vartype_attribute,
+				fmt.Sprintf(`TestParseVar("%s") vartype differ: %d`, sub_attr.raw, sub_attr.vartype),
+			)
+		}
+	}
+
+}
+
+// doc11
+//
+// parse $var1["name with" blank]
+//
+// => error
+func TestParseVar11(t *testing.T) {
+	initTest()
+
+	test := "$var[\"name with\" blank]"
+	if _, err := ParseVariables(test); err == nil {
+		t.Errorf(`TestParseVar("%s") error not found`, test)
+	} else {
+		assert.True(t, strings.Contains(err.Error(), "invalid char ' '"), "invalid error found", err.Error())
+	}
+
+	test = "$var[\"name with\"$val]"
+	if _, err := ParseVariables(test); err == nil {
+		t.Errorf(`TestParseVar("%s") error not found`, test)
+	} else {
+		assert.True(t, strings.Contains(err.Error(), "invalid char '$'"), "invalid error found", err.Error())
+	}
+
+	test = "$var['attr1]"
+	if _, err := ParseVariables(test); err == nil {
+		t.Errorf(`TestParseVar("%s") error not found`, test)
+	} else {
+		assert.True(t, strings.Contains(err.Error(), "string not terminated"), "invalid error found", err.Error())
 	}
 }
 

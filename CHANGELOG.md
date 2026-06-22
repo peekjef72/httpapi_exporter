@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.6 / 2026-06-22
+
+- Fixed regression in variable parsing when they contain blanks, which caused apache_exporter misbehavior.
+
 ## 0.4.5 / 2026-06-21
 
 - added contribs: nginx basic.

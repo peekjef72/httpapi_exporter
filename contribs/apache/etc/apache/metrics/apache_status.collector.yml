@@ -84,7 +84,7 @@ scripts:
               res = line.split(':', 2);
               if( res.length > 1 ) {
                 results[res[0].trim()] = res[1].trim();
-                // console.log("results['" + res[0] +'"]= ' + res[1]);
+                // console.log("results['" + res[0] +"']= " + res[1]);
               }
             }
             results
