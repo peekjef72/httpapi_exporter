@@ -9,8 +9,11 @@ import (
 	"strings"
 
 	"github.com/peekjef72/httpapi_exporter/goja_modules/console"
+	goja_dns "github.com/peekjef72/httpapi_exporter/goja_modules/dns"
 	"github.com/peekjef72/httpapi_exporter/goja_modules/exporter"
 	goja_fs "github.com/peekjef72/httpapi_exporter/goja_modules/fs"
+	goja_net "github.com/peekjef72/httpapi_exporter/goja_modules/net"
+	"github.com/peekjef72/httpapi_exporter/goja_modules/process"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/ast"
@@ -304,15 +307,34 @@ func (jsCode *JSCode) initRunTime() error {
 
 	exporter.Enable(jsCode.vm)
 
-	goja_fs.Enable(jsCode.vm)
+	//	goja_fs.Enable(jsCode.vm)
 
 	for module_name, module_path := range jsCode.registry.Modules {
+		// must determine if module is go native module or js module
+		// register method is different for each case.
+		if module_path[0] != '.' && module_path[0] != '/' {
+			switch module_path {
+			case "dns":
+				goja_dns.Enable(jsCode.vm)
+				continue
+			case "fs":
+				goja_fs.Enable(jsCode.vm)
+				continue
+			case "net":
+				goja_net.Enable(jsCode.vm)
+				continue
+			case "process":
+				process.Enable(jsCode.vm)
+				continue
+			}
 
+		}
 		module, err := required_modules.Require(module_path)
 		if err != nil {
 			if jsCode.logger != nil {
 				jsCode.logger.Error(err.Error())
 			}
+			err = fmt.Errorf("can't initialize module: '%s', error: '%s", module_name, err.Error())
 			return err
 		}
 		jsCode.vm.Set(module_name, module)

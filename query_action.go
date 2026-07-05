@@ -30,6 +30,7 @@ type QueryActionConfig struct {
 	Parser     string             `yaml:"parser,omitempty" json:"parser,omitempty"`
 	Trace      ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
 	Status     ConvertibleBoolean `yaml:"status,omitempty" json:"status,omitempty"`
+	Alternate  string             `yaml:"alternate,omitempty" json:"alternate,omitempty"`
 
 	registry *goja_modules.JSRegistry
 
@@ -423,20 +424,21 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	}
 
 	params := &CallClientExecuteParams{
-		Payload:  payload,
-		Method:   method,
-		Url:      query,
-		Debug:    bool(a.Query.Debug),
-		Trace:    bool(a.Query.Trace),
-		Status:   bool(a.Query.Status),
-		VarName:  var_name,
-		OkStatus: a.Query.ok_status,
-		AuthMode: auth_mode,
-		Username: user,
-		Password: passwd,
-		Token:    auth_token,
-		Timeout:  time.Duration(a.Query.Timeout) * time.Second,
-		Parser:   a.Query.Parser,
+		Payload:   payload,
+		Method:    method,
+		Url:       query,
+		Debug:     bool(a.Query.Debug),
+		Trace:     bool(a.Query.Trace),
+		Status:    bool(a.Query.Status),
+		VarName:   var_name,
+		OkStatus:  a.Query.ok_status,
+		AuthMode:  auth_mode,
+		Username:  user,
+		Password:  passwd,
+		Token:     auth_token,
+		Timeout:   time.Duration(a.Query.Timeout) * time.Second,
+		Parser:    a.Query.Parser,
+		Alternate: a.Query.Alternate,
 	}
 
 	logger.Debug(

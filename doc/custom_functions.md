@@ -19,7 +19,7 @@ exporterValues | | |
 exporterToRawJson | | |
 &nsbp; | | |
 lookupAddr [varstring] | obtain hostname from string representing an ip address ; like sprig/getHostByName but for string ip | lookupAddr .node.ipaddress |
-convertToBytes value unit | convert the value contained in variable to bytes according to the unit string specified: <ul><li>"kilobyte" or "Kb" multiply by 1024 <li>"megabyte" or "Mb" multiply by 1024 \* 1024<li>"gigabyte" or "Gb"multiply by 1024 \* 1024 \* 1024</ul> | '{{ convertToBytes .result.totalMiB "Mb" }}' |
+convertToBytes value unit | convert the value contained in variable to bytes according to the unit string specified: <ul><li>"kilobyte" or "Kb" multiply by 1024 <li>"megabyte" or "Mb" multiply by 1024 \* 1024<li>"gigabyte" or "Gb" multiply by 1024 \* 1024 \* 1024<li>"terabyte" or "Tb" multiply by 1024 \* 1024 \* 1024 \* 1024<li>"petabyte" or "Pb" multiply by 1024 \* 1024 \* 1024 \* 1024 \* 1024</ul> | '{{ convertToBytes .result.totalMiB "Mb" }}' |
 convertBoolToInt value | convert value that may contain a boolean to 0&#124;1 representation. Value can be of any type. If something is <ul><li>like int or float and different from 0 is 1 else 0<li>string and is lower case 'true' or 'yes' or 'ok' is 1 else 0<li>like map or array and length >0 then 1 or 0</ul> | with {"proc": {"loopCrashing": "true",...}}<br> => '{{ convertBoolToInt .proc.loopCrashing }}<br> => 1' |
 getHeader [varmap] | | |
 queryEscape [varstring] | | |
@@ -50,7 +50,7 @@ Because javascript has a lot of internal functions, anyway a lot more than gotem
 
 name | usage | e.g. |
 -- | --- | --- |
-exporter.convertToBytes(value, unit) | convert the value contained in variable to bytes according to the unit string specified: <ul><li>"kilobyte" or "Kb" multiply by 1024 <li>"megabyte" or "Mb" multiply by 1024 \* 1024<li>"gigabyte" or "Gb"multiply by 1024 \* 1024 * 1024</ul> | 'js: exporter.convertToBytes( 13.45, "Mb" )' |
+exporter.convertToBytes(value, unit) | convert the value contained in variable to bytes according to the unit string specified: <ul><li>"kilobyte" or "Kb" multiply by 1024 <li>"megabyte" or "Mb" multiply by 1024 \* 1024<li>"gigabyte" or "Gb" multiply by 1024 \* 1024 \* 1024<li>"terabyte" or "Tb" multiply by 1024 \* 1024 \* 1024 \* 1024<li>"petabyte" or "Pb" multiply by 1024 \* 1024 \* 1024 \* 1024 \* 1024</ul> | 'js: exporter.convertToBytes( 13.45, "Mb" )' |
 exporter.convertBoolToInt( value ) | convert value that may contain a boolean to 0&#124;1 representation. Value can be of any type. If something is <ul><li>like int or float and different from 0 is 1 else 0<li>string and is lower case 'true' or 'yes' or 'ok' is 1 else 0<li>like map or array and length >0 then 1 or 0</ul> | with {"proc": {"loopCrashing": "true",...}}<br> => 'js: exporter.convertBoolToInt( proc.loopCrashing)'<br> => 1' |
 exporter.default(var) | | |
 exporter.decryptPass(varstring) | | |
@@ -101,10 +101,40 @@ used to read local file.
 Initialized by:
 
 ```js
-
  var fs=require('fs')
 ```
 
 name | usage | e.g. |
 -- | --- | --- |
 fs.readFileSync( ... ) | | var buf=fs.readFileSync( 'myfile' ); |
+
+#### process
+
+Portage some parts of nodejs process module.
+
+Initialized by:
+
+```js
+ var process=require('process')
+```
+
+or in profile modules part:
+
+```yaml
+---
+nginx_filereader:
+  modules:
+    # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
+    # so path is absolute or ./path
+    process: 'process'
+    fs: 'fs'
+```
+
+name | usage | e.g. |
+-- | --- | --- |
+process.env( [env_var_name] ) | get all environment vars if [env_var_name] is omit or value of [env_var_name]. [env_var_name] is black_listed: if name contains "PASSWORD", "SECRET", "TOKEN", "KEY", "API_", "DB_", "AWS_", "GOOGLE_", "ENCRYPTION", "PRIVATE", "SSL", "HEROKU", "NETLIFY", "DOCKER", "SMTP", "MAILGUN", "NEW_RELIC", "SENTRY", "CREDENTIALS" the returned value is empty | var config_path=process.env( 'CONFIG_PATH' ); |
+process.argv() | return slice(array) of command line arguments; arguments containing 'key' or 'secret' keyword arg obfuscated | var args = process.argv() |
+process.pid() | get current process pid | var pid = process.pid() |
+process.platform() | get current platform; equivalent to runtime.GOOS | var platform = process.platform() |
+process.version() | get current go version | var version = process.version() |
+process.cwd() | get current working directory | var path = process.cwd() |

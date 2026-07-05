@@ -98,6 +98,109 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("at least one target in `targets` must be defined")
 	}
 
+	// must first build profile to populate registry with module
+	// before to load collectors that should use this modules.
+
+	// convert old format HttpAPIConfig to profile
+	if c.HttpAPIConfigOld != nil {
+		if c.profiles == nil {
+			c.profiles = make(map[string]*Profile)
+		}
+		if _, found := c.Profiles["default"]; found {
+			return fmt.Errorf("incompatible: old config httpapi_config and profiles[\"default\"] found")
+		}
+		profile := &Profile{
+			MetricPrefix: c.Globals.MetricPrefix,
+			registry:     c.registry,
+		}
+		if len(c.HttpAPIConfigOld) > 0 {
+			var err error
+			profile.Scripts, err = build_YAMLScript(c.registry, c.HttpAPIConfigOld)
+			if err != nil {
+				return err
+			}
+		}
+		c.profiles["default"] = profile
+	}
+
+	// build profiles from config definition
+	profiles := make(map[string]*Profile)
+	for profile_name, profile := range c.Profiles {
+		tmp := &Profile{
+			MetricPrefix: profile.MetricPrefix,
+			registry:     c.registry,
+		}
+		if len(profile.ScriptsNodes) > 0 {
+			var err error
+			tmp.Scripts, err = build_YAMLScript(c.registry, profile.ScriptsNodes)
+			if err != nil {
+				return err
+			}
+		}
+		profiles[profile_name] = tmp
+	}
+	if c.profiles == nil {
+		c.profiles = profiles
+	} else {
+		maps.Copy(c.profiles, profiles)
+	}
+
+	// Load any externally defined profiles.
+	if err := c.loadProfileFiles(); err != nil {
+		return err
+	}
+
+	// check each profile scripts:
+	for profile_name, profile := range c.profiles {
+		if profile.MetricPrefix == "" {
+			profile.MetricPrefix = c.Globals.MetricPrefix
+		}
+		if len(profile.Scripts) == 0 {
+			return fmt.Errorf("profile '%s' has an empty scripts section", profile_name)
+		}
+		for name, sc := range profile.Scripts {
+			if sc != nil {
+				sc.name = name
+				// have to set the action to play for play_script_action
+				for _, a := range sc.Actions {
+					if a.Type() == play_script_action || a.Type() == actions_action {
+						if err := a.SetPlayAction(profile.Scripts); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+
+		// 		for module_name, module_path := range c.registry.Modules {
+		// 			expandedPath := os.ExpandEnv(module_path)
+		// 			absPath, err := filepath.Abs(expandedPath)
+		// 			if err != nil {
+		// 				return fmt.Errorf("failed to get absolute path for module path for profile '%s' module '%s': %v", profile_name, module_name, err)
+		// 			}
+		// 			if absPath != module_path {
+		// 				c.registry.Modules[module_name] = absPath
+		// 			}
+
+		// 			code := fmt.Sprintf(`
+		// var ret = false;
+		// var %s = require('%s');
+		// if (typeof %s != 'undefined') {
+		// 	ret = true
+		// }
+		// ret`,
+		// 				module_name, absPath, module_name)
+		// 			_, err = goja_modules.NewJSCode(c.registry, code)
+		// 			if err != nil {
+		// 				if strings.Contains(err.Error(), "Invalid module") {
+		// 					return fmt.Errorf("module path for profile '%s' module '%s' is invalid: '%s'", profile_name, module_name, module_path)
+		// 				} else {
+		// 					return fmt.Errorf("error building code for checking module path for profile '%s' module '%s' error: %s", profile_name, module_name, err.Error())
+		// 				}
+		// 			}
+		// 		}
+	}
+
 	// Load any externally defined collectors.
 	if err := c.loadCollectorFiles(); err != nil {
 		return err
@@ -220,98 +323,6 @@ collectors:
 				t.AuthConfig = *auth
 			} else {
 				return fmt.Errorf("auth_name '%s' not found for target '%s", t.AuthName, t.Name)
-			}
-		}
-	}
-
-	// convert old format HttpAPIConfig to new one
-	if c.HttpAPIConfigOld != nil {
-		if c.profiles == nil {
-			c.profiles = make(map[string]*Profile)
-		}
-		if _, found := c.Profiles["default"]; found {
-			return fmt.Errorf("incompatible: old config httpapi_config and profiles[\"default\"] found")
-		}
-		profile := &Profile{
-			MetricPrefix: c.Globals.MetricPrefix,
-			registry:     c.registry,
-		}
-		if len(c.HttpAPIConfigOld) > 0 {
-			var err error
-			profile.Scripts, err = build_YAMLScript(c.registry, c.HttpAPIConfigOld)
-			if err != nil {
-				return err
-			}
-		}
-		c.profiles["default"] = profile
-	}
-
-	// build profiles from config definition
-	profiles := make(map[string]*Profile)
-	for profile_name, profile := range c.Profiles {
-		tmp := &Profile{
-			MetricPrefix: profile.MetricPrefix,
-			registry:     c.registry,
-		}
-		if len(profile.ScriptsNodes) > 0 {
-			var err error
-			tmp.Scripts, err = build_YAMLScript(c.registry, profile.ScriptsNodes)
-			if err != nil {
-				return err
-			}
-		}
-		profiles[profile_name] = tmp
-	}
-	if c.profiles == nil {
-		c.profiles = profiles
-	} else {
-		maps.Copy(c.profiles, profiles)
-	}
-
-	// Load any externally defined profiles.
-	if err := c.loadProfileFiles(); err != nil {
-		return err
-	}
-
-	// check each profile scripts:
-	for profile_name, profile := range c.profiles {
-		if profile.MetricPrefix == "" {
-			profile.MetricPrefix = c.Globals.MetricPrefix
-		}
-		if len(profile.Scripts) == 0 {
-			return fmt.Errorf("profile '%s' has an empty scripts section", profile_name)
-		}
-		for name, sc := range profile.Scripts {
-			if sc != nil {
-				sc.name = name
-				// have to set the action to play for play_script_action
-				for _, a := range sc.Actions {
-					if a.Type() == play_script_action || a.Type() == actions_action {
-						if err := a.SetPlayAction(profile.Scripts); err != nil {
-							return err
-						}
-					}
-				}
-			}
-		}
-
-		for module_name, module_path := range c.registry.Modules {
-
-			code := fmt.Sprintf(`
-var ret = false;
-var %s = require('%s');
-if (typeof %s != 'undefined') {
-	ret = true
-}
-ret`,
-				module_name, module_path, module_name)
-			_, err := goja_modules.NewJSCode(c.registry, code)
-			if err != nil {
-				if strings.Contains(err.Error(), "Invalid module") {
-					return fmt.Errorf("module path for profile '%s' module '%s' is invalid: '%s'", profile_name, module_name, module_path)
-				} else {
-					return fmt.Errorf("error building code for checking module path for profile '%s' module '%s' error: %s", profile_name, module_name, err.Error())
-				}
 			}
 		}
 	}
@@ -480,16 +491,51 @@ func (p *Profile) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 	p.MetricPrefix = tmp.MetricPrefix
+
+	for module_name, module_path := range tmp.Modules {
+		if _, ok := p.registry.Modules[module_name]; !ok {
+			var path string
+			if strings.Contains(module_path, "/") {
+
+				expandedPath := os.ExpandEnv(module_path)
+				absPath, err := filepath.Abs(expandedPath)
+				if err != nil {
+					return fmt.Errorf("failed to get absolute path for module path for module '%s': %v", module_name, err)
+				}
+				if absPath != module_path {
+					p.registry.Modules[module_name] = absPath
+				}
+				path = absPath
+			} else {
+				path = module_path
+			}
+
+			code := fmt.Sprintf(`
+var ret = false;
+var %s = require('%s');
+if (typeof %s != 'undefined') {
+	ret = true
+}
+ret`,
+				module_name, path, module_name)
+			_, err := goja_modules.NewJSCode(p.registry, code)
+			if err != nil {
+				if strings.Contains(err.Error(), "Invalid module") {
+					return fmt.Errorf("module path for module '%s' is invalid: '%s'", module_name, module_path)
+				} else {
+					return fmt.Errorf("error building code for checking module path for module '%s' error: %s", module_name, err.Error())
+				}
+			}
+			p.registry.Modules[module_name] = path
+		}
+
+	}
+
 	if len(tmp.ScriptsNodes) > 0 {
 		var err error
 		p.Scripts, err = build_YAMLScript(p.registry, tmp.ScriptsNodes)
 		if err != nil {
 			return err
-		}
-	}
-	for module_name, module_path := range tmp.Modules {
-		if _, ok := p.registry.Modules[module_name]; !ok {
-			p.registry.Modules[module_name] = module_path
 		}
 	}
 

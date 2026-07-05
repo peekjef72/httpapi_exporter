@@ -1,0 +1,16 @@
+name: squidident
+scheme: http
+host: "localhost"
+port: 3128
+# proxy: ""
+# verifySSL: false
+#customs:
+#  squid_hostname: squid_hostname
+
+# custom constant labels add to all metrics
+# labels:
+  # - name: value
+
+profile: squid
+collectors:
+  - ~ squid_*

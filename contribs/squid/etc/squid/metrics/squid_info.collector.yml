@@ -1,0 +1,432 @@
+#
+# /squid-internal-mgr/info
+#
+# response:
+# Squid Object Cache: Version 6.10
+# Build Info:
+# Service Name: squidcollab
+# Start Time:     Sun, 14 Jun 2026 20:03:51 GMT
+# Current Time:   Tue, 23 Jun 2026 11:49:29 GMT
+# Connection information for squid:
+#         Number of clients accessing cache:      838
+#         Number of HTTP requests received:       909591
+#         Number of ICP messages received:        0
+#         Number of ICP messages sent:    0
+#         Number of queued ICP replies:   0
+#         Number of HTCP messages received:       0
+#         Number of HTCP messages sent:   0
+#         Request failure ratio:   0.00
+#         Average HTTP requests per minute since start:   73.0
+#         Average ICP messages per minute since start:    0.0
+#         Select loop called: 46492894 times, 16.087 ms avg
+# Cache information for squid:
+#         Hits as % of all requests:      5min: 0.0%, 60min: 0.0%
+#         Hits as % of bytes sent:        5min: 13.1%, 60min: 11.6%
+#         Memory hits as % of hit requests:       5min: 0.0%, 60min: 0.0%
+#         Disk hits as % of hit requests: 5min: 0.0%, 60min: 0.0%
+#         Storage Swap size:      0 KB
+#         Storage Swap capacity:   0.0% used, 100.0% free
+#         Storage Mem size:       220 KB
+#         Storage Mem capacity:    0.1% used, 99.9% free
+#         Mean Object Size:       0.00 KB
+#         Requests given to unlinkd:      0
+# Median Service Times (seconds)  5 min    60 min:
+#         HTTP Requests (All):   0.09219  0.06286
+#         Cache Misses:          0.00000  0.00000
+#         Cache Hits:            0.00000  0.00000
+#         Near Hits:             0.00000  0.00000
+#         Not-Modified Replies:  0.00000  0.00000
+#         DNS Lookups:           0.00000  0.00000
+#         ICP Queries:           0.00000  0.00000
+# Resource usage for squid:
+#         UP Time:        747938.710 seconds
+#         CPU Time:       1074.624 seconds
+#         CPU Usage:      0.14%
+#         CPU Usage, 5 minute avg:        0.12%
+#         CPU Usage, 60 minute avg:       0.14%
+#         Maximum Resident Size: 174320 KB
+#         Page faults with physical i/o: 5
+# Memory accounted for:
+#         Total accounted:            0 KB
+#         memPoolAlloc calls:         1
+#         memPoolFree calls:          2
+# File descriptor usage for squid:
+#         Maximum number of file descriptors:   16384
+#         Largest file desc currently in use:     36
+#         Number of file desc currently in use:   14
+#         Files queued for open:                   0
+#         Available number of file descriptors: 16370
+#         Reserved number of file descriptors:   100
+#         Store Disk files open:                   0
+# Internal Data Structures:
+#             53 StoreEntries
+#             53 StoreEntries with MemObjects
+#              0 Hot Object Cache Items
+#              0 on-disk objects
+
+
+collector_name: squid_infos
+# no cache
+# min_interval: 0s
+# metric_prefix: squid
+
+scripts:
+  analyze_info:
+    - name: analyze infos
+      set_fact:
+        # build a variable "results" that is a map/dictionnary
+        # containing key/value pairs from server-status response
+        # the "results" var is obtained by a javascript code
+        #   looping on each line of status var obtained in the 'ping' query action,
+        #   then spliting on separator ':'
+        # As a result the "results" variable will be used to build metrics.
+        results: >-
+          js:
+            var results = {}, internal_data=false;
+
+            // console.log("infos: " + infos.length);
+            for( var i=0; i< infos.length; i++) {
+              var line = infos[i], part1, part2;
+              if (line == 'Internal Data Structures:' ) {
+                // handle last bloc of data
+                internal_data = true;
+                // console.log('internal_data_found');
+                continue;
+              }
+              if( !internal_data ) {
+                // skip content header lines
+                if( line[line.length-1] == ':') { continue; }
+
+                var colonIndex = line.indexOf(':');
+
+                part1 = line.substring(0, colonIndex).trim();
+                part2 = line.substring(colonIndex + 1).trim();
+                if( part1 && part2 ) {
+                  var key = part1.trim().replaceAll(" ", "_").replace(/[()/'\\,]/g, "");
+                  results[key] = part2.trim();
+                }
+              } else {
+                // console.log('internal data line', line);
+                line = line.trim();
+                var spaceIndex = line.indexOf(' ');
+                if( spaceIndex != -1 ) {
+                  part1 = line.substring(0, spaceIndex).trim();
+
+                  part2 = line.substring(spaceIndex + 1).trim();
+
+                  if( part1 && part2 ) {
+                    var key = part2.replace(/[ \-]/g, "_");
+                    results[key] = part1;
+                    // console.log('key:', key, "value:", part1);
+                  }
+                }
+              }
+            }
+            results
+
+    - name: proceed elements
+      scope: none
+      metrics:
+        # squid version
+          # Squid Object Cache: Version 6.10
+        - metric_name: version
+          type: gauge
+          help: squid version value x + y/100 labeled by version(x.y)
+          key_labels:
+            version: $version["text"]
+          values:
+            _: $version["value"]
+          vars:
+            version: >-
+              js:
+                var regVersion = /Version (\d+)\.(\d+)/, 
+                  version = 0, rev = 0, vers = {};
+                // console.log(results["Squid_Object_Cache"])
+                var matches = results["Squid_Object_Cache"].match(regVersion);
+                if( matches ) {
+                  version = matches[1]
+                  rev = matches[2]
+                  vers["value"] = Math.round( (parseInt(version) + parseInt(rev)/100) * 1E5) / 1E5
+                  vers["text"] = `${matches[1]}.${matches[2]}`
+                }
+                vers
+        # squid start time
+          # Start Time: Sun, 14 Jun 2026 20:03:51 GMT
+        - metric_name: start_timestamp
+          type: gauge
+          help: squid start unix timestamp labeled by service_name
+          key_labels:
+            service_name: $results[Service_Name]
+          values:
+            _ : 'js: Math.floor(exporter.toDate("Mon, 02 Jan 2006 15:04:05 GMT", results["Start_Time"]).getTime() / 1000)'
+
+    - name:
+      set_fact:
+        metrics:
+          - name: clients_accessing_cache_total
+            help: total number of clients accessing cache since startup
+            type: counter
+            value: $results['Number_of_clients_accessing_cache']
+
+          - name: http_requests_received_total
+            help: total number of http requests received since startup
+            type: counter
+            value: $results['Number_of_HTTP_requests_received']
+
+          - name: icp_messages_received_total
+            help: total number of ICP messages received  since startup
+            type: counter
+            value: $results['Number_of_ICP_messages_received']
+
+          - name: icp_messages_sent_total
+            help: total number of ICP messages sent since startup
+            type: counter
+            value: $results['Number_of_ICP_messages_sent']
+
+          - name: queued_icp_replies_total
+            help: total number of queued ICP replies since startup
+            type: counter
+            value: $results['Number_of_queued_ICP_replies']
+
+          - name: HTCP_messages_received_total
+            help: total number of HTCP messages received since startup
+            type: counter
+            value: $results['Number_of_HTCP_messages_received']
+
+          - name: htcp_messages_sent_total
+            help: total number of HTCP messages sent since startup
+            type: counter
+            value: $results['Number_of_HTCP_messages_sent']
+
+          - name: request_failure_ratio_percent
+            type: gauge
+            help: Request failure ratio percent
+            value: $results['Request_failure_ratio']
+
+          - name: avg_http_requests_per_minute_count
+            type: gauge
+            help: Average count of HTTP requests per minute since startup
+            value: $results['Average_HTTP_requests_per_minute_since_start']
+
+          - name: avg_icp_messages_per_minute_count
+            type: gauge
+            help: Average count of ICP messages per minute since startup
+            value: $results['Average_ICP_messages_per_minute_since_start']
+
+          - name: select_loop_called
+            type: counter
+            help: total number of time the select loop has been called since startup
+            value: >
+              js:
+                (results['Select_loop_called'].split(/\s+/,2))[0]
+
+          - name: cache_hits_all_requests_5min_percent
+            type: gauge
+            help: cache hits as percent of all requests over last 5 min
+            value: >
+              js:
+                (results['Hits_as_%_of_all_requests'].split(/(?::|,)\s+/))[1].replace('%','')
+
+          - name: cache_hits_bytes_sent_5min_percent
+            type: gauge
+            help: cache hits as percent of bytes sent over last 5 min
+            value: >
+              js:
+                (results['Hits_as_%_of_bytes_sent'].split(/(?::|,)\s+/))[1].replace('%','')
+
+          - name: cache_memory_hits_all_request_5min_percent
+            type: gauge
+            help: cache memory hits as percent of all requests over last 5 min
+            value: >
+              js: (results['Memory_hits_as_%_of_hit_requests'].split(/(?::|,)\s+/))[1].replace('%','')
+
+          - name: cache_disk_hits_all_hit_requests_5min_percent
+            type: gauge
+            help: cache disk hits as percent of hit requests over last 5 min
+            value: >
+              js: (results['Disk_hits_as_%_of_hit_requests'].split(/(?::|,)\s+/))[1].replace('%','')
+
+          - name: cache_hits_all_requests_60min_percent
+            type: gauge
+            help: cache hits as percent of all requests over last 60 min
+            value: >
+              js:
+                (results['Hits_as_%_of_all_requests'].split(/(?::|,)\s+/))[3].replace('%','')
+
+          - name: cache_hits_bytes_sent_60min_percent
+            type: gauge
+            help: cache hits as percent of bytes sent over last 60 min
+            value: >
+              js:
+                (results['Hits_as_%_of_bytes_sent'].split(/(?::|,)\s+/))[3].replace('%','')
+
+          - name: cache_memory_hits_all_request_60min_percent
+            type: gauge
+            help: cache memory hits as percent of all requests over 60 min
+            value: >
+              js: (results['Memory_hits_as_%_of_hit_requests'].split(/(?::|,)\s+/))[3].replace('%','')
+
+          - name: cache_disk_hits_all_hit_requests_60min_percent
+            type: gauge
+            help: cache disk hits as percent of hit requests over 60 min
+            value: >
+              js: (results['Disk_hits_as_%_of_hit_requests'].split(/(?::|,)\s+/))[3].replace('%','')
+
+          - name: cache_storage_swap_size_bytes
+            type: gauge
+            help: size in bytes of the swap storage currently used by the cache
+            value: >
+              js: exporter.convertToBytes((results['Storage_Swap_size'].split(/\s+/))[0], 'Kb')
+
+          - name: cache_storage_swap_used_percent
+            type: gauge
+            help: percentage of swap storage currently used by the cache
+            value: >
+              js: (results['Storage_Swap_size'].split(/\s+/))[0]
+
+          - name: cache_storage_mem_size_bytes
+            type: gauge
+            help: size in bytes of the memory storage currently used by the cache
+            value: >
+              js: exporter.convertToBytes((results['Storage_Mem_size'].split(/\s+/))[0], 'Kb')
+
+          - name: cache_storage_mem_used_percent
+            type: gauge
+            help: percentage of memory storage currently used by the cache
+            value: >
+              js: (results['Storage_Mem_capacity'].split(/\s+/))[0]
+
+          - name: cache_average_object_size_bytes
+            type: gauge
+            help: the average size in byte of the object in cache
+            value: >
+              js: exporter.convertToBytes((results['Mean_Object_Size'].split(/\s+/))[0], 'Kb')
+
+          - name: cache_request_given_to_unlinkd
+            type: counter
+            help: total number of request to cache given to unlinkd
+            value: $results['Requests_given_to_unlinkd']
+
+          # probably unused because we have service startup time ! uptime = (now-startup)
+          - name: uptime
+            type: counter
+            help: service uptime as a floating point number of seconds since startup
+            value: >
+              js: (results['UP_Time'].split(/\s+/))[0]
+
+          - name: cpu_usage_total_seconds
+            type: counter
+            help: total time spent in seconds by the service since startup
+            value: >
+              js: (results['CPU_Time'].split(/\s+/))[0]
+
+          # useless: idem to metric: cpu_usage_total_seconds * 100 / uptime
+          # - name: cpu_usage_average_total_percent
+          #   key: CPU_Usage", "
+          #   type: gauge
+          #   help: the average of cpu usage since startup
+
+          - name: cpu_usage_last_5min_percent
+            type: gauge
+            help: cpu usage percent for the last 5 minutes
+            value: >
+              js: results['CPU_Usage_5_minute_avg'].replace('%','');
+
+          - name: cpu_usage_last_60min_percent
+            type: gauge
+            help: cpu usage percent for the last 60 minutes
+            value: >
+              js: results['CPU_Usage_60_minute_avg'].replace('%','');
+
+          - name: memory_resident_size_max_bytes
+            type: gauge
+            help: the maximum size in memory of the service since startup (max RSS) in bytes
+            value: >
+              js: exporter.convertToBytes((results['Maximum_Resident_Size'].split(/\s+/))[0], 'kb')
+
+          - name: page_fault_physical_io_total
+            type: counter
+            help: total number of page faults requiring physical access to disk since startup
+            value: $results['Page_faults_with_physical_io']
+
+          - name: memory_accounted_total_bytes
+            type: gauge
+            help: the total amount of memory that Squid has explicitly allocated and tracked in its internal accounting system
+            value: >
+              js: exporter.convertToBytes((results['Total_accounted'].split(/\s+/))[0], 'kb')
+
+          - name: memory_accounted_total_mempool_alloc_count
+            type: counter
+            help:  the total number of memory allocation requests made by Squid's memory pool system since startup
+            value: $results['memPoolAlloc_calls']
+
+          - name: memory_accounted_total_mempool_free_count
+            type: counter
+            help: the total number of memory deallocation requests made by Squid's memory pool system since startup
+            value: $results['memPoolFree_calls']
+
+          - name: file_descriptor_max_allowed_count
+            type: gauge
+            help: the maximum number of file descriptors that Squid is allowed to use on the system
+            value: $results['Maximum_number_of_file_descriptors']
+
+          - name: file_descriptor_largest_opened_count
+            type: gauge
+            help: the maximum number of file descriptor that Squid has opened at the same time since startup
+            value: $results['Largest_file_desc_currently_in_use']
+
+          - name: file_descriptor_currently_opened_count
+            type: gauge
+            help:  current count of open file descriptors being used by Squid
+            value: $results['Number_of_file_desc_currently_in_use']
+
+          - name: file_descriptor_files_queued_count
+            type: gauge
+            help: the current number of files waiting to be opened by Squid
+            value: $results['Files_queued_for_open']
+
+          - name: file_descriptor_available_count
+            type: gauge
+            help: the number of file descriptors still available for Squid to use
+            value: $results['Available_number_of_file_descriptors']
+
+          - name: file_descriptor_reserved_count
+            type: gauge
+            help: the number of file descriptors that Squid has explicitly reserved for its own use
+            value: $results['Reserved_number_of_file_descriptors']
+
+          - name: file_descriptor_store_disk_files_open_count
+            type: gauge
+            help: the number of files currently open in Squid's disk cache.
+            value: $results['Store_Disk_files_open']
+
+          - name: internal_data_store_entries_count
+            type: gauge
+            help: the number of StoreEntries currently maintained in Squid's internal data structures
+            value: $results['StoreEntries']
+
+          - name: internal_data_store_entries_mem_object_count
+            type: gauge
+            help: the number of StoreEntries that have MemObjects associated with them.
+            value: $results['StoreEntries_with_MemObjects']
+
+          - name: internal_data_hot_object_cache_count
+            type: gauge
+            help: the number of objects currently stored in Squid's Hot Object Cache
+            value: $results['Hot_Object_Cache_Items']
+
+          - name: internal_data_on_disk_cache_count
+            type: gauge
+            help: the number of objects currently stored on disk in Squid's cache
+            value: $results['on_disk_objects']
+          
+    - name: process metrics
+      scope: none
+      loop: $metrics
+      loop_var: metric
+      metrics:
+        - metric_name: $metric.name
+          type: $metric.type
+          help: $metric.help
+          values:
+            _: $metric.value

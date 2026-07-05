@@ -13,7 +13,7 @@ scripts:
   get stat_hanode:
     - name: collect cluster info
       when:
-        - js: config != undefined && config.cluster != undefined && config.cluster.length == 0
+        - 'js: config != undefined && config.cluster != undefined && config.cluster.length == 0'
       actions:
         - name: collect config hanode
           query:
@@ -52,9 +52,9 @@ scripts:
                       "name:":  exporter.lookupAddr( node.ipaddress ),
                       "ip":     node.ipaddress,
                       "state":  state,
-                      "hastate" hastate,
-                    }
-                    config.cluster[node.id] = node
+                      "hastate": hastate,
+                    };
+                    config.cluster[node.id] = node;
                     1
         - name: keep config[cluster]
           set_stats:

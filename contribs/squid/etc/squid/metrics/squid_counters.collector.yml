@@ -1,0 +1,141 @@
+#
+# query: /squid-internal-mgr/counters
+## response
+# sample_time = 1782218226.875806 (Tue, 23 Jun 2026 12:37:06 GMT)
+# client_http.requests = 913182
+# client_http.hits = 0
+# client_http.errors = 367
+# client_http.kbytes_in = 15669858
+# client_http.kbytes_out = 8532871
+# client_http.hit_kbytes_out = 0
+# server.all.requests = 611210
+# server.all.errors = 0
+# server.all.kbytes_in = 7747954
+#...
+#
+#
+
+
+collector_name: squid_counters
+# no cache
+# min_interval: 0s
+# metric_prefix: squid
+
+scripts:
+  get_counters:
+    - name: get counters
+      query:
+        url: /counters
+        var_name: counters
+        alternate: squid_counters
+        # debug: true
+        method: get
+        parser: text-lines
+
+    - name: analyze data
+      set_fact:
+        # build a variable "results" that is a map/dictionnary
+        # containing key/value pairs from /counters response
+        # the "results" var is obtained by a javascript code
+        #   looping on each line of response of query action,
+        #   then spliting on separator '='
+        #   then convert to lower case and replace . by _
+        #     in first part.
+        # As a result the "results" variable will be used to build metrics.
+        res_map: >-
+          js:
+            var results = {};
+            // console.log("counters: " + counters.length);
+            for( var i=0; i< counters.length; i++) {
+              var line = counters[i], res;
+              res = line.split('=', 2);
+              if( res.length > 1 ) {
+                var key = res[0].trim().replaceAll(".", "_");
+                results[key] = res[1].trim();
+                // console.log("results['" + key +"']= " + res[1]);
+              }
+            }
+            results
+        metrics:
+          - name: client_http_requests
+            suffix: total
+            help: The total number of client requests
+          - name: client_http_hits
+            suffix: total
+            help: The total number of client cache hits
+          - name: client_http_errors
+            suffix: total
+            help: The total number of client http errors
+          - name: client_http_kbytes_in
+            suffix: kbytes_total
+            help: The total number of client kbytes received
+          - name:  client_http_kbytes_out
+            suffix: kbytes_total
+            help: The total number of client kbytes transferred
+          - name: client_http_hit_kbytes_out
+            suffix: bytes_total
+            help: The total number of client kbytes cache hit
+
+          - name: server_http_requests
+            suffix: total
+            help: The total number of server http requests
+          - name: server_http_errors
+            suffix: total
+            help: The total number of server http errors
+          - name: server_http_kbytes_in
+            suffix: kbytes_total
+            help: The total number of server http kbytes received
+          - name: server_http_kbytes_out
+            suffix: kbytes_total
+            help: The total number of server http kbytes transferred
+
+          - name: server_all_requests
+            suffix: total
+            help: The total number of server all requests
+          - name: server_all_errors
+            suffix: total
+            help: The total number of server all errors
+          - name: server_all_kbytes_in
+            suffix: kbytes_total
+            help: The total number of server kbytes received
+          - name: server_all_kbytes_out
+            suffix: kbytes_total
+            help: The total number of server kbytes transferred
+
+          - name: server_ftp_requests
+            suffix: total
+            help: The total number of server ftp requests
+          - name: server_ftp_errors
+            suffix: total
+            help: The total number of server ftp errors
+          - name: server_ftp_kbytes_in
+            suffix: kbytes_total
+            help: The total number of server ftp kbytes received
+          - name: server_ftp_kbytes_out
+            suffix: kbytes_total
+            help: The total number of server ftp kbytes transferred
+
+          - name: server_other_requests
+            suffix: total
+            help: The total number of server other requests
+          - name: server_other_errors
+            suffix: total
+            help: The total number of server other errors
+          - name: server_other_kbytes_in
+            suffix: kbytes_total
+            help: The total number of server other kbytes received
+          - name: server_other_kbytes_out
+            suffix: kbytes_total
+            help: The total number of server other kbytes transferred
+
+    - name: process metrics
+      scope: none
+      loop: $metrics
+      loop_var: metric
+      metrics:
+        - metric_name: 'js: metric.name + "_" + metric.suffix'
+          type: counter
+          help: $metric.help
+          values:
+            _: >
+              js: res_map[metric.name] != undefined ? res_map[metric.name] : 0

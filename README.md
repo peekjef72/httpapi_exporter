@@ -23,6 +23,7 @@ As examples, configurations for exporters are provided (see contribs):
 - [aruba_exporter](contribs/arubacx/README.md)
 - [apache_exporter](contribs/apache/README.md)
 - [nginx_exporter](contribs/nginx/README.md)
+- [squid_exporter](contribs/squid/README.md)
 
 # Build
 

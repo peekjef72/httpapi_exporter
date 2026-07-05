@@ -1,28 +1,56 @@
 ---
 nginx_filereader:
-    # all metrics will be named "[metric_prefix]_[metric_name]"
-    metric_prefix: "nginx"
-    scripts:
-      init: ~
-      login: ~
-      logout: ~
+  modules:
+    # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
+    # so path is absolute or ./path
+    process: 'process'
+    fs: 'fs'
 
-      # method call to determine if a target is responding; will call login() if necessary
-      ping:
-        - name: read from file, parse as json and say everything is OK
-          set_fact:
-            query_status: 200
-            logged: true
-            status: >-
-              js:
-                var fs = require('fs')
-                var buf = fs.readFileSync('profiles/nginx_status.txt')
-                if( buf === undefined ) {
-                  console.error("can't read nginx content from file")
-                }
-                else {
-                  console.log("nginx content read from file: " + buf)
-                  // build an array of lines from the file content (like from test-lines parser)
-                  buf = buf.split('\n')
-                }
-                buf
+  # all metrics will be named "[metric_prefix]_[metric_name]"
+  metric_prefix: "nginx"
+  scripts:
+    init: ~
+    login: ~
+    logout: ~
+
+    # method call to determine if a target is responding; will call login() if necessary
+    ping:
+      - name: read from file and say everything is OK
+        set_fact:
+          query_status: 200
+          logged: true
+          alternates: >-
+            js:
+              // MUST be set at startup to reach it
+              config_path = process.env("CONFIG_PATH")
+              config_path = config_path == undefined || config_path == '' ? '.': config_path;
+              if(config_path[config_path.length-1] == '/') {
+                config_path[config_path.length-1]=0
+              }
+              // console.log('config_path=', config_path);
+              var buf = fs.readFileSync(config_path + '/profiles/samples/nginx_status.txt')
+              if( buf === undefined ) {
+                console.error("can't read nginx content from file")
+              }
+              // else {
+              //   console.log("nginx content read from file: " + buf)
+              // }
+              var obj = { status: buf };
+              obj
+      - name: check if API is replying
+        query:
+          url: $status_url
+          method: GET
+          # headers:
+          ok_status: 200
+          var_name: status
+          # tell to use alernates['status'] in test mode
+          alternate: status
+          parser: text-lines
+          # debug: true
+          # trace: true
+      - name: analyze login response ok
+        set_fact:
+          logged: true
+        when:
+          - "js: status_code == 200"

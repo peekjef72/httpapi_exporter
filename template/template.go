@@ -23,23 +23,35 @@ import (
 )
 
 func convertToBytes(curval any, unit string) (int64, error) {
-	var i_value int64
 
 	if curval == nil {
 		return 0, nil
 	}
-	i_value = cast.ToInt64(curval)
-
+	value := cast.ToFloat64(curval)
+	unit = strings.ToLower(unit)
 	switch unit {
-	case "kilobyte", "Kb":
-		i_value = i_value * 1024
-	case "megabyte", "Mb":
-		i_value = i_value * 1024 * 1024
-	case "gigabyte", "Gb":
-		i_value = i_value * 1024 * 1024 * 1024
-
+	case "kilobyte", "kb":
+		value = value * 1024
+	case "megabyte", "mb":
+		value = value * 1024 * 1024
+	case "gigabyte", "gb":
+		value = value * 1024 * 1024 * 1024
+	case "terabyte", "tb":
+		value = value * 1024 * 1024 * 1024 * 1024
+	case "petabyte", "pb":
+		value = value * 1024 * 1024 * 1024 * 1024 * 1024
+	case "exabyte", "eb":
+		value = value * 1024 * 1024 * 1024 * 1024 * 1024 * 1024
+	case "zettabyte", "zb":
+		value = value * (2 ^ 70)
+	case "yottabyte", "yb":
+		value = value * (2 ^ 80)
+	case "ronnabyte", "rb":
+		value = value * (2 ^ 90)
+	case "quettabyte", "qb":
+		value = value * (2 ^ 100)
 	}
-	return i_value, nil
+	return int64(value), nil
 }
 
 // convert the variable cast to boolean to return 0 or 1.

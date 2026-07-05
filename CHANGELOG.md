@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+## 0.4.7 / 2026-07-05
+
+- added support for terabyte (TB) and petabyte (PB) formats in the `convertToBytes` custom function.improved `convertToBytes` function to handle larger storage units and floating point values (e.g.: 1.2Pb)
+- fixed regression (0.4.2): exporter metric type not being taken into account (all metrics were incorrectly set as counters).The exporter now again properly respects the metric type configuration (counter, gauge, histogram, etc.)
+- added new js module named 'process', not enabled by default; used to get env variables. (see [doc](doc/custom_functions.md))
+- removed js module 'fs' from list of the default enabled modules. It must now be:
+  - Explicitly required in profiles, **or**
+  - Enabled via configuration.
+- fixed configuration reloading: the registry now **reinitializes all modules** when reloaded, ensuring JS module changes take effect.
+- added feature 'test-mode', that allow to specify an alternate profile that reads query results from files and then to test metrics formulas with the read results.
+- corrected typos in Netscaler contributor configuration (`hanode_metrics.collector.yml`).
+- add contribs squid
+
 ## 0.4.6 / 2026-06-22
 
 - Fixed regression in variable parsing when they contain blanks, which caused apache_exporter misbehavior.

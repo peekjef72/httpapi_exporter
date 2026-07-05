@@ -1,0 +1,64 @@
+---
+squid_filereader:
+  modules:
+    # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
+    # so path is absolute or ./path
+    process: 'process'
+    fs: 'fs'
+
+  # all metrics will be named "[metric_prefix]_[metric_name]"
+  metric_prefix: squid
+  scripts:
+    init: ~
+    login: ~
+    logout: ~
+
+    # method call to determine if a target is responding; will call login() if necessary
+    ping:
+      - name: read from file and say everything is OK
+        set_fact:
+          query_status: 200
+          logged: true
+          alternates: >-
+            js:
+              // MUST be set at startup to reach it
+              config_path = process.env("CONFIG_PATH");
+              config_path = config_path == undefined || config_path == '' ? '.': config_path;
+              if(config_path[config_path.length-1] == '/') {
+                config_path[config_path.length-1]=0;
+              }
+              // console.log('config_path=', config_path);
+              var elements = [
+                { name: 'squid_info', file: 'squid_info.txt' },
+                { name: 'squid_counters', file: 'squid_counters.txt' },
+                { name: 'squid_service_times', file: 'squid_service_times.txt' },
+              ];
+              var res = {};
+              for (const element of elements) {
+                const buf = fs.readFileSync( config_path + '/profiles/samples/' + element.file)
+                if( buf === undefined ) {
+                  console.error("can't read content content from file", element.file);
+                }
+                else {
+                  // console.log("squid content read from file: " + buf);
+                  res[element.name] = buf;
+                }
+              }
+              res
+      - name: check if API is replying
+        query:
+          url: $status_url
+          method: GET
+          # headers:
+          ok_status: 200
+          var_name: infos
+          # tell to use alernates['status'] in test mode
+          alternate: squid_info
+          parser: text-lines
+          # debug: true
+          # trace: true
+      - name: analyze login response ok
+        set_fact:
+          logged: true
+        when:
+          - "js: status_code == 200"

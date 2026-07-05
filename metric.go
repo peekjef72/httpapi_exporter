@@ -118,6 +118,7 @@ func NewMetricFamily(
 		labels:       labels,
 		valuesLabels: valuesLabels,
 		logContext:   logContext,
+		value_type:   255,
 	}, nil
 }
 

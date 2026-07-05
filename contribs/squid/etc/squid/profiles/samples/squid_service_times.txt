@@ -1,0 +1,134 @@
+Service Time Percentiles            5 min    60 min:
+        HTTP Requests (All):   5%   0.00000  0.00000
+        HTTP Requests (All):  10%   0.00000  0.00000
+        HTTP Requests (All):  15%   0.00000  0.00000
+        HTTP Requests (All):  20%   0.00000  0.00000
+        HTTP Requests (All):  25%   0.00000  0.00000
+        HTTP Requests (All):  30%   0.00000  0.00000
+        HTTP Requests (All):  35%   0.08729  0.05633
+        HTTP Requests (All):  40%   0.09219  0.05951
+        HTTP Requests (All):  45%   0.09736  0.06286
+        HTTP Requests (All):  50%   0.10281  0.08729
+        HTTP Requests (All):  55%   0.10281  0.09219
+        HTTP Requests (All):  60%   0.12106  0.09736
+        HTTP Requests (All):  65%   0.12783  0.09736
+        HTTP Requests (All):  70%   0.12783  0.10281
+        HTTP Requests (All):  75%   0.13498  0.10857
+        HTTP Requests (All):  80%   0.13498  0.12106
+        HTTP Requests (All):  85%   0.15048  0.12783
+        HTTP Requests (All):  90%   0.15888  0.14252
+        HTTP Requests (All):  95%   0.20843  0.16775
+        Cache Misses:          5%   0.00000  0.00000
+        Cache Misses:         10%   0.00000  0.00000
+        Cache Misses:         15%   0.00000  0.00000
+        Cache Misses:         20%   0.00000  0.00000
+        Cache Misses:         25%   0.00000  0.00000
+        Cache Misses:         30%   0.00000  0.00000
+        Cache Misses:         35%   0.00000  0.00000
+        Cache Misses:         40%   0.00000  0.00000
+        Cache Misses:         45%   0.00000  0.00000
+        Cache Misses:         50%   0.00000  0.00000
+        Cache Misses:         55%   0.00000  0.00000
+        Cache Misses:         60%   0.00000  0.00000
+        Cache Misses:         65%   0.00000  0.00000
+        Cache Misses:         70%   0.00000  0.00000
+        Cache Misses:         75%   0.00000  0.00000
+        Cache Misses:         80%   0.00000  0.00000
+        Cache Misses:         85%   0.00000  0.00000
+        Cache Misses:         90%   0.00000  0.00000
+        Cache Misses:         95%   0.00000  0.00000
+        Cache Hits:            5%   0.00000  0.00000
+        Cache Hits:           10%   0.00000  0.00000
+        Cache Hits:           15%   0.00000  0.00000
+        Cache Hits:           20%   0.00000  0.00000
+        Cache Hits:           25%   0.00000  0.00000
+        Cache Hits:           30%   0.00000  0.00000
+        Cache Hits:           35%   0.00000  0.00000
+        Cache Hits:           40%   0.00000  0.00000
+        Cache Hits:           45%   0.00000  0.00000
+        Cache Hits:           50%   0.00000  0.00000
+        Cache Hits:           55%   0.00000  0.00000
+        Cache Hits:           60%   0.00000  0.00000
+        Cache Hits:           65%   0.00000  0.00000
+        Cache Hits:           70%   0.00000  0.00000
+        Cache Hits:           75%   0.00000  0.00000
+        Cache Hits:           80%   0.00000  0.00000
+        Cache Hits:           85%   0.00000  0.00000
+        Cache Hits:           90%   0.00000  0.00000
+        Cache Hits:           95%   0.00000  0.00000
+        Near Hits:             5%   0.00000  0.00000
+        Near Hits:            10%   0.00000  0.00000
+        Near Hits:            15%   0.00000  0.00000
+        Near Hits:            20%   0.00000  0.00000
+        Near Hits:            25%   0.00000  0.00000
+        Near Hits:            30%   0.00000  0.00000
+        Near Hits:            35%   0.00000  0.00000
+        Near Hits:            40%   0.00000  0.00000
+        Near Hits:            45%   0.00000  0.00000
+        Near Hits:            50%   0.00000  0.00000
+        Near Hits:            55%   0.00000  0.00000
+        Near Hits:            60%   0.00000  0.00000
+        Near Hits:            65%   0.00000  0.00000
+        Near Hits:            70%   0.00000  0.00000
+        Near Hits:            75%   0.00000  0.00000
+        Near Hits:            80%   0.00000  0.00000
+        Near Hits:            85%   0.00000  0.00000
+        Near Hits:            90%   0.00000  0.00000
+        Near Hits:            95%   0.00000  0.00000
+        Not-Modified Replies:  5%   0.00000  0.00000
+        Not-Modified Replies: 10%   0.00000  0.00000
+        Not-Modified Replies: 15%   0.00000  0.00000
+        Not-Modified Replies: 20%   0.00000  0.00000
+        Not-Modified Replies: 25%   0.00000  0.00000
+        Not-Modified Replies: 30%   0.00000  0.00000
+        Not-Modified Replies: 35%   0.00000  0.00000
+        Not-Modified Replies: 40%   0.00000  0.00000
+        Not-Modified Replies: 45%   0.00000  0.00000
+        Not-Modified Replies: 50%   0.00000  0.00000
+        Not-Modified Replies: 55%   0.00000  0.00000
+        Not-Modified Replies: 60%   0.00000  0.00000
+        Not-Modified Replies: 65%   0.00000  0.00000
+        Not-Modified Replies: 70%   0.00000  0.00000
+        Not-Modified Replies: 75%   0.00000  0.00000
+        Not-Modified Replies: 80%   0.00000  0.00000
+        Not-Modified Replies: 85%   0.00000  0.00000
+        Not-Modified Replies: 90%   0.00000  0.00000
+        Not-Modified Replies: 95%   0.00000  0.00000
+        DNS Lookups:           5%   0.00000  0.00000
+        DNS Lookups:          10%   0.00000  0.00000
+        DNS Lookups:          15%   0.00000  0.00000
+        DNS Lookups:          20%   0.00000  0.00000
+        DNS Lookups:          25%   0.00000  0.00000
+        DNS Lookups:          30%   0.00000  0.00000
+        DNS Lookups:          35%   0.00000  0.00000
+        DNS Lookups:          40%   0.00000  0.00000
+        DNS Lookups:          45%   0.00000  0.00000
+        DNS Lookups:          50%   0.00000  0.00000
+        DNS Lookups:          55%   0.00000  0.00000
+        DNS Lookups:          60%   0.00000  0.00000
+        DNS Lookups:          65%   0.25460  0.00000
+        DNS Lookups:          70%   0.25460  0.00000
+        DNS Lookups:          75%   0.29097  0.06364
+        DNS Lookups:          80%   0.31806  0.09535
+        DNS Lookups:          85%   0.31806  0.14912
+        DNS Lookups:          90%   0.34765  0.24351
+        DNS Lookups:          95%   0.43420  0.34765
+        ICP Queries:           5%   0.00000  0.00000
+        ICP Queries:          10%   0.00000  0.00000
+        ICP Queries:          15%   0.00000  0.00000
+        ICP Queries:          20%   0.00000  0.00000
+        ICP Queries:          25%   0.00000  0.00000
+        ICP Queries:          30%   0.00000  0.00000
+        ICP Queries:          35%   0.00000  0.00000
+        ICP Queries:          40%   0.00000  0.00000
+        ICP Queries:          45%   0.00000  0.00000
+        ICP Queries:          50%   0.00000  0.00000
+        ICP Queries:          55%   0.00000  0.00000
+        ICP Queries:          60%   0.00000  0.00000
+        ICP Queries:          65%   0.00000  0.00000
+        ICP Queries:          70%   0.00000  0.00000
+        ICP Queries:          75%   0.00000  0.00000
+        ICP Queries:          80%   0.00000  0.00000
+        ICP Queries:          85%   0.00000  0.00000
+        ICP Queries:          90%   0.00000  0.00000
+        ICP Queries:          95%   0.00000  0.00000

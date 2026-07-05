@@ -186,22 +186,11 @@ func NewTarget(
 		dto.MetricType_GAUGE, constLabelPairs,
 		"collectorname")
 
-	// testHisto := prometheus.NewHistogramVec(
-	// 	prometheus.HistogramOpts{
-	// 		Namespace: profile.MetricPrefix,
-	// 		Name:      "qmgr_messages_inserted_size_bytes",
-	// 		Help:      "Size of messages inserted into the mail queues in bytes.",
-	// 		Buckets:   []float64{1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9},
-	// 	},
-	// 	[]string{"bla"},
-	// )
-
 	t := target{
-		name:       tPar.Name,
-		config:     tPar,
-		client:     newClient(tPar, profile.Scripts, logger, gc),
-		collectors: collectors,
-		// httpAPIScript:       profile.Scripts,
+		name:                tPar.Name,
+		config:              tPar,
+		client:              newClient(tPar, profile.Scripts, logger, gc),
+		collectors:          collectors,
 		upDesc:              upDesc,
 		scrapeDurationDesc:  scrapeDurationDesc,
 		collectorStatusDesc: collectorStatusDesc,
@@ -224,7 +213,7 @@ func NewTarget(
 		c.SetQueriesStatus(t.client, t.queries_status, 0)
 	}
 
-	for _, scr := range t.config.profile.Scripts {
+	for _, scr := range profile.Scripts {
 		// some default script may be defined to null (login, clear, logout...)
 		if scr == nil {
 			continue

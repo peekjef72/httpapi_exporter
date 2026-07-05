@@ -51,25 +51,36 @@ type exporter struct {
 	config  *Config
 	targets []Target
 
-	registry       *goja_modules.JSRegistry
-	consolePrinter goja_modules.LoggerPrinter
-	cur_target     Target
-	ctx            context.Context
-	logger         *slog.Logger
-	start_time     string
-	reload_time    string
-	logLevel       string
-	health_only    bool
-	content_mutex  *sync.Mutex
+	registry          *goja_modules.JSRegistry
+	consolePrinter    goja_modules.LoggerPrinter
+	cur_target        Target
+	ctx               context.Context
+	logger            *slog.Logger
+	start_time        string
+	reload_time       string
+	logLevel          string
+	health_only       bool
+	test_mode         bool
+	test_mode_profile string
+	content_mutex     *sync.Mutex
 }
 
 // NewExporter returns a new Exporter with the provided config.
-func NewExporter(configFile string, logger *slog.Logger, collectorName string) (Exporter, error) {
+func NewExporter(configFile string, logger *slog.Logger, collectorName string, test_mode_profile string) (Exporter, error) {
 
 	registry, consolePrinter := goja_modules.InitJSRegistry(logger, template.Js_func_map())
 	c, err := LoadConfig(configFile, logger, collectorName, registry)
 	if err != nil {
 		return nil, err
+	}
+
+	var profile *Profile
+	if test_mode_profile != "" {
+		if t_profile, ok := c.profiles[test_mode_profile]; !ok {
+			return nil, fmt.Errorf("invalid profile name '%s' not found in profiles", test_mode_profile)
+		} else {
+			profile = t_profile
+		}
 	}
 
 	var targets []Target
@@ -81,9 +92,15 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string) (
 		if len(t.TargetsFiles) > 0 {
 			continue
 		}
-		target, err := NewTarget(logContext, t, c.Globals, t.profile, logger)
+		if profile == nil {
+			profile = t.profile
+		}
+		target, err := NewTarget(logContext, t, c.Globals, profile, logger)
 		if err != nil {
 			return nil, err
+		}
+		if test_mode_profile != "" {
+			target.Config().ProfileName = test_mode_profile
 		}
 		if len(c.Targets) > 1 {
 			targets = append(targets, target)
@@ -92,14 +109,21 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string) (
 		}
 	}
 
+	test_mode := false
+	if test_mode_profile != "" {
+		test_mode = true
+	}
+
 	return &exporter{
-		config:         c,
-		targets:        targets,
-		ctx:            context.Background(),
-		logger:         logger,
-		content_mutex:  &sync.Mutex{},
-		registry:       registry,
-		consolePrinter: consolePrinter,
+		config:            c,
+		targets:           targets,
+		ctx:               context.Background(),
+		logger:            logger,
+		content_mutex:     &sync.Mutex{},
+		registry:          registry,
+		consolePrinter:    consolePrinter,
+		test_mode:         test_mode,
+		test_mode_profile: test_mode_profile,
 	}, nil
 }
 
@@ -112,6 +136,7 @@ func (e *exporter) WithContext(ctx context.Context, t Target, health_only bool) 
 		health_only:   health_only,
 		logger:        e.logger,
 		content_mutex: e.content_mutex,
+		test_mode:     e.test_mode,
 	}
 }
 
@@ -140,6 +165,9 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 			}
 		}()
 		defer wg.Done()
+		if e.test_mode {
+			target.SetSymbol("test_mode", e.test_mode)
+		}
 		target.Collect(e.ctx, metricChan, e.health_only)
 	}(e.cur_target)
 
@@ -241,7 +269,18 @@ func (e *exporter) FindTarget(tName string) (Target, error) {
 func (e *exporter) AddTarget(tg_config *TargetConfig) (Target, error) {
 	var logContext []any
 
-	target, err := NewTarget(logContext, tg_config, e.config.Globals, tg_config.profile, e.logger)
+	var profile *Profile
+	if e.test_mode_profile != "" {
+		if t_profile, ok := e.config.profiles[e.test_mode_profile]; !ok {
+			return nil, fmt.Errorf("invalid profile name '%s' not found in profiles", e.test_mode_profile)
+		} else {
+			profile = t_profile
+		}
+	} else {
+		profile = tg_config.profile
+	}
+
+	target, err := NewTarget(logContext, tg_config, e.config.Globals, profile, e.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -369,12 +408,22 @@ func (e *exporter) ReloadConfig() error {
 	collectorName := e.config.collectorName
 	e.content_mutex.Unlock()
 
-	c, err := LoadConfig(configFile, e.logger, collectorName, e.registry)
+	registry, consolePrinter := goja_modules.InitJSRegistry(e.logger, template.Js_func_map())
+
+	c, err := LoadConfig(configFile, e.logger, collectorName, registry)
 	if err != nil {
 		return err
 	}
 	if c.HttpAPIConfigOld != nil {
 		e.logger.Warn("DEPRECATED usage of httpapi_config")
+	}
+	var profile *Profile
+	if e.test_mode_profile != "" {
+		if t_profile, ok := e.config.profiles[e.test_mode_profile]; !ok {
+			return fmt.Errorf("invalid profile name '%s' not found in profiles", e.test_mode_profile)
+		} else {
+			profile = t_profile
+		}
 	}
 
 	var targets []Target
@@ -386,7 +435,10 @@ func (e *exporter) ReloadConfig() error {
 		if len(t.TargetsFiles) > 0 {
 			continue
 		}
-		target, err := NewTarget(logContext, t, c.Globals, t.profile, e.logger)
+		if profile == nil {
+			profile = t.profile
+		}
+		target, err := NewTarget(logContext, t, c.Globals, profile, e.logger)
 		if err != nil {
 			return err
 		}
@@ -398,6 +450,8 @@ func (e *exporter) ReloadConfig() error {
 	}
 
 	e.content_mutex.Lock()
+	e.registry = registry
+	e.consolePrinter = consolePrinter
 	e.config = c
 	e.targets = targets
 	e.SetReloadTime(time.Now())

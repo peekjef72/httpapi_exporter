@@ -48,6 +48,7 @@ var (
 	model_name     = kingpin.Flag("model", "In dry-run mode specify the model name to build the dynamic target, else ignored.").Default("default").Short('m').String()
 	auth_key       = kingpin.Flag("auth.key", "In dry-run mode specify the auth_key to use, else ignored.").Short('a').String()
 	collector_name = kingpin.Flag("collector", "Specify the collector name restriction to collect, replace the collector_names set for each target.").Short('o').String()
+	test_mode      = kingpin.Flag("test-mode", "use specific profile name and set test-mode to true . The query actions are replaced to a lookup into the map 'alternates' variable to produce results.").Short('T').String()
 	toolkitFlags   = kingpinflag.AddFlags(kingpin.CommandLine, metricsPublishingPort)
 	logConfig      = promslog.Config{Style: promslog.GoKitStyle}
 )
@@ -150,7 +151,7 @@ func main() {
 	logger.Info(fmt.Sprintf("Starting %s", exporter_name), "version", version.Info())
 	logger.Info("Build context", "build_context", version.BuildContext())
 
-	exporter, err := NewExporter(*configFile, logger, *collector_name)
+	exporter, err := NewExporter(*configFile, logger, *collector_name, *test_mode)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error creating exporter: %s", err))
 		os.Exit(1)

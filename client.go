@@ -358,7 +358,7 @@ func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 }
 
-// parse a response according to the parser set for query:
+// parse a resty response content according to the parser set for query:
 //
 //   - json default
 //
@@ -445,6 +445,80 @@ func (c *Client) getResponse(resp *resty.Response, parser string) any {
 	} else {
 		data = make(map[any]any)
 	}
+	return data
+}
+
+// parse a []byte content according to the parser set for query:
+//
+//   - json default
+//
+//   - prometheus
+//
+//   - xml
+//
+//   - none
+//
+//     return:  map[string]any
+func (c *Client) getContent(content []byte, parser string) any {
+	var data any
+
+	switch parser {
+	case "json":
+		if err := json.Unmarshal(content, &data); err != nil {
+			c.logger.Error(
+				fmt.Sprintf("Fail to decode json results %v", err),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+		}
+	case "none":
+		data = string(content)
+
+	case "prometheus":
+		if tmp_data, err := ParsePrometheusResponse(content); err != nil {
+			c.logger.Error(
+				fmt.Sprintf("Fail to parse prometheus content %v", err),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+		} else {
+			data = tmp_data
+		}
+
+	case "text-lines":
+		if re, err := regexp.Compile("\r?\n"); err != nil {
+			c.logger.Error(
+				fmt.Sprintf("Fail to build text-lines decoder %v", err),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+		} else {
+			data = re.Split(string(content), -1)
+		}
+
+	case "xml":
+		var data_internal *Content
+		if err := xml.Unmarshal(content, &data_internal); err != nil {
+			c.logger.Error(
+				fmt.Sprintf("Fail to decode xml results %v", err),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+		}
+		data_tmp := make(map[string]any)
+		data_tmp[data_internal.Name] = data_internal.Attrs
+		data = data_tmp
+	case "yaml":
+		if err := yaml.Unmarshal(content, &data); err != nil {
+			c.logger.Error(
+				fmt.Sprintf("Fail to decode yaml results %v", err),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+		}
+	default:
+		c.logger.Error(
+			fmt.Sprintf("undefined parser '%s'", parser),
+			"coll", CollectorId(c.symtab, c.logger),
+			"script", ScriptName(c.symtab, c.logger))
+		data = make(map[any]any)
+	}
+
 	return data
 }
 
@@ -984,291 +1058,336 @@ func (cl *Client) proceedCookies() error {
 	return nil
 }
 
+func _set_query_result(logger *slog.Logger, var_name string, symtab map[string]any, data any) error {
+
+	if var_name != "" && var_name != "_" {
+		symtab[var_name] = data
+	} else if var_name == "_root" {
+		opts := mergo.WithOverride
+		if err := mergo.Merge(&symtab, data, opts); err != nil {
+			logger.Error(
+				"merging results into symbols table",
+				"coll", CollectorId(symtab, logger),
+				"script", ScriptName(symtab, logger),
+				"errmsg", err)
+			return err
+		}
+	}
+	symtab["query_status"] = true
+	return nil
+}
+
 type CallClientExecuteParams struct {
-	Payload  string
-	Method   string
-	Url      string
-	Debug    bool
-	VarName  string
-	OkStatus []int
-	AuthMode string
-	Username string
-	Password string
-	Token    string
-	Timeout  time.Duration
-	Parser   string
-	Trace    bool
-	Status   bool
+	Payload   string
+	Method    string
+	Url       string
+	Debug     bool
+	VarName   string
+	OkStatus  []int
+	AuthMode  string
+	Username  string
+	Password  string
+	Token     string
+	Timeout   time.Duration
+	Parser    string
+	Alternate string
+	Trace     bool
+	Status    bool
 	// Check_invalid_Auth bool
 }
 
 func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[string]any) error {
 	var (
 		payload     any
+		old_values  map[string]string
 		status_code int
+		alternate   string
+		resp        *resty.Response
+		data        any
+		err         error
 	)
-	if params.Payload == "" {
-		payload = nil
-	} else {
-		payload = params.Payload
-	}
 
-	if params.Method == "" {
-		err := fmt.Errorf("http method not found")
-		c.logger.Error(
-			err.Error(),
-			"coll", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger))
-		return err
-	}
-	method := strings.ToUpper(params.Method)
-
-	if params.Url == "" {
-		err := fmt.Errorf("http url not found")
-		c.logger.Error(
-			err.Error(),
-			"coll", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger))
-		return err
-	}
-	url := params.Url
-	old_values := make(map[string]string, 4)
-
-	auth_mode := GetMapValueString(symtab, "auth_mode")
-	if params.AuthMode != "" {
-		old_values["auth_mode"] = auth_mode
-		auth_mode = params.AuthMode
-		symtab["auth_mode"] = auth_mode
-	}
-
-	if params.Timeout != 0 {
-		old_values["timeout"] = fmt.Sprintf("%d", c.client.GetClient().Timeout)
-		c.client.SetTimeout(params.Timeout)
-	} else {
-		params.Timeout = c.client.GetClient().Timeout
-	}
-
-	auth_set, _ := GetMapValueBool(symtab, "auth_set")
-	if !auth_set {
-		switch auth_mode {
-		case "basic":
-			user := GetMapValueString(symtab, "user")
-			if params.Username != "" {
-				old_values["user"] = user
-				user = params.Username
-				symtab["user"] = user
-			}
-			passwd := GetMapValueString(symtab, "password")
-			if params.Password != "" {
-				old_values["password"] = passwd
-				passwd = params.Password
-				symtab["password"] = passwd
-			}
-			if strings.HasPrefix(passwd, "/encrypted/") {
-				ciphertext := passwd[len("/encrypted/"):]
-				c.logger.Debug(
-					"encrypted password detected",
-					"coll", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger),
-					"ciphertext", ciphertext)
-				auth_key := GetMapValueString(symtab, "auth_key")
-				c.logger.Debug(
-					"auth_key detected",
-					"coll", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger),
-					"auth_key", auth_key)
-				cipher, err := encrypt.NewAESCipher(auth_key)
-				if err != nil {
-					err := ErrInvalidLoginNoCipher
-					// level.Error(c.logger).Log("errmsg", err)
-					return err
-				}
-				passwd, err = cipher.Decrypt(ciphertext, true)
-				if err != nil {
-					err := ErrInvalidLoginInvalidCipher
-					// level.Error(c.logger).Log("errmsg", err)
-					return err
-				}
-			}
-			symtab["auth_set"] = true
-			if user != "" {
-				c.client.SetBasicAuth(user, passwd)
-				passwd = ""
-				c.logger.Debug(
-					"basicauth Header set for request",
-					"coll", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger))
-			}
-			delete(symtab, "auth_key")
-		case "token":
-			auth_token := GetMapValueString(symtab, "auth_token")
-			if params.Token != "" {
-				old_values["auth_token"] = auth_token
-				auth_token = params.Token
-				symtab["auth_token"] = auth_token
-			}
-			if auth_token != "" {
-				c.client.SetAuthToken(auth_token)
-				c.logger.Debug(
-					"token Header set for request",
-					"coll", CollectorId(c.symtab, c.logger),
-					"script", ScriptName(c.symtab, c.logger))
+	test_mode, _ := GetMapValueBool(symtab, "test_mode")
+	// in test_mode don't do a real http query, but instead set an alternate result obtained
+	// from 'alternates' variable of symbols table. If the alternate key is not found into map
+	// play the query... that will probably fail
+	if test_mode {
+		alternates := GetMapValueMap(symtab, "alternates")
+		if alternates == nil {
+			test_mode = false
+		} else {
+			alternate = GetMapValueString(alternates, params.Alternate)
+			if alternate != "" {
+				data = c.getContent([]byte(alternate), params.Parser)
+			} else {
+				test_mode = false
 			}
 		}
 	}
 
-	if len(params.OkStatus) <= 0 {
-		err := fmt.Errorf("ok_status not found")
-		c.logger.Error(
-			err.Error(),
-			"coll", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger))
-		return err
+	if !test_mode {
+		if params.Payload == "" {
+			payload = nil
+		} else {
+			payload = params.Payload
+		}
+
+		if params.Method == "" {
+			err := fmt.Errorf("http method not found")
+			c.logger.Error(
+				err.Error(),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+			return err
+		}
+		method := strings.ToUpper(params.Method)
+
+		if params.Url == "" {
+			err := fmt.Errorf("http url not found")
+			c.logger.Error(
+				err.Error(),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+			return err
+		}
+		url := params.Url
+		old_values = make(map[string]string, 4)
+
+		auth_mode := GetMapValueString(symtab, "auth_mode")
+		if params.AuthMode != "" {
+			old_values["auth_mode"] = auth_mode
+			auth_mode = params.AuthMode
+			symtab["auth_mode"] = auth_mode
+		}
+
+		if params.Timeout != 0 {
+			old_values["timeout"] = fmt.Sprintf("%d", c.client.GetClient().Timeout)
+			c.client.SetTimeout(params.Timeout)
+		} else {
+			params.Timeout = c.client.GetClient().Timeout
+		}
+
+		auth_set, _ := GetMapValueBool(symtab, "auth_set")
+		if !auth_set {
+			switch auth_mode {
+			case "basic":
+				user := GetMapValueString(symtab, "user")
+				if params.Username != "" {
+					old_values["user"] = user
+					user = params.Username
+					symtab["user"] = user
+				}
+				passwd := GetMapValueString(symtab, "password")
+				if params.Password != "" {
+					old_values["password"] = passwd
+					passwd = params.Password
+					symtab["password"] = passwd
+				}
+				if strings.HasPrefix(passwd, "/encrypted/") {
+					ciphertext := passwd[len("/encrypted/"):]
+					c.logger.Debug(
+						"encrypted password detected",
+						"coll", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger),
+						"ciphertext", ciphertext)
+					auth_key := GetMapValueString(symtab, "auth_key")
+					c.logger.Debug(
+						"auth_key detected",
+						"coll", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger),
+						"auth_key", auth_key)
+					cipher, err := encrypt.NewAESCipher(auth_key)
+					if err != nil {
+						err := ErrInvalidLoginNoCipher
+						// level.Error(c.logger).Log("errmsg", err)
+						return err
+					}
+					passwd, err = cipher.Decrypt(ciphertext, true)
+					if err != nil {
+						err := ErrInvalidLoginInvalidCipher
+						// level.Error(c.logger).Log("errmsg", err)
+						return err
+					}
+				}
+				symtab["auth_set"] = true
+				if user != "" {
+					c.client.SetBasicAuth(user, passwd)
+					passwd = ""
+					c.logger.Debug(
+						"basicauth Header set for request",
+						"coll", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger))
+				}
+				delete(symtab, "auth_key")
+			case "token":
+				auth_token := GetMapValueString(symtab, "auth_token")
+				if params.Token != "" {
+					old_values["auth_token"] = auth_token
+					auth_token = params.Token
+					symtab["auth_token"] = auth_token
+				}
+				if auth_token != "" {
+					c.client.SetAuthToken(auth_token)
+					c.logger.Debug(
+						"token Header set for request",
+						"coll", CollectorId(c.symtab, c.logger),
+						"script", ScriptName(c.symtab, c.logger))
+				}
+			}
+		}
+
+		if len(params.OkStatus) <= 0 {
+			err := fmt.Errorf("ok_status not found")
+			c.logger.Error(
+				err.Error(),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
+			return err
+		}
+		c.valid_status = params.OkStatus
+
+		// set local headers and cookies map
+		if err := c.proceedHeaders(); err != nil {
+			return err
+		}
+		if err := c.proceedCookies(); err != nil {
+			return err
+		}
+
+		if params.Trace {
+			c.client.EnableTrace()
+		}
+
+		//******************
+		//* play the request
+		resp, data, err = c.Execute(method, url, nil, payload, params.Parser)
+
+		if resp != nil {
+			if err == ErrContextDeadLineExceeded {
+				status_code = http.StatusGatewayTimeout
+			} else {
+				status_code = resp.StatusCode()
+			}
+		} else {
+			status_code = http.StatusGatewayTimeout
+		}
+		// set status data for the query
+		if params.Status {
+			c.SetQueriesStatus(url, status_code, nil)
+		}
+		// if params.Trace {
+		// 	c.logger.Debug(
+		// 		"query debug trace",
+		// 		"coll", CollectorId(c.symtab, c.logger),
+		// 		"script", ScriptName(c.symtab, c.logger),
+		// 		"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
+		// }
+
+		if err != nil {
+			return err
+		}
+		if params.Debug {
+			c.logger.Debug(
+				"query debug infos",
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger),
+				"url", symtab["uri"].(string),
+				"results", string(resp.Body()))
+			if params.Trace {
+				c.logger.Debug(
+					"query debug trace",
+					"coll", CollectorId(c.symtab, c.logger),
+					"script", ScriptName(c.symtab, c.logger),
+					"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
+			}
+		}
+	} else {
+		params.Trace = false
+		resp = nil
 	}
-	c.valid_status = params.OkStatus
 
 	var_name := params.VarName
 
-	// set local headers and cookies map
-	if err := c.proceedHeaders(); err != nil {
-		return err
-	}
-	if err := c.proceedCookies(); err != nil {
-		return err
-	}
+	if !test_mode {
+		// * set it to symbols table so user can access it
+		symtab["status_code"] = status_code
 
-	if params.Trace {
-		c.client.EnableTrace()
-	}
-
-	//******************
-	//* play the request
-	resp, data, err := c.Execute(method, url, nil, payload, params.Parser)
-
-	if resp != nil {
-		if err == ErrContextDeadLineExceeded {
-			status_code = http.StatusGatewayTimeout
-		} else {
-			status_code = resp.StatusCode()
-		}
-	} else {
-		status_code = http.StatusGatewayTimeout
-	}
-	// set status data for the query
-	if params.Status {
-		c.SetQueriesStatus(url, status_code, nil)
-	}
-	// if params.Trace {
-	// 	c.logger.Debug(
-	// 		"query debug trace",
-	// 		"coll", CollectorId(c.symtab, c.logger),
-	// 		"script", ScriptName(c.symtab, c.logger),
-	// 		"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
-	// }
-
-	if err != nil {
-		return err
-	}
-	if params.Debug {
-		c.logger.Debug(
-			"query debug infos",
-			"coll", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-			"url", symtab["uri"].(string),
-			"results", string(resp.Body()))
+		// if user asks for performance traces add info to symbols table
 		if params.Trace {
+			traces := make(map[string]float64)
+			tr := resp.Request.TraceInfo()
+			traces["dns_lookup"] = tr.DNSLookup.Seconds()
+			traces["conn_time"] = tr.ConnTime.Seconds()
+			traces["tcp_con_time"] = tr.TCPConnTime.Seconds()
+			traces["tls_handshake"] = tr.TLSHandshake.Seconds()
+			traces["server_time"] = tr.ServerTime.Seconds()
+			traces["response_time"] = tr.ResponseTime.Seconds()
+			traces["total_time"] = tr.TotalTime.Seconds()
+			symtab["trace_infos"] = traces
+		}
+		if !slices.Contains(c.valid_status, status_code) {
+			symtab["query_status"] = false
+			c.logger.Info(
+				fmt.Sprintf("invalid response status: (%d not in %v)",
+					status_code, c.valid_status),
+				"coll", CollectorId(c.symtab, c.logger),
+				"script", ScriptName(c.symtab, c.logger))
 			c.logger.Debug(
-				"query debug trace",
+				fmt.Sprintf("invalid req headers: (%v) req cookies %v- response headers: (%v)",
+					c.client.Header, c.client.Cookies, resp.Header()),
 				"coll", CollectorId(c.symtab, c.logger),
 				"script", ScriptName(c.symtab, c.logger),
-				"trace", fmt.Sprintf("%v", resp.Request.TraceInfo()))
-		}
-	}
-	// * set it to symbols table so user can access it
-	symtab["status_code"] = status_code
+			)
 
-	// if user asks for performance traces add info to symbols table
-	if params.Trace {
-		traces := make(map[string]float64)
-		tr := resp.Request.TraceInfo()
-		traces["dns_lookup"] = tr.DNSLookup.Seconds()
-		traces["conn_time"] = tr.ConnTime.Seconds()
-		traces["tcp_con_time"] = tr.TCPConnTime.Seconds()
-		traces["tls_handshake"] = tr.TLSHandshake.Seconds()
-		traces["server_time"] = tr.ServerTime.Seconds()
-		traces["response_time"] = tr.ResponseTime.Seconds()
-		traces["total_time"] = tr.TotalTime.Seconds()
-		symtab["trace_infos"] = traces
-	}
-	if !slices.Contains(c.valid_status, status_code) {
-		symtab["query_status"] = false
-		c.logger.Info(
-			fmt.Sprintf("invalid response status: (%d not in %v)",
-				status_code, c.valid_status),
-			"coll", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger))
-		c.logger.Debug(
-			fmt.Sprintf("invalid req headers: (%v) req cookies %v- response headers: (%v)",
-				c.client.Header, c.client.Cookies, resp.Header()),
-			"coll", CollectorId(c.symtab, c.logger),
-			"script", ScriptName(c.symtab, c.logger),
-		)
-
-		err = ErrInvalidQueryResult
-	} else {
-		if data == nil {
-			err = fmt.Errorf("fail to decode json results: %v", err)
-			return err
+			err = ErrInvalidQueryResult
 		} else {
-			if var_name != "" && var_name != "_" {
-				symtab[var_name] = data
-			} else if var_name == "_root" {
-				opts := mergo.WithOverride
-				if err := mergo.Merge(&symtab, data, opts); err != nil {
-					c.logger.Error(
-						"merging results into symbols table",
-						"coll", CollectorId(c.symtab, c.logger),
-						"script", ScriptName(c.symtab, c.logger),
-						"errmsg", err)
-					return err
-				}
+			if data == nil {
+				err = fmt.Errorf("fail to decode json results: %v", err)
+				return err
+			} else {
+				err = _set_query_result(c.logger, var_name, symtab, data)
 			}
-			symtab["query_status"] = true
-
-			err = nil
 		}
-	}
-	// reset local auth param from client
-	if auth_mode, ok := old_values["auth_mode"]; ok {
-		symtab["auth_mode"] = auth_mode
-		if params.AuthMode == "basic" && params.AuthMode != auth_mode {
-			c.client.UserInfo = nil
+		// reset local auth param from client
+		if auth_mode, ok := old_values["auth_mode"]; ok {
+			symtab["auth_mode"] = auth_mode
+			if params.AuthMode == "basic" && params.AuthMode != auth_mode {
+				c.client.UserInfo = nil
+			}
 		}
-	}
 
-	if user, ok := old_values["user"]; ok {
-		symtab["user"] = user
-	}
-
-	if passwd, ok := old_values["passwd"]; ok {
-		symtab["passwd"] = passwd
-	}
-
-	if auth_token, ok := old_values["auth_token"]; ok {
-		symtab["auth_token"] = auth_token
-		if params.Token != auth_token {
-			c.client.Token = ""
+		if user, ok := old_values["user"]; ok {
+			symtab["user"] = user
 		}
-	}
 
-	if timeout_str, ok := old_values["timeout"]; ok {
-		var i_value int64
-		if i_value, err = strconv.ParseInt(timeout_str, 10, 0); err != nil {
-			i_value = 0
+		if passwd, ok := old_values["passwd"]; ok {
+			symtab["passwd"] = passwd
 		}
-		c.client.SetTimeout(time.Duration(i_value))
-	}
 
+		if auth_token, ok := old_values["auth_token"]; ok {
+			symtab["auth_token"] = auth_token
+			if params.Token != auth_token {
+				c.client.Token = ""
+			}
+		}
+
+		if timeout_str, ok := old_values["timeout"]; ok {
+			var i_value int64
+			if i_value, err = strconv.ParseInt(timeout_str, 10, 0); err != nil {
+				i_value = 0
+			}
+			c.client.SetTimeout(time.Duration(i_value))
+		}
+	} else {
+		// * set it to symbols table so user can access it
+		if len(c.valid_status) > 0 {
+			symtab["status_code"] = c.valid_status[0]
+		} else {
+			symtab["status_code"] = 200
+		}
+
+		err = _set_query_result(c.logger, var_name, symtab, data)
+	}
 	return err
 }
 

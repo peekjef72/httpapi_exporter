@@ -1,0 +1,38 @@
+---
+squid:
+  # all metrics will be named "[metric_prefix]_[metric_name]"
+  metric_prefix: squid
+  scripts:
+    init:
+      - name: defaults
+        set_fact:
+          scheme: https
+          base_url: /squid-internal-mgr
+      - name: set headers
+        when: 'js: typeof squid_hostname !== "undefined"'
+        set_fact:
+          headers:
+            - name: Host
+              value: 'js: squid_hostname + ":" + port'
+    login: ~
+    logout: ~
+
+    # method call to determine if a target is responding; will call login() if necessary
+    ping:
+      - name: check if API is replying
+        query:
+          url: /info
+          method: GET
+          # headers:
+          ok_status: 200
+          var_name: infos
+          # tell to use alernates['status'] in test mode
+          alternate: squid_info
+          parser: text-lines
+          # debug: true
+          # trace: true
+      - name: analyze login response ok
+        set_fact:
+          logged: true
+        when:
+          - "js: status_code == 200"

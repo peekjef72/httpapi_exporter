@@ -80,7 +80,7 @@ func NewField(name string, customTemplate *exporterTemplate, registry *goja_modu
 
 		jscode, err = goja_modules.NewJSCode(registry, code)
 		if err != nil {
-			return nil, fmt.Errorf("field js code %s is invalid: %s", code, err)
+			return nil, fmt.Errorf("in field value the js code '%s' is invalid: %s", code, err)
 		}
 		if jscode != nil {
 			vartype = field_js

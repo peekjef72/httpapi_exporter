@@ -274,7 +274,7 @@ func TestJSModuleExporterConvertToBytes(t *testing.T) {
 	if value, ok := v.(int64); !ok {
 		assert.True(t, ok, fmt.Sprintf("TestJSModuleExporterConvertToBytes exec return value type differs) %v", v))
 	} else {
-		assert.True(t, value == 13631488, fmt.Sprintf("TestJSModuleExporterConvertToBytes exec return invalid value) %d", value))
+		assert.True(t, value == 14103347, fmt.Sprintf("TestJSModuleExporterConvertToBytes exec return invalid value) %d", value))
 	}
 }
 

@@ -1,0 +1,130 @@
+---
+#
+# query: /squid-internal-mgr/service_times
+## response
+# Service Time Percentiles            5 min    60 min:
+#         HTTP Requests (All):   5%   0.00000  0.00000
+#         HTTP Requests (All):  10%   0.00000  0.00000
+#         HTTP Requests (All):  15%   0.00000  0.00000
+#         HTTP Requests (All):  20%   0.00000  0.00000
+#         HTTP Requests (All):  25%   0.00000  0.00000
+#         HTTP Requests (All):  30%   0.00000  0.00000
+#         HTTP Requests (All):  35%   0.08729  0.05633
+#         HTTP Requests (All):  40%   0.09219  0.05951
+#         HTTP Requests (All):  45%   0.09736  0.06286
+#         HTTP Requests (All):  50%   0.10281  0.08729
+#         HTTP Requests (All):  55%   0.10281  0.09219
+#         HTTP Requests (All):  60%   0.12106  0.09736
+#         HTTP Requests (All):  65%   0.12783  0.09736
+#         HTTP Requests (All):  70%   0.12783  0.10281
+#         HTTP Requests (All):  75%   0.13498  0.10857
+#         HTTP Requests (All):  80%   0.13498  0.12106
+#         HTTP Requests (All):  85%   0.15048  0.12783
+#         HTTP Requests (All):  90%   0.15888  0.14252
+#         HTTP Requests (All):  95%   0.20843  0.16775
+#         Cache Misses:          5%   0.00000  0.00000
+#         Cache Misses:         10%   0.00000  0.00000
+# ...
+##
+#
+
+
+collector_name: squid_service_times
+# no cache
+# min_interval: 0s
+metric_prefix: squid_service
+
+scripts:
+  get_counters:
+    - name: get service times
+      query:
+        url: /service_times
+        var_name: service_times
+        alternate: squid_service_times
+        # debug: true
+        method: get
+        parser: text-lines
+
+    - name: analyze data
+      set_fact:
+        # build a variable "metrics" that is a list of  map/dictionnary
+        # containing metric with name, help, value from /service_times response
+        # the "metrics" var is obtained by a javascript code
+        #   looping on each line of response of query action,
+        #   then spliting on separator ':'
+        #   then analyzing metric name, filter by name, and percentile
+        # As a result the "metrics" variable will be used to build metrics.
+        metrics: >-
+          js:
+            var results = [];
+            // console.log("service_times: " + service_times.length);
+            // if you want filter only to useful percentile
+            // here 50, 90 95
+            var filter = ['50', '90', '95']
+ 
+            for( var i=1; i< service_times.length; i++) {
+              var line = service_times[i], res, help, metric;
+              res = line.split(':', 2);
+              if( res.length > 1 ) {
+                var values = res[1].trim().split(/\s+/);
+                if( values.length > 2 ) {
+                  // build the percentile as suffix for the key
+                  var key_part = values[0].replace('%', '');
+                  if( !filter.includes(key_part) ) {
+                    continue
+                  }
+                  var key = res[0].trim();
+                  switch(key) {
+                    case "HTTP Requests (All)":
+                      key = "http_requests_all_" + key_part;
+                      help = "Service Time 5min window " + key_part +" percentile for all HTTP Requests";
+                      break;
+                    case "Cache Misses":
+                      key = "cache_misses_" + key_part;
+                      help = "Service Time 5min window " + key_part +" percentile for Cache Misses";
+                      break;
+                    case "Cache Hits":
+                      key = "cache_hits_" + key_part;
+                      help = "Service Time 5min window " + key_part +" percentile for Cache Hits";
+                      break;
+                    case "Near Hits":
+                      key = "near_hits_" + key_part;
+                      help = "Service Time 5min window " + key_part +" percentile for Near Hits";
+                      break;
+                    // case "Not-Modified Replies":
+                    //   key = "not_modified_replies_" + key_part;
+                    //   help = "Service Time 5min window " + key_part +" percentile for Not-Modified Replies";
+                    //   break;
+                    case "DNS Lookups":
+                      key = "dns_lookups_" + key_part;
+                      help = "Service Time 5min window " + key_part +" percentile for DNS Lookups";
+                      break;
+                    // case "ICP Queries":
+                    //   key = "icp_queries_" + key_part;
+                    //   help = "Service Time 5min window " + key_part +" percentile for ICP Queries";
+                    //   break;
+                    default:
+                      continue;
+                  }
+                  metric = {
+                    name: key,
+                    help: help,
+                    value: values[1].trim(),
+                  };
+                  results.push(metric);
+                  // console.log("metric: " + JSON.stringify(metric));
+                }
+              }
+            }
+            results
+
+    - name: process metrics
+      scope: none
+      loop: $metrics
+      loop_var: metric
+      metrics:
+        - metric_name: $metric.name
+          type: gauge
+          help: $metric.help
+          values: 
+            _ : $metric.value
