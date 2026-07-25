@@ -1,0 +1,53 @@
+[
+    {
+        "id": "0",
+        "fc_io_port_id": "1",
+        "port_id": "1",
+        "type": "fc",
+        "port_speed": "32Gb",
+        "node_id": "1",
+        "node_name": "node1",
+        "WWPN": "5005076813116607",
+        "nportid": "0C0000",
+        "status": "active",
+        "attachment": "switch",
+        "cluster_use": "none",
+        "adapter_location": "1",
+        "adapter_port_id": "1",
+        "fabric_auto_zone_capability": "incompatible_port"
+    },
+    {
+        "id": "1",
+        "fc_io_port_id": "2",
+        "port_id": "2",
+        "type": "fc",
+        "port_speed": "32Gb",
+        "node_id": "1",
+        "node_name": "node1",
+        "WWPN": "5005076813126607",
+        "nportid": "0D0D00",
+        "status": "active",
+        "attachment": "switch",
+        "cluster_use": "none",
+        "adapter_location": "1",
+        "adapter_port_id": "2",
+        "fabric_auto_zone_capability": "incompatible_port"
+    },
+    {
+        "id": "2",
+        "fc_io_port_id": "3",
+        "port_id": "3",
+        "type": "fc",
+        "port_speed": "32Gb",
+        "node_id": "1",
+        "node_name": "node1",
+        "WWPN": "5005076813136607",
+        "nportid": "1F0040",
+        "status": "active",
+        "attachment": "switch",
+        "cluster_use": "partner",
+        "adapter_location": "1",
+        "adapter_port_id": "3",
+        "fabric_auto_zone_capability": "incompatible_fabric"
+    }
+]

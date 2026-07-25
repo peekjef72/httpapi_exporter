@@ -1255,8 +1255,6 @@ type AuthConfig struct {
 	Password    Secret             `yaml:"password,omitempty" json:"password,omitempty"`
 	Token       Secret             `yaml:"token,omitempty" json:"token,omitempty"`
 	DisableWarn ConvertibleBoolean `yaml:"disable_warn,omitempty" json:"disable_warn,omitempty"`
-
-	authKey string
 }
 
 func check_env_var(value string) string {
@@ -1280,7 +1278,7 @@ func (auth *AuthConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	} else {
 		auth.Mode = strings.ToLower(auth.Mode)
 		mode := make(map[string]int)
-		for _, val := range []string{"basic", "token", "script"} {
+		for _, val := range []string{"basic", "token", "script", "none"} {
 			mode[val] = 1
 		}
 		if _, err := mode[auth.Mode]; !err {

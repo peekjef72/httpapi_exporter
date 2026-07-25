@@ -1,0 +1,64 @@
+---
+###
+## response:
+# [
+#     {
+#         "mdisk_id": "0",
+#         "mdisk_name": "mdisk0",
+#         "status": "online",
+#         "mdisk_grp_id": "0",
+#         "mdisk_grp_name": "Pool",
+#         "capacity": "1.7PB",
+#         "raid_status": "online",
+#         "raid_level": "raid6",
+#         "redundancy": "2",
+#         "strip_size": "256",
+#         "tier": "tier0_flash",
+#         "encrypt": "no",
+#         "distributed": "yes"
+#     },
+#     {...}
+# ]
+##
+#
+
+collector_name: ibmfs_array_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_array
+
+
+scripts:
+  get_lsarray:
+    - name: get array
+      query:
+        url: /lsarray
+        var_name: results
+        alternate: lsarray
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      # scope: none # implicit to item
+      loop: $results
+      # loop_var: port
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: quorum status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+          type: gauge
+          key_labels:
+            mdisk_name: _
+            mdisk_grp_name: _
+          values: 
+            _ : 'js: ibmfs.globalStatus(status)'
+
+        - metric_name: total_capacity_bytes
+          help: capacity in bytes of the array labeled by name and group_name
+          type: gauge
+          key_labels:
+            mdisk_name: _
+            mdisk_grp_name: _
+          values: 
+            _ : 'js: ibmfs.elementSizeBytes(capacity)'

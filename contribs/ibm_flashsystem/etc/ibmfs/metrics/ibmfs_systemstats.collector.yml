@@ -1,0 +1,246 @@
+---
+###
+## response:
+##
+# [
+#     {
+#         "stat_name": "compression_cpu_pc",
+#         "stat_current": "0",
+#         "stat_peak": "0",
+#         "stat_peak_time": "260708152138"
+#     },
+#     {
+#         "stat_name": "cpu_pc",
+#         "stat_current": "20",
+#         "stat_peak": "24",
+#         "stat_peak_time": "260708152038"
+#     },
+#     {...}
+# ]
+#
+
+collector_name: ibmfs_systemstats_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_system
+
+scripts:
+  get_lssystemstats:
+    - name: get systemstats
+      query:
+        url: /lssystemstats
+        var_name: results
+        alternate: lssystemstats
+        # debug: true
+        method: post
+        # data: '{ "filtervalue": "name=<NAME>" }'
+
+    # - name: init empty metrics var
+    #   set_fact:
+    #     metrics: []
+
+    - name: pre proceed elements
+      # scope: none # implicit to item
+      # loop: $results
+      # loop_var: port
+      when:
+        - 'js: results.length > 0'
+      set_fact:
+        metrics : >
+          js:
+            var metrics = []
+            for( var item of results ) {
+              var metric = {
+                name: item.stat_name,
+                value:item.stat_current,
+              }
+              switch (item.stat_name) {
+                case "compression_cpu_pc":
+                  metric.help = "The percentage of allocated CPU capacity that is used for compression.";
+                  break;
+                case "cpu_pc":
+                  metric.help = "The percentage of allocated CPU capacity that is used for the system.";
+                  break;
+
+                case "fc_mb":
+                  metric.help = "The total number of megabytes transferred per second (MBps) for Fibre Channel traffic on the system. This value includes host I/O and any bandwidth that is used for communication within the system.";
+                  break;
+                case "fc_io":
+                  metric.help = "The total input/output (I/O) operations that are transferred per seconds for Fibre Channel traffic on the system. This value includes host I/O and any bandwidth that is used for communication within the system.";
+                  break;
+
+                case "sas_mb":
+                  metric.help = "The total number of megabytes transferred per second (MBps) for serial-attached SCSI (SAS) traffic on the system. This value includes host I/O and bandwidth that is used for background RAID activity.";
+                  break;
+                case "sas_io":
+                  metric.help = "The total I/O operations that are transferred per second for SAS traffic on the system. This value includes host I/O and bandwidth that is used for background RAID activity.";
+                  break;
+
+                case "iscsi_mb":
+                  metric.help = "The total number of megabytes transferred per second (MBps) for iSCSI traffic on the system.";
+                  break;
+                case "iscsi_io":
+                  metric.help = "The total I/O operations that are transferred per second for iSCSI traffic on the system.";
+                  break;
+
+                case "write_cache_pc":
+                  metric.help = "The percentage of the write cache usage for the node.";
+                  break;
+                case "total_cache_pc":
+                  metric.help = "The total percentage for both the write and read cache usage for the node.";
+                  break;
+
+                case "vdisk_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for read and write operations to volumes during the sample period.";
+                  break;
+                case "vdisk_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for read and write operations to volumes during the sample period.";
+                  break;
+                case "vdisk_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to read and write requests to volumes over the sample period.";
+                  break;
+
+                case "mdisk_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for read and write operations to MDisks during the sample period.";
+                  break;
+                case "mdisk_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for read and write operations to MDisks during the sample period.";
+                  break;
+                case "mdisk_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to read and write requests to MDisks over the sample period.";
+                  break;
+
+                case "drive_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for read and write operations to drives during the sample period.";
+                  break;
+                case "drive_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for read and write operations to drives during the sample period.";
+                  break;
+                case "drive_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to read and write requests to drives over the sample period.";
+                  break;
+
+                case "vdisk_r_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for read operations to volumes during the sample period.";
+                  break;
+                case "vdisk_r_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for read operations to volumes during the sample period.";
+                  break;
+                case "vdisk_r_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to read requests to volumes over the sample period.";
+                  break;
+
+                case "vdisk_w_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for write operations to volumes during the sample period.";
+                  break;
+                case "vdisk_w_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for write operations to volumes during the sample period.";
+                  break;
+                case "vdisk_w_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to write requests to volumes over the sample period.";
+                  break;
+
+                case "mdisk_r_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for read operations to MDisks during the sample period.";
+                  break;
+                case "mdisk_r_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for read operations to MDisks during the sample period.";
+                  break;
+                case "mdisk_r_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to read requests to MDisks over the sample period.";
+                  break;
+
+                case "mdisk_w_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for write operations to MDisks during the sample period.";
+                  break;
+                case "mdisk_w_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for write operations to MDisks during the sample period.";
+                  break;
+                case "mdisk_w_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to write requests to MDisks over the sample period.";
+                  break;
+
+                case "drive_r_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for read operations to drives during the sample period.";
+                  break;
+                case "drive_r_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for read operations to drives during the sample period.";
+                  break;
+                case "drive_r_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to read requests to drives over the sample period.";
+                  break;
+
+                case "drive_w_mb":
+                  metric.help = "The average number of megabytes transferred per second (MBps) for write operations to drives during the sample period.";
+                  break;
+                case "drive_w_io":
+                  metric.help = "The average number of I/O operations that are transferred per second for write operations to drives during the sample period.";
+                  break;
+                case "drive_w_ms":
+                  metric.help = "The average amount of time in milliseconds that the system takes to respond to write requests to drives over the sample period.";
+                  break;
+
+                case "power_w":
+                  metric.help = "The power that is consumed in watts.";
+                  break;
+                case "temp_c":
+                  metric.help = "The ambient temperature in Celsius.";
+                  break;
+                case "temp_f":
+                  metric.help = "The ambient temperature in Fahrenheit.";
+                  break;
+
+                case "iplink_mb":
+                  metric.help = "The average number of megabytes requested to be transferred per second (MBps) over the IP partnership link during the sample period. This value is calculated before any compression of the data takes place. This value does not include iSCSI host input/output (I/O) operations.";
+                  break;
+                case "iplink_io":
+                  metric.help = "The total input/output (I/O) operations that are transferred per second for IP partnership traffic on the system.";
+                  break;
+                case "iplink_comp_mb":
+                  metric.help = "The average number of compressed megabytes transferred per second (MBps) over the IP Replication link during the sample period. This value is calculated after any compression of the data takes place. This value does not include iSCSI host I/O operations.";
+                  break;
+
+                case "cloud_up_mb":
+                  metric.help = "The average number of megabytes transferred per second (Mbps) for upload operations to a cloud account during the sample period.";
+                  break;
+                case "cloud_up_ms":
+                  metric.help = "The average amount of time (in milliseconds) it takes for the system to respond to upload requests to a cloud account during the sample period.";
+                  break;
+                case "cloud_down_mb":
+                  metric.help = "The average number of Mbps for download operations to a cloud account during the sample period.";
+                  break;
+                case "cloud_down_ms":
+                  metric.help = "The average amount of time (in milliseconds) it takes for the system to respond to download requests to a cloud account during the sample period.";
+                  break;
+
+                case "iser_mb":
+                  metric.help = "The total number of megabytes transferred per second (MBps) for iSER traffic on the system.";
+                  break;
+                case "iser_io":
+                  metric.help = "The total I/O operations that are transferred per second for iSER traffic on the system.";
+                  break;
+
+                default:
+                  continue;
+              }
+              // console.log('metric:', JSON.stringify(metric))
+              metrics.push(metric);
+            }
+            metrics
+    # - name: debug
+    #   debug:
+    #     msg: "js: JSON.stringify(metrics)"
+
+    - name: proceed metrics
+      # scope: none # implicit to item
+      loop: $metrics
+      # loop_var: port
+      when:
+        - 'js: metrics.length > 0'
+      metrics:
+        - metric_name: $name
+          help: $help
+          type: gauge
+          values: 
+            _ : $value
+

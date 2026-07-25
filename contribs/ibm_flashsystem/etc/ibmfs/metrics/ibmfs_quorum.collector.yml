@@ -1,0 +1,64 @@
+---
+###
+## response:
+# [
+#     {
+#         "quorum_index": "8",
+#         "status": "online",
+#         "id": "",
+#         "name": "",
+#         "controller_id": "",
+#         "controller_name": "",
+#         "a* TLSv1.3 (IN), TLS app data, [no content] (0):ctive": "yes",
+#         "object_type": "device",
+#         "override": "no",
+#         "site_id": "",
+#         "site_name": "bzltiebr.biarritz.dassault-avion.fr\/192.62.100.33",
+#         "application_type": "partnership",
+#         "metadata_backup": "",
+#         "partner_system_id": "00000204E060CC16",
+#         "partner_system_name": "ccflashsystem1"
+#     },
+#     {...}
+# ]
+##
+#
+
+collector_name: ibmfs_quorum_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_quorum
+
+
+scripts:
+  get_lsquorum:
+    - name: get quorum
+      query:
+        url: /lsquorum
+        var_name: results
+        alternate: lsquorum
+        # debug: true
+        method: post
+        # data: >-
+        #   js:
+        #     var data = { "filtervalue": "object_type=3" };
+        #     JSON.stringify(data)
+        data: '{ "filtervalue": "object_type=3" }'
+
+    - name: proceed elements
+      # scope: none # implicit to item
+      loop: $results
+      # loop_var: port
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: quorum status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+          type: gauge
+          key_labels:
+            quorum_index: _
+            object_type: _
+            site_name: >
+              js: (site_name.split('/'))[0]
+          values: 
+            _ : 'js: ibmfs.globalStatus(status)'

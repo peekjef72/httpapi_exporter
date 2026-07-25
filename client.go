@@ -804,7 +804,7 @@ func (cl *Client) proceedHeaders() error {
 				}
 			}
 		}
-		// reset special var headers from th symbols table
+		// reset special var headers from the symbols table
 		delete(cl.symtab, "headers")
 	}
 	return nil
@@ -1587,7 +1587,6 @@ func (cl *Client) Init(params *ClientInitParams) error {
 	cl.symtab["user"] = params.AuthConfig.Username
 	cl.symtab["password"] = string(params.AuthConfig.Password)
 	cl.symtab["auth_token"] = string(params.AuthConfig.Token)
-	cl.symtab["auth_key"] = string(params.AuthConfig.authKey)
 	cl.symtab["auth_set"] = false
 	cl.symtab["verifySSL"] = verifySSL
 	cl.symtab["proxyUrl"] = params.ProxyUrl

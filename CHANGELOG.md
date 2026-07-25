@@ -5,18 +5,26 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a changelog](https://github.com/olivierlacan/keep-a-changelog).
 
  <!--next-version-placeholder-->
+
+## 0.4.8 / 2026-07-25
+
+- Fixed an authentication issue with certain collectors requiring specific permissions and completely blocking the collection. The bug was discovered in the Veeam profile for agent collection requiring higher permissions than other collectors: if the permissions were insufficient, all collections were reported as errors, whereas only the agent was affected. Now the collection succeeds for all except one, which is mentioned in error via the metric `veeam_em_collector_status{collectorname="veeam_agent_metrics"} 2`.
+- Fixed the Veeam profile: errors in column naming, mentioning a wrong status label, and calculation errors for duration.
+- Added the `IBM FlashSystem` profile: collection of IBM storage arrays.
+- Added tutorial to build a new exporter profile: c.f.: [build IBM FlashSystem profile](doc/tutorial_build_config_from_api.md).
+
 ## 0.4.7 / 2026-07-05
 
-- added support for terabyte (TB) and petabyte (PB) formats in the `convertToBytes` custom function.improved `convertToBytes` function to handle larger storage units and floating point values (e.g.: 1.2Pb)
-- fixed regression (0.4.2): exporter metric type not being taken into account (all metrics were incorrectly set as counters).The exporter now again properly respects the metric type configuration (counter, gauge, histogram, etc.)
+- Added support for terabyte (TB) and petabyte (PB) formats in the `convertToBytes` custom function.improved `convertToBytes` function to handle larger storage units and floating point values (e.g.: 1.2Pb)
+- Fixed regression (0.4.2): exporter metric type not being taken into account (all metrics were incorrectly set as counters).The exporter now again properly respects the metric type configuration (counter, gauge, histogram, etc.)
 - added new js module named 'process', not enabled by default; used to get env variables. (see [doc](doc/custom_functions.md))
-- removed js module 'fs' from list of the default enabled modules. It must now be:
+- Removed js module 'fs' from list of the default enabled modules. It must now be:
   - Explicitly required in profiles, **or**
   - Enabled via configuration.
 - fixed configuration reloading: the registry now **reinitializes all modules** when reloaded, ensuring JS module changes take effect.
-- added feature 'test-mode', that allow to specify an alternate profile that reads query results from files and then to test metrics formulas with the read results.
+- Added feature 'test-mode', that allow to specify an alternate profile that reads query results from files and then to test metrics formulas with the read results.
 - corrected typos in Netscaler contributor configuration (`hanode_metrics.collector.yml`).
-- add contribs squid
+- Added contribs squid
 
 ## 0.4.6 / 2026-06-22
 

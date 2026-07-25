@@ -1,0 +1,38 @@
+[
+    {
+        "port_id": "1",
+        "node_id": "1",
+        "node_name": "node1",
+        "MAC": "98:be:94:85:76:8f",
+        "duplex": "Full",
+        "speed": "1Gb\/s",
+        "link_state": "active",
+        "dcbx_state": "unsupported",
+        "rdma_type": "",
+        "adapter_location": "0",
+        "adapter_port_id": "1",
+        "host": "no",
+        "storage": "no",
+        "replication": "no",
+        "eth_clustering": "no",
+        "management": "yes"
+    },
+    {
+        "port_id": "2",
+        "node_id": "1",
+        "node_name": "node1",
+        "MAC": "98:be:94:85:76:90",
+        "duplex": "",
+        "speed": "",
+        "link_state": "inactive",
+        "dcbx_state": "",
+        "rdma_type": "",
+        "adapter_location": "0",
+        "adapter_port_id": "2",
+        "host": "no",
+        "storage": "no",
+        "replication": "no",
+        "eth_clustering": "no",
+        "management": "yes"
+    }
+]

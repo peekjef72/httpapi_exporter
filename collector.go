@@ -202,8 +202,9 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 		reset_coll_id = true
 	}
 
-	c.status = CollectorStatusError
+	//c.status = CollectorStatusError
 	status = CollectorStatusOk
+	msg := MsgDone
 	for _, scr := range c.collect_script {
 		c.logger.Debug(
 			fmt.Sprintf("starting script '%s/%s'", c.config.Name, scr.name),
@@ -212,16 +213,16 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 			switch err {
 			case ErrInvalidLogin:
 				status = CollectorStatusInvalidLogin
-				coll_ch <- MsgLogin
+				msg = MsgLogin
 			case ErrContextDeadLineExceeded:
 				status = CollectorStatusTimeout
-				coll_ch <- MsgTimeout
+				msg = MsgTimeout
 			default:
 				c.logger.Warn(
 					err.Error(),
 					"coll", CollectorId(c.client.symtab, c.logger),
 					"script", ScriptName(c.client.symtab, c.logger))
-				coll_ch <- MsgQuit
+				msg = MsgQuit
 				status = CollectorStatusError
 			}
 			break
@@ -233,9 +234,11 @@ func (c *collector) Collect(ctx context.Context, metric_ch chan<- Metric, coll_c
 
 	// tell calling target that this collector is over.
 	if status != CollectorStatusError {
-		coll_ch <- MsgDone
+		if status == CollectorStatusOk {
+			coll_ch <- msg
+		}
 		c.logger.Debug(
-			"MsgDone sent to channel.",
+			fmt.Sprintf("%s sent to channel.", Msg2Text(msg)),
 			"coll_channel_length", fmt.Sprintf("%d", len(coll_ch)),
 			"coll", CollectorId(c.client.symtab, c.logger),
 			"script", ScriptName(c.client.symtab, c.logger))

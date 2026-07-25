@@ -1,0 +1,17 @@
+[
+    {
+        "mdisk_id": "0",
+        "mdisk_name": "mdisk0",
+        "status": "online",
+        "mdisk_grp_id": "0",
+        "mdisk_grp_name": "Pool",
+        "capacity": "1.7PB",
+        "raid_status": "online",
+        "raid_level": "raid6",
+        "redundancy": "2",
+        "strip_size": "256",
+        "tier": "tier0_flash",
+        "encrypt": "no",
+        "distributed": "yes"
+    }
+]

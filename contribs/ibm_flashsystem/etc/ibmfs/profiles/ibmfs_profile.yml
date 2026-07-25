@@ -1,0 +1,84 @@
+ibmfs:
+  modules:
+    # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
+    # so path is absolute or ./path
+    ibmfs: '$CONFIG_PATH/profiles/funcs/ibmfs.js'
+  scripts:
+    init:
+      - name: default headers
+        set_fact:
+          headers:
+            - name: Content-type
+              value: "application/json"
+          scheme: https
+          port: 7443
+          verifySSL: false
+          base_url: /rest/v1
+
+    auth_check:
+      - name: analyze login response ok
+        set_fact:
+          headers:
+            - name: "X-Auth-token"
+              value: $auth.token
+          logged: true
+          login_retry: $queryRetry
+          # remove .login entry from symbols table
+          # login: ~
+        when:
+          - 'js: status_code == 200 && auth !== undefined && auth.token != undefined'
+      - name: analyze login response
+        set_fact:
+          logged: false
+          login_retry: $queryRetry
+          headers:
+            - name: "X-Auth-token"
+              action: delete
+        when:
+          - 'js: (status_code == 401) || (status_code == 403)'
+
+      - name: analyze login response not ok with retry
+        set_fact:
+          logged: false
+          login_retry: 'js: ++login_retry'
+        when:
+          - 'js: (status_code != 200) && (status_code != 401) && (status_code != 403)'
+
+    login:
+      - name: init login loop
+        vars:
+          login_retry: 0
+          status_code: 0
+        until: 'js: login_retry < queryRetry'
+
+        actions:
+          - name: login phase
+            vars:
+              headers:
+                - name: 'X-Auth-Username'
+                  value: supervision
+                - name: 'X-Auth-Password'
+                  value: "js: exporter.decryptPass( password, auth_key )"
+            query:
+              url: /auth
+              method: post
+              ok_status: 200
+              # debug: true
+              # don't store the value
+              var_name: auth
+              parser: json # default
+          - name: analyze login response
+            play_script: auth_check
+
+    # method called to determine if a target is responding; will call login script if necessary
+    # new login phase is determined by http code received : invalid_auth_code ( http 401, 403 usually ) on each query
+    ping:
+      - name: check ping cnx
+        query:
+          # will call /api in fact !
+          url: /lscurrentuser
+          method: post
+          ok_status: 200
+          # debug: true
+          # to catch and store the result and use it later...
+          var_name: _

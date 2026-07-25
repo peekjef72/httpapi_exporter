@@ -20,7 +20,7 @@ profiles_file_config:
 # list of authentication configuration to use to access to a target.
 auth_configs:
   prometheus_encrypted:
-    mode: script
+    mode: basic
     user: prometheus
     password: "/encrypted/__________XXXXXXX_______________XXXXXXX_______"
 

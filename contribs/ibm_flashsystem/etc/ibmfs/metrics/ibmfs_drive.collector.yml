@@ -1,0 +1,98 @@
+---
+###
+## https://github.com/IBM/spectrum-virtualize-exporter/blob/master/collector/system_collector.go
+## response:
+# [
+#     {
+#         "id": "0",
+#         "status": "online",
+#         "error_sequence_number": "",
+#         "use": "member",
+#         "tech_type": "tier0_flash",
+#         "capacity": "104.8TB",
+#         "mdisk_id": "0",
+#         "mdisk_name": "mdisk0",
+#         "member_id": "0",
+#         "enclosure_id": "1",
+#         "slot_id": "4",
+#         "node_id": "",
+#         "node_name": "",
+#         "auto_manage": "inactive",
+#         "drive_class_id": "0",
+#         "flash_core_module": "yes"
+#     },
+#     {...}
+# ]
+##
+#
+
+collector_name: ibmfs_drive_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_drive
+
+
+scripts:
+  get_lsdrive:
+    - name: get drive
+      query:
+        url: /lsdrive
+        var_name: results
+        alternate: lsdrive
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      loop: $results
+      loop_var: drive
+      when:
+        - 'js: results.length > 0'
+      actions:
+        - name: proceed drives elements
+          set_fact:
+            key_labels:
+              enclosure_id: $drive.enclosure_id
+              slot_id: $drive.slot_id
+              id: $drive.id
+        - name: proceed drives elements
+          scope: none # implicit to item
+          metrics:
+            - metric_name: status
+              help: drive status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+              type: gauge
+              key_labels: $key_labels
+              values: 
+                _: 'js: ibmfs.globalStatus(drive.status)'
+
+            - metric_name: total_capacity_bytes
+              help: capacity in bytes of the array
+              type: gauge
+              key_labels: $key_labels
+              values: 
+                _ : 'js: ibmfs.elementSizeBytes(drive.capacity)'
+        - name: query drive details
+          query:
+            url: "js: '/lsdrive/' + drive.id"
+            var_name: drive_details
+            alternate: lsdrivedetails
+            # debug: true
+            method: post
+        - name: proceed drive details elements
+          when:
+            - 'js: exporter.length(drive_details) > 0'
+          scope: none # implicit to item
+          metrics:
+            - metric_name: physical_used_bytes
+              help: capacity in bytes of the array
+              type: gauge
+              key_labels: $key_labels
+              values: 
+                _ : 'js: ibmfs.elementSizeBytes(drive_details.physical_used_capacity)'
+
+            - metric_name: effective_used_bytes
+              help: capacity in bytes of the array
+              type: gauge
+              key_labels: $key_labels
+              values: 
+                _ : 'js: ibmfs.elementSizeBytes(drive_details.effective_used_capacity)'
+

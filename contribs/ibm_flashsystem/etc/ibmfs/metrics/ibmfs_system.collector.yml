@@ -1,0 +1,264 @@
+---
+###
+## response:
+##
+# [
+#     {
+#         "stat_name": "compression_cpu_pc",
+#         "stat_current": "0",
+#         "stat_peak": "0",
+#         "stat_peak_time": "260708152138"
+#     },
+#     {
+#         "stat_name": "cpu_pc",
+#         "stat_current": "20",
+#         "stat_peak": "24",
+#         "stat_peak_time": "260708152038"
+#     },
+#     {...}
+# ]
+#
+
+collector_name: ibmfs_system_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_system
+
+scripts:
+  get_lssystemstats:
+    - name: get system
+      query:
+        url: /lssystem
+        var_name: results
+        alternate: lssystem
+        # debug: true
+        method: post
+
+    # - name: init empty metrics var
+    #   set_fact:
+    #     metrics: []
+
+    - name: pre proceed elements
+      # scope: none # implicit to item
+      # loop: $results
+      # loop_var: port
+      when:
+        - 'js: exporter.length(results) > 0'
+      set_fact:
+        metrics : >
+          js:
+            var metrics = [
+              {
+                name: "total_mdisk_capacity",
+                help: "The sum of mdiskgrp capacity plus the capacity of all unmanaged MDisks in bytes",
+                value: ibmfs.elementSizeBytes(results['total_mdisk_capacity'])
+              },
+              {
+                name: "space_in_mdisk_grps",
+                help: "The sum of mdiskgrp capacity",
+                value: ibmfs.elementSizeBytes(results['space_in_mdisk_grps'])
+              },
+              {
+                name: "space_allocated_to_vdisks",
+                help: "The sum of mdiskgrp real_capacity",
+                value: ibmfs.elementSizeBytes(results['space_allocated_to_vdisks'])
+              },
+              {
+                name: "total_free_space",
+                help: "The sum of mdiskgrp free_capacity",
+                value: ibmfs.elementSizeBytes(results['total_free_space'])
+              },
+              {
+                name: "total_vdiskcopy_capacity",
+                help: "The total virtual capacity of all volume copies in the cluster",
+                value: ibmfs.elementSizeBytes(results['total_vdiskcopy_capacity'])
+              },
+              {
+                name: "total_used_capacity",
+                help: "The sum of mdiskgrp used_capacity",
+                value: ibmfs.elementSizeBytes(results['total_used_capacity'])
+              },
+              {
+                name: "total_overallocation_percent",
+                help: "The total_vdiskcopy_capacity as a percentage of total_mdisk_capacity. If total_mdisk_capacity is zero, then total_overallocation should display 100",
+                value: results['total_overallocation']
+              },
+              {
+                name: "total_vdisk_capacity",
+                help: "The total virtual capacity of volumes in the cluster",
+                value: ibmfs.elementSizeBytes(results['total_vdisk_capacity'])
+              },
+              {
+                name: "total_allocated_extent_capacity",
+                help: "The total size of all extents that are allocated to VDisks or otherwise in use by the system",
+                value: ibmfs.elementSizeBytes(results['total_allocated_extent_capacity'])
+              },
+              {
+                name: "compression_virtual_capacity",
+                help: "The total virtual capacity for all compressed volume copies in non-data reduction pools. Compressed volumes that are in data reduction pools do not count towards this value. This value is in unsigned decimal format",
+                value: ibmfs.elementSizeBytes(results['compression_virtual_capacity'])
+              },
+              {
+                name: "compression_compressed_capacity",
+                help: "The total used capacity for all compressed volume copies in non-data reduction pools",
+                value: ibmfs.elementSizeBytes(results['compression_compressed_capacity'])
+              },
+              {
+                name: "compression_uncompressed_capacity",
+                help: "The total uncompressed used capacity for all compressed volume copies in non-data reduction pools",
+                value: ibmfs.elementSizeBytes(results['compression_uncompressed_capacity'])
+              },
+              {
+                name: "total_drive_raw_capacity",
+                help: "The total known capacity of all discovered drives (regardless of drive use)",
+                value: results['total_drive_raw_capacity']
+              },
+              {
+                name: "tier0_flash_compressed_data_used",
+                help: "The capacity of compressed data used on the flash tier 0 storage tier",
+                value: ibmfs.elementSizeBytes(results['tier0_flash_compressed_data_used'])
+              },
+              {
+                name: "tier1_flash_compressed_data_used",
+                help: "The capacity of compressed data used on the flash tier 1 storage tier.",
+                value: ibmfs.elementSizeBytes(results['tier1_flash_compressed_data_used'])
+              },
+              {
+                name: "tier_enterprise_compressed_data_used",
+                help: "The capacity of compressed data that is used on the tier 2 enterprise storage tier.",
+                value: ibmfs.elementSizeBytes(results['tier_enterprise_compressed_data_used'])
+              },
+              {
+                name: "tier_nearline_compressed_data_used",
+                help: "The capacity of compressed data that is used on the tier 3 nearline storage tier.",
+                value: ibmfs.elementSizeBytes(results['tier_nearline_compressed_data_used'])
+              },
+              {
+                name: "total_reclaimable_capacity",
+                help: "The unused (free) capacity that will be available after data is reduced",
+                value: ibmfs.elementSizeBytes(results['total_reclaimable_capacity'])
+              },
+              {
+                name: "physical_capacity",
+                help: "The total physical capacity of all fully allocated and thin-provisioned storage that is managed by the storage system",
+                value: ibmfs.elementSizeBytes(results['physical_capacity'])
+              },
+              {
+                name: "physical_free_capacity",
+                help: "The total free physical capacity of all fully allocated and thin-provisioned storage that is managed by the storage system",
+                value: ibmfs.elementSizeBytes(results['physical_free_capacity'])
+              },
+              {
+                name: "used_capacity_before_reduction",
+                help: "The total amount of data that is written to thin-provisioned and compressed volume copies that are in data reduction storage pools - before data reduction occurs",
+                value: ibmfs.elementSizeBytes(results['used_capacity_before_reduction'])
+              },
+              {
+                name: "used_capacity_after_reduction",
+                help: "The total amount of capacity that is used for thin-provisioned and compressed volume copies in the storage pool after data reduction occurs",
+                value: ibmfs.elementSizeBytes(results['used_capacity_after_reduction'])
+              },
+              {
+                name: "overhead_capacity",
+                help: "The overhead capacity consumption in all storage pools that is not attributed to data",
+                value: ibmfs.elementSizeBytes(results['overhead_capacity'])
+              },
+              {
+                name: "deduplication_capacity_saving",
+                help: "The total amount of used capacity that is saved by data deduplication. This saving is before any compression",
+                value: ibmfs.elementSizeBytes(results['deduplication_capacity_saving'])
+              },
+              {
+                name: "tier_capacity",
+                help: "The total MDisk storage in the tier",
+                value: results['tier_capacity']
+              },
+              {
+                name: "tier_free_capacity",
+                help: "The amount of MDisk storage in the tier that is unused",
+                value: results['tier_free_capacity']
+              },
+              {
+                name: "physical_capacity_usage_percent",
+                help: "The physical capacity utilization",
+                value: null
+              },
+              {
+                name: "volume_capacity_usage",
+                help: "The volume capacity utilization",
+                value: null
+              },
+              {
+                name: "mdiskgrp_capacity_usage",
+                help: "The mdiskgrp capacity utilization",
+                value: null
+              }
+            ]
+
+            var physical_capacity_bytes, physical_free_capacity_bytes, total_reclaimable_capacity_bytes;
+
+            for( var metric of metrics ) {
+              // console.log('metric:', JSON.stringify(metric))
+              switch(metric.name) {
+
+                case "physical_capacity":
+                  physical_capacity_bytes = metric.value;
+                  break;
+                case "physical_free_capacity":
+                  physical_free_capacity_bytes = metric.value;
+                  break;
+                case "total_reclaimable_capacity":
+                  total_reclaimable_capacity_bytes = metric.value;
+                  break;
+                case "physical_capacity_usage_percent":
+                  var value;
+                  if (physical_capacity_bytes === 0) {
+                    value = 0;
+                  } else {
+                    value = ((physical_capacity_bytes - physical_free_capacity_bytes - total_reclaimable_capacity_bytes) / physical_capacity_bytes) * 100;
+                  }
+                  metric.value = value
+                  break;
+
+                default:
+                  // metric.value = metric.value(results) || 0;
+                  break;
+              }
+            }
+            metrics
+    # - name: debug
+    #   debug:
+    #     msg: "js: JSON.stringify(metrics)"
+
+    - name: proceed metrics
+      # scope: none # implicit to item
+      loop: $metrics
+      # loop_var: port
+      when:
+        - 'js: metrics.length > 0'
+      metrics:
+        - metric_name: $name
+          help: $help
+          type: gauge
+          values: 
+            _ : $value
+
+    - name: proceed tier details
+      loop: $results.tiers
+      loop_var: tier
+      when: "js: results['tiers'].length > 0"
+      metrics:
+        - metric_name: tier_capacity_bytes
+          help:
+          type: gauge
+          key_labels:
+            tier: _
+          values:
+            _ : "js: ibmfs.elementSizeBytes(tier_capacity)"
+        - metric_name: tier_free_capacity_bytes
+          help:
+          type: gauge
+          key_labels:
+            tier: _
+          values:
+            _ : "js: ibmfs.elementSizeBytes(tier_free_capacity)"

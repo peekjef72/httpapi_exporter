@@ -2,7 +2,7 @@ veeam:
   modules:
     # WARNING: ./ at start of the module path is mandatory; else registry looks for the module in 'node_js' directory!
     # so path is absolute or ./path
-    veeam: './config/veeam/profiles/funcs/veeam.js'
+    veeam: '$CONFIG_PATH/profiles/funcs/veeam.js'
   scripts:
     init:
       - name: default headers
@@ -76,6 +76,8 @@ veeam:
           url: /
           method: get
           ok_status: 200
+          auth_config:
+            mode: none
           # debug: true
           # to catch and store the result and use it later...
           var_name: api_results

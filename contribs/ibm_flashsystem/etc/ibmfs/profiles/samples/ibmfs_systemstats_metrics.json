@@ -1,0 +1,320 @@
+[
+    {
+        "stat_name": "compression_cpu_pc",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "cpu_pc",
+        "stat_current": "20",
+        "stat_peak": "24",
+        "stat_peak_time": "260708152038"
+    },
+    {
+        "stat_name": "fc_mb",
+        "stat_current": "8517",
+        "stat_peak": "10681",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "fc_io",
+        "stat_current": "196698",
+        "stat_peak": "220108",
+        "stat_peak_time": "260708151853"
+    },
+    {
+        "stat_name": "sas_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "sas_io",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iscsi_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iscsi_io",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "write_cache_pc",
+        "stat_current": "70",
+        "stat_peak": "70",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "total_cache_pc",
+        "stat_current": "80",
+        "stat_peak": "80",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "vdisk_mb",
+        "stat_current": "6276",
+        "stat_peak": "8688",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "vdisk_io",
+        "stat_current": "70910",
+        "stat_peak": "81332",
+        "stat_peak_time": "260708152118"
+    },
+    {
+        "stat_name": "vdisk_ms",
+        "stat_current": "1.285",
+        "stat_peak": "1.639",
+        "stat_peak_time": "260708151752"
+    },
+    {
+        "stat_name": "mdisk_mb",
+        "stat_current": "2580",
+        "stat_peak": "4433",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "mdisk_io",
+        "stat_current": "39458",
+        "stat_peak": "56352",
+        "stat_peak_time": "260708152043"
+    },
+    {
+        "stat_name": "mdisk_ms",
+        "stat_current": "0.524",
+        "stat_peak": "0.694",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "drive_mb",
+        "stat_current": "9213",
+        "stat_peak": "10610",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "drive_io",
+        "stat_current": "164562",
+        "stat_peak": "219752",
+        "stat_peak_time": "260708152043"
+    },
+    {
+        "stat_name": "drive_ms",
+        "stat_current": "0.281",
+        "stat_peak": "0.345",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "vdisk_r_mb",
+        "stat_current": "5264",
+        "stat_peak": "7365",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "vdisk_r_io",
+        "stat_current": "45018",
+        "stat_peak": "49617",
+        "stat_peak_time": "260708152118"
+    },
+    {
+        "stat_name": "vdisk_r_ms",
+        "stat_current": "0.923",
+        "stat_peak": "1.188",
+        "stat_peak_time": "260708151822"
+    },
+    {
+        "stat_name": "vdisk_w_mb",
+        "stat_current": "1012",
+        "stat_peak": "2205",
+        "stat_peak_time": "260708151853"
+    },
+    {
+        "stat_name": "vdisk_w_io",
+        "stat_current": "25892",
+        "stat_peak": "33367",
+        "stat_peak_time": "260708152123"
+    },
+    {
+        "stat_name": "vdisk_w_ms",
+        "stat_current": "1.914",
+        "stat_peak": "2.616",
+        "stat_peak_time": "260708151752"
+    },
+    {
+        "stat_name": "mdisk_r_mb",
+        "stat_current": "365",
+        "stat_peak": "2540",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "mdisk_r_io",
+        "stat_current": "10282",
+        "stat_peak": "19728",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "mdisk_r_ms",
+        "stat_current": "0.348",
+        "stat_peak": "0.509",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "mdisk_w_mb",
+        "stat_current": "2214",
+        "stat_peak": "2599",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "mdisk_w_io",
+        "stat_current": "29176",
+        "stat_peak": "47512",
+        "stat_peak_time": "260708152043"
+    },
+    {
+        "stat_name": "mdisk_w_ms",
+        "stat_current": "0.586",
+        "stat_peak": "0.778",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "drive_r_mb",
+        "stat_current": "4592",
+        "stat_peak": "6294",
+        "stat_peak_time": "260708152018"
+    },
+    {
+        "stat_name": "drive_r_io",
+        "stat_current": "73755",
+        "stat_peak": "91275",
+        "stat_peak_time": "260708151832"
+    },
+    {
+        "stat_name": "drive_r_ms",
+        "stat_current": "0.399",
+        "stat_peak": "0.444",
+        "stat_peak_time": "260708151853"
+    },
+    {
+        "stat_name": "drive_w_mb",
+        "stat_current": "4621",
+        "stat_peak": "5584",
+        "stat_peak_time": "260708151702"
+    },
+    {
+        "stat_name": "drive_w_io",
+        "stat_current": "90807",
+        "stat_peak": "143998",
+        "stat_peak_time": "260708152043"
+    },
+    {
+        "stat_name": "drive_w_ms",
+        "stat_current": "0.184",
+        "stat_peak": "0.286",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "power_w",
+        "stat_current": "1832",
+        "stat_peak": "1842",
+        "stat_peak_time": "260708151657"
+    },
+    {
+        "stat_name": "temp_c",
+        "stat_current": "24",
+        "stat_peak": "24",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "temp_f",
+        "stat_current": "75",
+        "stat_peak": "75",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iplink_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iplink_io",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iplink_comp_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "cloud_up_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "cloud_up_ms",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "cloud_down_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "cloud_down_ms",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iser_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "iser_io",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "nvme_rdma_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "nvme_rdma_io",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "nvme_tcp_mb",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    },
+    {
+        "stat_name": "nvme_tcp_io",
+        "stat_current": "0",
+        "stat_peak": "0",
+        "stat_peak_time": "260708152138"
+    }
+]

@@ -1,0 +1,48 @@
+---
+###
+## response:
+# [
+#     {
+#         "enclosure_id": "1",
+#         "canister_id": "1",
+#         "status": "online",
+#         "type": "node",
+#         "node_id": "1",
+#         "node_name": "node1"
+#     },
+#     {...}
+# ]
+##
+#
+
+collector_name: ibmfs_enclosurecanister_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_enclosurecanister
+
+
+scripts:
+  get_lsenclosurecanister:
+    - name: get enclosure canisters
+      query:
+        url: /lsenclosurecanister
+        var_name: results
+        alternate: lsenclosurecanister
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      scope: none
+      loop: $results
+      loop_var: canister
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: enclosure canister status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+          type: gauge
+          key_labels:
+            enclosure_id: $canister.enclosure_id
+            canister_id: $canister.canister_id
+          values: 
+            _: 'js: ibmfs.globalStatus(canister.status)'

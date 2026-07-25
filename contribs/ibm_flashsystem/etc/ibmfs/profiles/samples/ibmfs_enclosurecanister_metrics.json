@@ -1,0 +1,18 @@
+[
+    {
+        "enclosure_id": "1",
+        "canister_id": "1",
+        "status": "online",
+        "type": "node",
+        "node_id": "1",
+        "node_name": "node1"
+    },
+    {
+        "enclosure_id": "1",
+        "canister_id": "2",
+        "status": "online",
+        "type": "node",
+        "node_id": "2",
+        "node_name": "node2"
+    }
+]

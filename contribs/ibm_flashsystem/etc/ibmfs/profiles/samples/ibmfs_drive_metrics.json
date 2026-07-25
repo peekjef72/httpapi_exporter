@@ -1,0 +1,38 @@
+[
+    {
+        "id": "0",
+        "status": "online",
+        "error_sequence_number": "",
+        "use": "member",
+        "tech_type": "tier0_flash",
+        "capacity": "104.8TB",
+        "mdisk_id": "0",
+        "mdisk_name": "mdisk0",
+        "member_id": "0",
+        "enclosure_id": "1",
+        "slot_id": "4",
+        "node_id": "",
+        "node_name": "",
+        "auto_manage": "inactive",
+        "drive_class_id": "0",
+        "flash_core_module": "yes"
+    },
+    {
+        "id": "1",
+        "status": "online",
+        "error_sequence_number": "",
+        "use": "member",
+        "tech_type": "tier0_flash",
+        "capacity": "104.8TB",
+        "mdisk_id": "0",
+        "mdisk_name": "mdisk0",
+        "member_id": "1",
+        "enclosure_id": "1",
+        "slot_id": "14",
+        "node_id": "",
+        "node_name": "",
+        "auto_manage": "inactive",
+        "drive_class_id": "0",
+        "flash_core_module": "yes"
+    }
+]

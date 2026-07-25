@@ -1,0 +1,102 @@
+---
+###
+## response:
+# [
+#     {
+#         "id": "0",
+#         "name": "SP_ALL",
+#         "preferred_management_system_name": "ccflashsystem1",
+#         "active_management_system_name": "ccflashsystem1",
+#         "replication_policy_id": "0",
+#         "replication_policy_name": "HA_POLICY",
+#         "location1_system_name": "ccflashsystem1",
+#         "location1_status": "healthy",
+#         "location2_system_name": "ccflashsystem0",
+#         "location2_status": "healthy",
+#         "host_count": "166",
+#         "volume_group_count": "51",
+#         "default_volume_group_id": "",
+#         "default_volume_group_name": "",
+#         "ha_status": "established",
+#         "link_status": "synchronized",
+#         "desired_location_system_name": "",
+#         "migration_status": "",
+#         "draft": "no",
+#         "draft_volume_group_count": "0",
+#         "draft_host_count": "0",
+#         "ownership_group_id": "",
+#         "ownership_group_name": "",
+#         "management_portset_id": "",
+#         "management_portset_name": "",
+#         "host_cluster_count": "42",
+#         "draft_host_cluster_count": "0"
+#     },
+#     {...}
+# ]
+##
+#
+
+collector_name: ibmfs_partition_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_partition
+
+
+scripts:
+  get_lspartition:
+    - name: get partition
+      query:
+        url: /lspartition
+        var_name: results
+        alternate: lspartition
+        # debug: true
+        method: post
+        # data: '{ "filtervalue": "name=<NAME>" }'
+
+    - name: proceed elements
+      # scope: none # implicit to item
+      loop: $results
+      # loop_var: port
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: ha_status
+          help: >
+            partition ha status: null or empty: 0 - established: 1 - establishing: 2 - suspended: 3 - encountered_a_problem: 4
+          type: gauge
+          key_labels:
+            name: _
+          values: 
+            _ : 'js: ibmfs.HAStatus(ha_status)'
+
+        - metric_name: link_status
+          help: partition link status 0 Offline / 1 synchronized / 2 ?? / 3 Unknown
+          type: gauge
+          key_labels:
+            name: _
+          values: 
+            _ : 'js: ibmfs.linkStatus(link_status)'
+
+        - metric_name: host_count
+          help: partition hosts count
+          type: gauge
+          key_labels:
+            name: _
+          values: 
+            _ : $host_count
+
+        - metric_name: volume_group_count
+          help: partition volume group count
+          type: gauge
+          key_labels:
+            name: _
+          values: 
+            _ : $volume_group_count
+
+        - metric_name: host_cluster_count
+          help: partition host cluster count
+          type: gauge
+          key_labels:
+            name: _
+          values: 
+            _ : $host_cluster_count

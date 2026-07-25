@@ -1,0 +1,58 @@
+---
+###
+## response:
+# [
+#     {
+#         "id": "1",
+#         "status": "online",
+#         "type": "control",
+#         "managed": "yes",
+#         "IO_group_id": "0",
+#         "IO_group_name": "io_grp0",
+#         "product_MTM": "4983-AH8",
+#         "serial_number": "78E4EL7",
+#         "total_canisters": "2",
+#         "online_canisters": "2",
+#         "total_PSUs": "4",
+#         "online_PSUs": "4",
+#         "drive_slots": "48",
+#         "total_fan_modules": "0",
+#         "online_fan_modules": "0",
+#         "total_sems": "0",
+#         "online_sems": "0"
+#     }
+# ]
+##
+#
+
+collector_name: ibmfs_enclosure_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_enclosure
+
+
+scripts:
+  get_lsenclosure:
+    - name: get enclosure
+      query:
+        url: /lsenclosure
+        var_name: results
+        alternate: lsenclosure
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      scope: none
+      loop: $results
+      loop_var: enclosure
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: enclosure status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+          type: gauge
+          key_labels:
+            enclosure_id: $enclosure.id
+            serial_number: $enclosure.serial_number
+          values: 
+            _: 'js: ibmfs.globalStatus(enclosure.status)'

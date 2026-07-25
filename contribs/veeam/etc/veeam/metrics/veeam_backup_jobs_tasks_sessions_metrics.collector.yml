@@ -65,6 +65,8 @@ scripts:
               links: $item[$taskSessionNames.links]
               nameName: $taskSessionNames.name
               typeName: $taskSessionNames.type
+              result: $item[$taskSessionNames.result]
+              state: $item[$taskSessionNames.state]
 
         - name: update tasks map
           set_fact:
@@ -95,28 +97,28 @@ scripts:
               help: "vm backup task status (0 undefined / 1 Success / 2 Warning / 3 Failed / 4 Pending-Idle / 5 Working-In Progress)"
               type: gauge
               key_labels: $root.key_labels
-              values: 
+              values:
                 _: $state
 
             - metric_name: duration
               help: 'vm backup task operation duration in second'
               type: gauge
               key_labels: $root.key_labels
-              values: 
-                _: "js: endtimestamp - starttimestamp"
+              values:
+                _: "js: Math.max(0, endtimestamp - starttimestamp)"
 
             - metric_name: retries
               help: "number of times of the vm backup task has been retried (0: no retry)"
               type: gauge
               key_labels: $root.key_labels
-              values: 
+              values:
                 _: $retries
 
             - metric_name: total_bytes
               help: "total bytes save by the vm backup task for vm"
               type: gauge
               key_labels: $root.key_labels
-              values: 
+              values:
                 _: $total_size_bytes
 
             - metric_name: error
@@ -128,7 +130,7 @@ scripts:
                 taskname:     _
                 vmname:       _
                 message:      $reason
-              values: 
+              values:
                 _: $state
               when:
                 - 'js: task.state == "2"  || task.state == "3"'

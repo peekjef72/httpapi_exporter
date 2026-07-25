@@ -1,0 +1,35 @@
+[
+    {
+        "name": "supervision"
+    },
+    {
+        "role": "Monitor"
+    },
+    {
+        "owner_id": ""
+    },
+    {
+        "owner_name": ""
+    },
+    {
+        "password_expiry_time": ""
+    },
+    {
+        "multi_factor": "no"
+    },
+    {
+        "password_sshkey_required": "no"
+    },
+    {
+        "gui_disabled": "no"
+    },
+    {
+        "cli_disabled": "no"
+    },
+    {
+        "rest_disabled": "no"
+    },
+    {
+        "cim_disabled": "yes"
+    }
+]

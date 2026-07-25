@@ -1,0 +1,21 @@
+[
+    {
+        "id": "1",
+        "status": "online",
+        "type": "control",
+        "managed": "yes",
+        "IO_group_id": "0",
+        "IO_group_name": "io_grp0",
+        "product_MTM": "4983-AH8",
+        "serial_number": "78E4EL7",
+        "total_canisters": "2",
+        "online_canisters": "2",
+        "total_PSUs": "4",
+        "online_PSUs": "4",
+        "drive_slots": "48",
+        "total_fan_modules": "0",
+        "online_fan_modules": "0",
+        "total_sems": "0",
+        "online_sems": "0"
+    }
+]

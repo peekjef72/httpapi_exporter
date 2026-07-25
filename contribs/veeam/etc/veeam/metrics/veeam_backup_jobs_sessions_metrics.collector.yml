@@ -49,7 +49,7 @@ scripts:
         - name: build raw job from data
           set_fact:
             job:
-              backupserver: $item[$jobSessionNames.links][0][$jobSessionNames.name],
+              backupserver: $item[$jobSessionNames.links][0][$jobSessionNames.name]
               name: $item[$jobSessionNames.name]
               jobName: $item[$jobSessionNames.jobName]
               jobType: $item[$jobSessionNames.jobType]
@@ -107,7 +107,7 @@ scripts:
               type: gauge
               key_labels: $root.key_labels
               values:
-                _: "js: endtimestamp - starttimestamp"
+                _: "js: Math.max(0, endtimestamp - starttimestamp)"
 
             - metric_name: retries
               help: "number of times of the job has been retried (0: no retry)"

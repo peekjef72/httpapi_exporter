@@ -1,0 +1,67 @@
+---
+###
+## response:
+# [
+#     {
+#         "id": "0",
+#         "fc_io_port_id": "1",
+#         "port_id": "1",
+#         "type": "fc",
+#         "port_speed": "32Gb",
+#         "node_id": "1",
+#         "node_name": "node1",
+#         "WWPN": "5005076813116607",
+#         "nportid": "0C0000",
+#         "status": "active",
+#         "attachment": "switch",
+#         "cluster_use": "none",
+#         "adapter_location": "1",
+#         "adapter_port_id": "1",
+#         "fabric_auto_zone_capability": "incompatible_port"
+#     },
+#     {...}
+# ]
+##
+#
+
+collector_name: ibmfs_portfc_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_portfc
+
+
+scripts:
+  get_lsportfc:
+    - name: get fiber channel ports
+      query:
+        url: /lsportfc
+        var_name: results
+        alternate: lsportfc
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      # scope: none # implicit to item
+      loop: $results
+      # loop_var: port
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: portFC status 0 inactive_configured / 1 active / 2 inactive_unconfigured / 3 unknown
+          type: gauge
+          key_labels:
+            port_id: _
+            node_name: _
+            attachment: _
+          values: 
+            _: 'js: ibmfs.portFCStatus(status)'
+
+        - metric_name: speed_bps
+          help: interface speed in bits per second
+          type: gauge
+          key_labels:
+            port_id: _
+            node_name: _
+          values: 
+            _ : 'js: ibmfs.ethernetSpeed(port_speed)'

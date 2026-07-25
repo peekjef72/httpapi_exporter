@@ -101,6 +101,12 @@ const (
 	MsgTimeout = iota
 )
 
+const (
+	NeedLoginFalse = iota
+	NeedLoginTrue  = iota
+	NeedLoginError = iota
+)
+
 func Msg2Text(msg int) string {
 	var ret string
 	switch msg {
@@ -640,11 +646,16 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 	// Don't bother with the collectors if target is down.
 	if targetUp {
 		has_logged := false
+		need_login := NeedLoginFalse
+
 		// check if we have already logged to target ?
 		// if not then set msg to directly try to login
 		if logged, ok := GetMapValueBool(t.client.symtab, "logged"); ok && logged {
 			has_logged = logged
 		}
+
+		// preserve auth_key because it could be removed after first login
+		auth_key := GetMapValueString(t.client.symtab, "auth_key")
 
 		if has_logged {
 			// if already logged only start to collect metrics
@@ -652,6 +663,11 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 		} else {
 			// else not already logged so start to login in
 			collectChan <- MsgLogin
+		}
+
+		// reinitialize the status to error before to collect something
+		for _, c := range colls {
+			c.SetStatus(CollectorStatusError)
 		}
 
 		// to check if channel is already closed
@@ -670,6 +686,10 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 					"coll", t.name)
 				// check if we have already logged to target ?
 				t.client.symtab["__collector_id"] = t.name
+				// set auth_key if defined
+				if auth_key != "" {
+					t.client.symtab["auth_key"] = auth_key
+				}
 				if msg == MsgLogin && !has_logged {
 					//
 					// wait until all collectors have finished
@@ -679,12 +699,22 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 					if status, err := t.client.Login(); err != nil {
 						collectChan <- MsgQuit
-						if err == ErrInvalidLogin || err == ErrInvalidLoginNoCipher || err == ErrInvalidLoginInvalidCipher {
-							for _, c := range colls {
-								c.SetStatus(CollectorStatusInvalidLogin)
-							}
+						status := CollectorStatusError
+						switch err {
+						case ErrInvalidLogin, ErrInvalidLoginNoCipher, ErrInvalidLoginInvalidCipher:
+							status = CollectorStatusInvalidLogin
+						case ErrContextDeadLineExceeded:
+							status = CollectorStatusTimeout
+						}
+						for _, c := range colls {
+							c.SetStatus(status)
 						}
 					} else {
+
+						// logger.Debug(
+						// 	fmt.Sprintf("target after login: headers %v", t.client.client.Header),
+						// 	"coll", t.name, "auth_key", t.client.symtab["auth_key"])
+
 						if status {
 							has_logged = true
 							collectChan <- MsgCollect
@@ -712,7 +742,17 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 
 				t.client.symtab["__coll_channel"] = collectChan
 
+				// logger.Debug(
+				// 	fmt.Sprintf("target: in collect() startup headers %v", t.client.client.Header),
+				// 	"coll", t.name, "auth_key", t.client.symtab["auth_key"])
+
 				for _, c := range colls {
+					// the collector has successfully performed the collect, but another collector failed with authentication error
+					// don't perform again the "correct" collectors
+					if c.GetStatus() == CollectorStatusOk {
+						wg_coll.Done()
+						continue
+					}
 					t.client.symtab["__collector_id"] = c.GetName()
 					// have to build a new client copy to allow multi connection to target
 					c_client := t.client.Clone(t.config)
@@ -809,7 +849,6 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 				logger.Debug(
 					"after waiting for all collectors is over",
 					"coll", t.name)
-				need_login := false
 
 				// repopulate collect channel with already received messages.
 				for range msg_done_count {
@@ -835,14 +874,21 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 						logger.Debug(
 							"target wait: received MsgLogin",
 							"coll", t.name)
-						need_login = true
+						if need_login == NeedLoginTrue {
+							// we have already try to login for one or several collectors : maybe specific rights are not allowed and required !
+							// => don't try again and again
+							need_login = NeedLoginError
+						} else {
+							need_login = NeedLoginTrue
+						}
 					default:
 						logger.Debug(
 							fmt.Sprintf("target wait: received msg for collector '%s': '%s'", colls[i].GetName(), Msg2Text(subMsg)),
 							"coll", t.name)
 					}
 				}
-				if need_login {
+				switch need_login {
+				case NeedLoginTrue:
 					collectChan <- MsgLogin
 					t.client.symtab["logged"] = false
 					has_logged = false
@@ -851,7 +897,9 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 							fmt.Sprintf("target: MsgLogin check has_logged: %v", logged),
 							"coll", t.name)
 					}
-				} else {
+				case NeedLoginError:
+					collectChan <- MsgDone
+				case NeedLoginFalse:
 					collectChan <- MsgQuit
 				}
 			case MsgDone:

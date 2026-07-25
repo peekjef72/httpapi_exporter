@@ -220,7 +220,7 @@ collectors:
 
 auth_configs:
   name_entry_1:
-    # mode: basic|token|[anything else:=> user defined login script]
+    # mode: basic|token|script|none
     mode: script
     user: <login>
     password: <password>
@@ -238,7 +238,7 @@ auth_configs:
 
   # use this auth_config to authenticate via env vars
   name_entry_4:
-    mode: script
+    mode: basic
     user: $env:VEEAM_EXPORTER_USER
     password: $env:VEEAM_EXPORTER_PASSWD
 

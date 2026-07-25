@@ -167,7 +167,7 @@ function buildJobs(jobs, raw_job) {
     var current_state = currentElementStatus( raw_job );
     current_state = jobStatus( current_state );
 
-    if( raw_job.endTimeUTC !== undefined ) {
+    if( raw_job.endTimeUTC !== undefined && raw_job.endTimeUTC !== 0 ) {
         // cur_end_timestamp = exporter.toDate("2006-01-02T15:04:05Z", job.endTimeUTC);
         cur_end_timestamp =  getTimestamp(raw_job.endTimeUTC);
     } else {
@@ -250,7 +250,7 @@ function buildTasks(tasks, raw_task) {
     var current_state = currentElementStatus( raw_task );
     current_state = taskStatus( current_state );
 
-    if( raw_task.endTimeUTC !== undefined ) {
+    if( raw_task.endTimeUTC !== undefined && raw_task.endTimeUTC !== 0 ) {
         // cur_end_timestamp = exporter.toDate("2006-01-02T15:04:05Z", item.EndTimeUTC);
         cur_end_timestamp =  getTimestamp(raw_task.endTimeUTC);
     } else {
@@ -473,7 +473,7 @@ function jobSessionNames(version) {
             // for loop
             entities: 'entities',
             backupJobSessions: 'backupJobSessions',
-            link: 'link',
+            links: 'links',
             name: 'name',
             jobName: 'jobName',
             jobType: 'jobType',
@@ -490,7 +490,7 @@ function jobSessionNames(version) {
             entities: 'Entities',
             backupJobSessions: 'BackupJobSessions',
 
-            link: 'Link',
+            links: 'Links',
             name: 'Name',
             jobName: 'JobName',
             jobType: 'JobType',
@@ -521,8 +521,8 @@ function taskSessionNames(version) {
             creationTimeUTC: 'creationTimeUTC',
             endTimeUTC: 'endTimeUTC',
             uid: 'uid',
-            result: 'Result',
-            state: 'State',
+            result: 'result',
+            state: 'state',
             vmDisplayName: 'vmDisplayName',
             totalSize: 'totalSize',
             reason: 'reason',

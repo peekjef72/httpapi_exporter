@@ -1,0 +1,25 @@
+[Unit]
+Description==Prometheus httpapi exporter: ibm flash system 9xxx config
+Wants=network-online.target
+After=network-online.target
+StartLimitBurst=3
+StartLimitIntervalSec=150
+
+[Service]
+User=httpapi_exporter
+Group=httpapi_exporter
+WorkingDirectory=/etc/httpapi_exporter
+Environment="CONFIG_PATH=/etc/httpapi_exporter/ibmfs"
+Restart=always
+RestartSec=2
+Type=simple
+
+ExecStart=/opt/httpapi_exporter/ibmfs_exporter \
+        --log.level=warn \
+        --config.file=/etc/httpapi_exporter/ibmfs/config.yml \
+        --web.listen-address=:9119
+
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

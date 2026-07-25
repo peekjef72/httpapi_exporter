@@ -1,0 +1,30 @@
+[
+    {
+        "enclosure_id": "1",
+        "PSU_id": "1",
+        "status": "online",
+        "input_power": "ac_highline",
+        "input_voltage": "ac_highline"
+    },
+    {
+        "enclosure_id": "1",
+        "PSU_id": "2",
+        "status": "online",
+        "input_power": "ac_highline",
+        "input_voltage": "ac_highline"
+    },
+    {
+        "enclosure_id": "1",
+        "PSU_id": "3",
+        "status": "online",
+        "input_power": "ac_highline",
+        "input_voltage": "ac_highline"
+    },
+    {
+        "enclosure_id": "1",
+        "PSU_id": "4",
+        "status": "online",
+        "input_power": "ac_highline",
+        "input_voltage": "ac_highline"
+    }
+]

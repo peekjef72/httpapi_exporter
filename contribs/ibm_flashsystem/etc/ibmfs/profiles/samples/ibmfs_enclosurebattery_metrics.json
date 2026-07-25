@@ -1,0 +1,46 @@
+[
+    {
+        "enclosure_id": "1",
+        "battery_id": "1",
+        "status": "online",
+        "charging_status": "charged",
+        "recondition_needed": "no",
+        "percent_charged": "100",
+        "end_of_life_warning": "no",
+        "canister_id": "1",
+        "battery_slot": "1"
+    },
+    {
+        "enclosure_id": "1",
+        "battery_id": "2",
+        "status": "online",
+        "charging_status": "charged",
+        "recondition_needed": "no",
+        "percent_charged": "100",
+        "end_of_life_warning": "no",
+        "canister_id": "1",
+        "battery_slot": "2"
+    },
+    {
+        "enclosure_id": "1",
+        "battery_id": "3",
+        "status": "online",
+        "charging_status": "charged",
+        "recondition_needed": "no",
+        "percent_charged": "100",
+        "end_of_life_warning": "no",
+        "canister_id": "2",
+        "battery_slot": "1"
+    },
+    {
+        "enclosure_id": "1",
+        "battery_id": "4",
+        "status": "online",
+        "charging_status": "charged",
+        "recondition_needed": "no",
+        "percent_charged": "100",
+        "end_of_life_warning": "no",
+        "canister_id": "2",
+        "battery_slot": "2"
+    }
+]

@@ -1,0 +1,60 @@
+---
+###
+## response:
+# [
+#     {
+#         "enclosure_id": "1",
+#         "battery_id": "1",
+#         "status": "online",
+#         "charging_status": "charged",
+#         "recondition_needed": "no",
+#         "percent_charged": "100",
+#         "end_of_life_warning": "no",
+#         "canister_id": "1",
+#         "battery_slot": "1"
+#     }
+# ]
+##
+#
+
+collector_name: ibmfs_enclosurebattery_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_enclosurebattery
+
+
+scripts:
+  get_lsenclosurebattery:
+    - name: get enclosurebattery
+      query:
+        url: /lsenclosurebattery
+        var_name: results
+        alternate: lsenclosurebattery
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      # scope: none
+      loop: $results
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: enclosure batteries status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+          type: gauge
+          key_labels:
+            enclosure_id: $enclosure_id
+            canister_id: $canister_id
+            battery_id: $battery_id
+          values: 
+            _: 'js: ibmfs.globalStatus(status)'
+
+        - metric_name: charged_percent
+          help: enclosure batteries charged percent
+          type: gauge
+          key_labels:
+            enclosure_id: $enclosure_id
+            canister_id: $canister_id
+            battery_id: $battery_id
+          values: 
+            _: $percent_charged

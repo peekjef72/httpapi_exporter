@@ -1,0 +1,76 @@
+---
+###
+## response:
+# [
+#   {
+#       "port_id": "1",
+#       "node_id": "1",
+#       "node_name": "node1",
+#       "MAC": "98:be:94:85:76:8f",
+#       "duplex": "Full",
+#       "speed": "1Gb\/s",
+#       "link_state": "active",
+#       "dcbx_state": "unsupported",
+#       "rdma_type": "",
+#       "adapter_location": "0",
+#       "adapter_port_id": "1",
+#       "host": "no",
+#       "storage": "no",
+#       "replication": "no",
+#       "eth_clustering": "no",
+#       "management": "yes"
+#   },
+#   {...}
+# ]
+##
+#
+
+collector_name: ibmfs_portethernet_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_portethernet
+
+
+scripts:
+  get_lsportethernet:
+    - name: get ethernet ports
+      query:
+        url: /lsportethernet
+        var_name: results
+        alternate: lsportethernet
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      # scope: none # implicit to item
+      loop: $results
+      # loop_var: port
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: interface status 0 inactive / 1 active / 2 unknown
+          type: gauge
+          key_labels:
+            port_id: _
+            node_name: _
+          values: 
+            _: 'js: ibmfs.portStatus(link_state)'
+
+        - metric_name: speed_bps
+          help: interface speed in bits per second
+          type: gauge
+          key_labels:
+            port_id: _
+            node_name: _
+          values: 
+            _ : 'js: ibmfs.ethernetSpeed(speed)'
+
+        - metric_name: duplex
+          help: interface duplex status 0 unknown / 1 Half / 2 Full
+          type: gauge
+          key_labels:
+            port_id: _
+            node_name: _
+          values: 
+            _ : 'js: ibmfs.ethernetDuplex(duplex)'

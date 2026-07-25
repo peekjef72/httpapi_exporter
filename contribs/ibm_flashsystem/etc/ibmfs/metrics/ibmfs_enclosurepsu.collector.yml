@@ -1,0 +1,53 @@
+---
+###
+## response:
+# [
+#     {
+#         "enclosure_id": "1",
+#         "PSU_id": "1",
+#         "status": "online",
+#         "input_power": "ac_highline",
+#         "input_voltage": "ac_highline"
+#     },
+#     {
+#         "enclosure_id": "1",
+#         "PSU_id": "2",
+#         "status": "online",
+#         "input_power": "ac_highline",
+#         "input_voltage": "ac_highline"
+#     },
+# ]
+##
+#
+
+collector_name: ibmfs_enclosurepsu_metrics
+# no cache
+# min_interval: 0s
+metric_prefix: ibmfs_enclosurepsu
+
+
+scripts:
+  get_lsenclosurepsu:
+    - name: get enclosurepsu
+      query:
+        url: /lsenclosurepsu
+        var_name: results
+        alternate: lsenclosurepsu
+        # debug: true
+        method: post
+
+    - name: proceed elements
+      # scope: none
+      loop: $results
+      # loop_var: enclosure
+      when:
+        - 'js: results.length > 0'
+      metrics:
+        - metric_name: status
+          help: enclosure power supply status 0 Offline / 1 Online / 2 Degraded / 3 Unknown
+          type: gauge
+          key_labels:
+            enclosure_id: $enclosure_id
+            psu_id: $PSU_id
+          values: 
+            _: 'js: ibmfs.globalStatus(status)'

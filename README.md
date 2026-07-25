@@ -24,6 +24,7 @@ As examples, configurations for exporters are provided (see contribs):
 - [apache_exporter](contribs/apache/README.md)
 - [nginx_exporter](contribs/nginx/README.md)
 - [squid_exporter](contribs/squid/README.md)
+- [ibmfs_exporter](contribs/ibm_flashsystem/README.md)
 
 # Build
 
@@ -51,20 +52,28 @@ usage: httpapi_exporter [<flags>]
 
 
 Flags:
-  -h, --[no-]help            Show context-sensitive help (also try --help-long and --help-man).
-      --web.listen-address=":9321"
-                             The address to listen on for HTTP requests.
-      --web.telemetry-path="/metrics"
-                             Path under which to expose collector's internal metrics.
-  -c, --config.file="config/config.yml"
-                             Exporter configuration file.
-  -n, --[no-]dry-run         Only check exporter configuration file and exit.
-  -t, --target=TARGET        In dry-run mode specify the target name, else ignored.
-  -a, --auth.key=AUTH.KEY    In dry-run mode specify the auth_key to use, else ignored.
-  -o, --collector=COLLECTOR  Specify the collector name restriction to collect, replace the collector_names set for each target.
-      --log.level=info       Only log messages with the given severity or above. One of: [debug, info, warn, error]
-      --log.format=logfmt    Output format of log messages. One of: [logfmt, json]
-  -V, --[no-]version         Show application version.
+  -h, --[no-]help                Show context-sensitive help (also try --help-long and --help-man).
+      --web.telemetry-path="/metrics"  
+                                 Path under which to expose collector's internal metrics.
+  -c, --config.file="config/config.yml"  
+                                 Exporter configuration file.
+  -n, --[no-]dry-run             Only check exporter configuration file and exit.
+  -t, --target=TARGET            In dry-run mode specify the target name, else ignored.
+  -m, --model="default"          In dry-run mode specify the model name to build the dynamic target, else ignored.
+  -a, --auth.key=AUTH.KEY        In dry-run mode specify the auth_key to use, else ignored.
+  -o, --collector=COLLECTOR      Specify the collector name restriction to collect, replace the collector_names set for each target.
+  -T, --test-mode=TEST-MODE      use specific profile name and set test-mode to true . The query actions are replaced to a lookup into the map 'alternates'
+                                 variable to produce results.
+      --[no-]web.systemd-socket  Use systemd socket activation listeners instead of port listeners (Linux only).
+      --web.listen-address=:9321 ...  
+                                 Addresses on which to expose metrics and web interface. Repeatable for multiple addresses. Examples: `:9100` or `[::1]:9100`
+                                 for http, `vsock://:9100` for vsock
+      --web.config.file=""       Path to configuration file that can enable TLS or authentication. See:
+                                 https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md
+      --log.level=info           Only log messages with the given severity or above. One of: [debug, info, warn, error]
+      --log.format=logfmt        Output format of log messages. One of: [logfmt, json]
+  -V, --[no-]version             Show application version.
+
 ```
 
 ## Login level
@@ -242,3 +251,4 @@ How it works:
 . see [up/metrics schema](./doc/session.png)
 . see [actions](./doc/actions.md)
 . see [template/functions](./doc/custom_functions.md)
+. see tutorial [how to build IBM FlashSystem profile](doc/tutorial_build_config_from_api.md)

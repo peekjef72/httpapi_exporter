@@ -1,0 +1,23 @@
+[
+    {
+        "enclosure_id": "1",
+        "stat_name": "power_w",
+        "stat_current": "1779",
+        "stat_peak": "1789",
+        "stat_peak_time": "260627113059"
+    },
+    {
+        "enclosure_id": "1",
+        "stat_name": "temp_c",
+        "stat_current": "24",
+        "stat_peak": "24",
+        "stat_peak_time": "260627113519"
+    },
+    {
+        "enclosure_id": "1",
+        "stat_name": "temp_f",
+        "stat_current": "75",
+        "stat_peak": "75",
+        "stat_peak_time": "260627113519"
+    }
+]
