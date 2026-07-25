@@ -35,7 +35,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 - added contribs: nginx basic.
 - fixed minor elements in apache contribs.
 - upgraded modules and Go version to 1.26.4
-- fixed #14: Improved module loading behavior when a path is not found or contains syntax errors.
+- fixed [issue #14](https://github.com/peekjef72/httpapi_exporter/issues/14), [issue #16](https://github.com/peekjef72/httpapi_exporter/issues/16): Improved module loading behavior when a path is not found or contains syntax errors.
 - fixed `exporter.toDate()` function: It now correctly returns a native JavaScript `Date` object that can be manipulated within the script.
 
 ## 0.4.4 / 2026-06-16
