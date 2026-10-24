@@ -22,7 +22,7 @@ type MetricDesc interface {
 	ValueType() dto.MetricType
 	ConstLabels() []*dto.LabelPair
 	// Labels() []string
-	LogContext() []interface{}
+	LogContext() []any
 	Config() *MetricConfig
 }
 
@@ -39,12 +39,12 @@ type MetricFamily struct {
 	constLabels  []*dto.LabelPair
 	labels       []*Label // raw string or template
 	valuesLabels []*Label // raw string or template for key and value
-	logContext   []interface{}
+	logContext   []any
 }
 
 // NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
 func NewMetricFamily(
-	logContext []interface{},
+	logContext []any,
 	mc *MetricConfig,
 	constLabels []*dto.LabelPair,
 	customTemplate *exporterTemplate) (*MetricFamily, error) {
@@ -461,7 +461,7 @@ func (mf MetricFamily) ConstLabels() []*dto.LabelPair {
 }
 
 // LogContext implements MetricDesc.
-func (mf MetricFamily) LogContext() []interface{} {
+func (mf MetricFamily) LogContext() []any {
 	return mf.logContext
 }
 
@@ -481,12 +481,12 @@ type automaticMetricDesc struct {
 	valueType   dto.MetricType
 	labels      []string
 	constLabels []*dto.LabelPair
-	logContext  []interface{}
+	logContext  []any
 }
 
 // NewAutomaticMetricDesc creates a MetricDesc for automatically generated metrics.
 func NewAutomaticMetricDesc(
-	logContext []interface{}, name, help string, valueType dto.MetricType, constLabels []*dto.LabelPair, labels ...string) MetricDesc {
+	logContext []any, name, help string, valueType dto.MetricType, constLabels []*dto.LabelPair, labels ...string) MetricDesc {
 	return &automaticMetricDesc{
 		name:        name,
 		help:        help,
@@ -523,7 +523,7 @@ func (a automaticMetricDesc) Labels() []string {
 }
 
 // LogContext implements MetricDesc.
-func (a automaticMetricDesc) LogContext() []interface{} {
+func (a automaticMetricDesc) LogContext() []any {
 	return a.logContext
 }
 
@@ -576,7 +576,7 @@ func (m *constMetric) Write(out *dto.Metric) error {
 	case dto.MetricType_GAUGE:
 		out.Gauge = &dto.Gauge{Value: proto.Float64(m.val)}
 	default:
-		var logContext []interface{}
+		var logContext []any
 		logContext = append(logContext, m.desc.LogContext()...)
 		logContext = append(logContext, "errmsg", fmt.Sprintf("encountered unknown type %v", t))
 		return fmt.Errorf("%s", logContext...)
@@ -630,12 +630,12 @@ func (s labelPairSorter) Less(i, j int) bool {
 }
 
 type invalidMetric struct {
-	logContext []interface{}
+	logContext []any
 	err        error
 }
 
 // NewInvalidMetric returns a metric whose Write method always returns the provided error.
-func NewInvalidMetric(logContext []interface{}, err error) Metric {
+func NewInvalidMetric(logContext []any, err error) Metric {
 	return invalidMetric{
 		logContext: logContext,
 		err:        err,

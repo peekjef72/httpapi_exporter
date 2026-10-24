@@ -31,7 +31,7 @@ type MetricsAction struct {
 	Actions      []Action        `yaml:"-" json:"-"`
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 
 	vars [][]any
 }

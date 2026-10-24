@@ -22,8 +22,8 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"dario.cat/mergo"
 	"github.com/go-resty/resty/v2"
-	"github.com/imdario/mergo"
 	"github.com/mitchellh/copystructure"
 	"github.com/peekjef72/passwd_encrypt/encrypt"
 	"github.com/spf13/cast"
@@ -94,7 +94,7 @@ type Client struct {
 	client      *resty.Client
 	tls_version uint
 
-	// logContext []interface{}
+	// logContext []any
 	logger *slog.Logger
 	sc     map[string]*YAMLScript
 
@@ -111,7 +111,7 @@ type Client struct {
 func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Logger, gc *GlobalConfig) *Client {
 
 	cl := &Client{
-		// logContext:        []interface{}{},
+		// logContext:        []any{},
 		logger:            logger,
 		sc:                sc,
 		symtab:            map[string]any{},
@@ -147,7 +147,7 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Log
 func (c *Client) Clone(target *TargetConfig) *Client {
 	//sync.Mutex{}
 	cl := &Client{
-		// logContext: []interface{}{},
+		// logContext: []any{},
 		logger: c.logger,
 		sc:     c.sc,
 		// wait_mutex:    sync.Mutex{},
@@ -198,6 +198,9 @@ func (c *Client) Clone(target *TargetConfig) *Client {
 	for header, values := range c.client.Header {
 		cl.client.SetHeader(header, values[0])
 	}
+	// c.logger.Debug(
+	// 	fmt.Sprintf("client.Clone(): clone headers %v", cl.client.Header),
+	// 	"auth_key", cl.symtab["auth_key"])
 
 	// duplicate cookies from source into clone
 	cl.client.SetCookies(c.client.Cookies)
@@ -370,8 +373,8 @@ func (res *Content) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 //
 //     return:  map[string]any
 func (c *Client) getResponse(resp *resty.Response, parser string) any {
-	// var data map[string]interface{}
-	// var data_map map[string]interface{}
+	// var data map[string]any
+	// var data_map map[string]any
 	var data any
 
 	body := resp.Body()
@@ -526,7 +529,7 @@ func (c *Client) getContent(content []byte, parser string) any {
 func (c *Client) Execute(
 	method, uri string,
 	params map[string]string,
-	body interface{},
+	body any,
 	parser string) (
 	// check_invalid_auth bool) (
 	*resty.Response,

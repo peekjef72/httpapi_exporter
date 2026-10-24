@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 
+## 0.4.9 / 2026-10-24
+
+- Minor syntax improvements (interface{} to any)
+- Added attribute *level* to **debug** action to allow to log a desired level.
+- Updated go version and modules.
+
 ## 0.4.8 / 2026-07-25
 
 - Fixed an authentication issue with certain collectors requiring specific permissions and completely blocking the collection. The bug was discovered in the Veeam profile for agent collection requiring higher permissions than other collectors: if the permissions were insufficient, all collections were reported as errors, whereas only the agent was affected. Now the collection succeeds for all except one, which is mentioned in error via the metric `veeam_em_collector_status{collectorname="veeam_agent_metrics"} 2`.
@@ -57,7 +63,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
   ```
 
   format is: module_name: module path. All functions from the module will be referenced by module_name.func
-- updated: rewrite parser and evaluation for default variable type; some formulas were segfaulting '$var[$var2.attr[0]]'; need this for the new version of veeam contribs.
+- updated: rewrite parser and evaluation for default variable type; some formulas were segmentation-faulting '$var[$var2.attr[0]]'; need this for the new version of veeam contribs.
 
 ### 2026-06-09 - not release
 

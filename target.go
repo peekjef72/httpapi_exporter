@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 	dto "github.com/prometheus/client_model/go"
 	"google.golang.org/protobuf/proto"
 )
@@ -143,7 +143,7 @@ func build_ConstantLabels(labels map[string]string) []*dto.LabelPair {
 // NewTarget returns a new Target with the given instance name, data source name, collectors and constant labels.
 // An empty target name means the exporter is running in single target mode: no synthetic metrics will be exported.
 func NewTarget(
-	logContext []interface{},
+	logContext []any,
 	tPar *TargetConfig,
 	gc *GlobalConfig,
 	profile *Profile,

@@ -34,7 +34,7 @@ Each collector exposes the following metrics. Metric names are prefixed with `ib
 ### IBM FlashSystem Collectors and Metrics
 
 | Collector | Metric Name | Description | Type |
-|-----------|-------------|-------------|------|
+| ----------- | ------------- | ------------- | ------ |
 | Ibmfs Array | **ibmfs_array_status** | quorum status 0 Offline / 1 Online / 2 Degraded / 3 Unknown | gauge |
 | Ibmfs Array | **ibmfs_array_total_capacity_bytes** | capacity in bytes of the array labeled by name and group_name | gauge |
 | Ibmfs Drive | **ibmfs_drive_status** | drive status 0 Offline / 1 Online / 2 Degraded / 3 Unknown | gauge |

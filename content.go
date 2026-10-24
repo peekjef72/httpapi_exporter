@@ -51,7 +51,7 @@ const (
           <div><a href="/targets">Targets</a></div>
           <div><a href="/loglevel">loglevel</a></div>
           <div><a href="/status">Status</a></div>
-          <div><a href="/debug/pprof">Profiling</a></div>
+          <div><a href="/debug/pprof/">Profiling</a></div>
           <div><a href="/httpapi_exporter_metrics">Exporter Metrics</a></div>
           <div><a href="{{ .DocsUrl }}">Help</a></div>
         </div>
@@ -312,12 +312,10 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 			switch accept_type {
 			case textPLAIN:
 				w.Header().Set(contentTypeHeader, textPLAIN)
-				result = []byte(
-					fmt.Sprintf("loglevel is currently set to %s", exporter.GetLogLevel()))
+				result = fmt.Appendf(nil, "loglevel is currently set to %s", exporter.GetLogLevel())
 			case applicationJSON:
 				w.Header().Set(contentTypeHeader, applicationJSON)
-				result = []byte(
-					fmt.Sprintf(`{"message":"ok","status": 1,"data": {"loglevel": "%s"}}`, exporter.GetLogLevel()))
+				result = fmt.Appendf(nil, `{"message":"ok","status": 1,"data": {"loglevel": "%s"}}`, exporter.GetLogLevel())
 				w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
 			default:
 				w.Header().Set(contentTypeHeader, textHTML)
@@ -348,12 +346,10 @@ func LogLevelHandlerFunc(metricsPath string, exporter Exporter, reloadCh chan<- 
 				switch accept_type {
 				case textPLAIN:
 					w.Header().Set(contentTypeHeader, textPLAIN)
-					result = []byte(
-						fmt.Sprintf("OK loglevel set to %s", exporter.GetLogLevel()))
+					result = fmt.Appendf(nil, "OK loglevel set to %s", exporter.GetLogLevel())
 				case applicationJSON:
 					w.Header().Set(contentTypeHeader, applicationJSON)
-					result = []byte(
-						fmt.Sprintf(`{"message":"ok","status": 1,"data": {"loglevel": "%s"}}`, exporter.GetLogLevel()))
+					result = fmt.Appendf(nil, `{"message":"ok","status": 1,"data": {"loglevel": "%s"}}`, exporter.GetLogLevel())
 					w.Header().Set(contentLengthHeader, fmt.Sprint(len(result)))
 				default:
 					w.Header().Set(contentTypeHeader, textHTML)
