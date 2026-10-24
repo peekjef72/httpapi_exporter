@@ -47,11 +47,11 @@ type QueryActionConfig struct {
 	ok_status []int
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for QueryActionConfig.
-func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain QueryActionConfig
 	var err error
 	if err := unmarshal((*plain)(qc)); err != nil {
@@ -176,7 +176,7 @@ type QueryAction struct {
 	vars [][]any
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 // *****************

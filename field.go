@@ -144,7 +144,7 @@ func ConvertToBool(value_raw any) (value bool) {
 }
 
 func (f *Field) GetValueSimple(
-	item map[string]interface{},
+	item map[string]any,
 	logger *slog.Logger,
 	out_type reflect.Kind,
 ) (res any, err error) {
@@ -232,7 +232,7 @@ func (f *Field) GetValueSimple(
 // if check_item set to true, check if the resulting value exists in item symbols table
 // else return raw value (simple string)
 func (f *Field) GetValueString(
-	symtab map[string]interface{},
+	symtab map[string]any,
 	logger *slog.Logger,
 ) (res string, err error) {
 	raw_str, err := f.GetValueSimple(symtab, logger, reflect.String)
@@ -251,7 +251,7 @@ func (f *Field) GetValueString(
 // else if the resulting value exists in item symbols table return it
 // else return raw value (simple float64 constant)
 func (f *Field) GetValueFloat(
-	symtab map[string]interface{},
+	symtab map[string]any,
 	logger *slog.Logger,
 ) (res float64, err error) {
 

@@ -18,18 +18,20 @@ import (
 
 type DebugActionConfig struct {
 	MsgVal string `yaml:"msg" json:"msg"`
+	Level  string `yaml:"level" json:"level"`
 
-	registry *goja_modules.JSRegistry
-	msg      *Field
+	registry   *goja_modules.JSRegistry
+	msg, level *Field
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for DebugActionConfig.
-func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain DebugActionConfig
 	var err error
+	dc.Level = "debug"
 	if err := unmarshal((*plain)(dc)); err != nil {
 		return err
 	}
@@ -37,6 +39,10 @@ func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(interface{}) error) er
 	dc.msg, err = NewField(dc.MsgVal, nil, dc.registry)
 	if err != nil {
 		return fmt.Errorf("invalid template for debug message %q: %s", dc.MsgVal, err)
+	}
+	dc.level, err = NewField(dc.Level, nil, dc.registry)
+	if err != nil {
+		return fmt.Errorf("invalid template for debug level %q: %s", dc.Level, err)
 	}
 
 	return checkOverflow(dc.XXX, "debug action")
@@ -156,6 +162,8 @@ func (a *DebugAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 
 // specific behavior for the DebugAction
 func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
+	var log func(msg string, args ...any)
+
 	logger.Debug(
 		"[Type: DebugAction]",
 		"coll", CollectorId(symtab, logger),
@@ -172,7 +180,34 @@ func (a *DebugAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 			"name", a.GetName(symtab, logger))
 	}
 
-	logger.Debug(
+	level, err := a.Debug.level.GetValueString(symtab, logger)
+	if err != nil {
+		str = a.Debug.Level
+		logger.Warn(
+			fmt.Sprintf("invalid template for debug level '%s': %v", str, err),
+			"coll", CollectorId(symtab, logger),
+			"script", ScriptName(symtab, logger),
+			"name", a.GetName(symtab, logger))
+		level = "debug"
+	}
+	switch level {
+	case "debug":
+		// Level = slog.LevelDebug
+		log = logger.Debug
+	case "info":
+		// Level = slog.LevelInfo
+		log = logger.Info
+	case "warn":
+		// Level = slog.LevelWarn
+		log = logger.Warn
+	case "error":
+		// Level = slog.LevelError
+		log = logger.Error
+	default:
+		logger.Error(fmt.Sprintf("invalid log.level specified %s. reset to debug", level))
+		log = logger.Debug
+	}
+	log(
 		fmt.Sprintf("    message: %s", str),
 		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),

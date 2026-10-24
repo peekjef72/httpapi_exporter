@@ -84,7 +84,7 @@ func NewExporter(configFile string, logger *slog.Logger, collectorName string, t
 	}
 
 	var targets []Target
-	var logContext []interface{}
+	var logContext []any
 	if len(c.Targets) > 1 {
 		targets = make([]Target, 0, len(c.Targets)*3)
 	}
@@ -427,7 +427,7 @@ func (e *exporter) ReloadConfig() error {
 	}
 
 	var targets []Target
-	var logContext []interface{}
+	var logContext []any
 	if len(c.Targets) > 1 {
 		targets = make([]Target, 0, len(c.Targets)*3)
 	}

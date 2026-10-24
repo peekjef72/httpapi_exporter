@@ -133,7 +133,9 @@ In this example, the value is simply a text value, but it should be a map, a lis
 ### debug action
 
 The **debug** action allows to print message to log when the exporter's log level is set to debug.
-This action has only one attribute: **msg**; the value set to msg is a text to display; it is usually a go template containing the text and variables to display.
+This action has :
+- one mandatory attribute: **msg**; the value set to msg is a text to display; it is usually a go template containing the text and variables to display.
+- one optional attribute: **level**; the level of message to display: Default is debug.
 
 e.g.:
 

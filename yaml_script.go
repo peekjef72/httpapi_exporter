@@ -1063,7 +1063,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			// ***********************************************
 			// set_fact
 			checker["set_fact"] = true
-			sfa := make(map[string]interface{})
+			sfa := make(map[string]any)
 			if err := raw.Decode(&sfa); err != nil {
 				err = fmt.Errorf("%v: for action '%s'", err, name.String())
 				return nil, err
@@ -1251,7 +1251,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			// ***********************************************
 			// set_fact
 			checker["set_stats"] = true
-			ssa := make(map[string]interface{})
+			ssa := make(map[string]any)
 			if err := raw.Decode(&ssa); err != nil {
 				err = fmt.Errorf("%v: for action '%s'", err, name.String())
 				return nil, err

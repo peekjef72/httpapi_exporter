@@ -34,7 +34,7 @@ type collector struct {
 	config *CollectorConfig
 	client *Client
 	// queries    []*Query
-	logContext     []interface{}
+	logContext     []any
 	collect_script []*YAMLScript
 	// metricFamilies []*MetricFamily
 	status int
@@ -54,7 +54,7 @@ const (
 // NewCollector returns a new Collector with the given configuration and database. The metrics it creates will all have
 // the provided const labels applied.
 func NewCollector(
-	logContext []interface{},
+	logContext []any,
 	logger *slog.Logger,
 	cc *CollectorConfig,
 	constLabels []*dto.LabelPair,
@@ -97,7 +97,7 @@ func NewCollector(
 	}
 
 	if c.config.MinInterval > 0 {
-		var logCtx []interface{}
+		var logCtx []any
 
 		logCtx = append(logCtx, logContext...)
 		logCtx = append(logCtx, "msg", fmt.Sprintf("NewCollector(): Non-zero min_interval (%s), using cached collector.", c.config.MinInterval))
@@ -333,7 +333,7 @@ func (cc *cachingCollector) Collect(ctx context.Context, ch chan<- Metric, coll_
 		// Have the lock.
 		if age := collTime.Sub(cacheTime); age > cc.minInterval {
 			// Cache contents are older than minInterval, collect fresh metrics, cache them and pipe them through.
-			var logCtx []interface{}
+			var logCtx []any
 
 			logCtx = append(logCtx, cc.rawColl.logContext...)
 			logCtx = append(logCtx, "msg", fmt.Sprintf("Collecting fresh metrics: min_interval=%.3fs cache_age=%.3fs",
@@ -351,7 +351,7 @@ func (cc *cachingCollector) Collect(ctx context.Context, ch chan<- Metric, coll_
 			}
 			cacheTime = collTime
 		} else {
-			var logCtx []interface{}
+			var logCtx []any
 
 			logCtx = append(logCtx, cc.rawColl.logContext...)
 			logCtx = append(logCtx, "msg", fmt.Sprintf("Returning cached metrics: min_interval=%.3fs cache_age=%.3fs",

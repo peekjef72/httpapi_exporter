@@ -83,11 +83,11 @@ type Config struct {
 	registry      *goja_modules.JSRegistry
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Config.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain Config
 
 	if err := unmarshal((*plain)(c)); err != nil {
@@ -754,11 +754,11 @@ type GlobalConfig struct {
 
 	// query_retry int
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for GlobalConfig.
-func (g *GlobalConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (g *GlobalConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// Default to running the queries on every scrape.
 	g.MinInterval = model.Duration(0)
 	// Default to 10 seconds, since Prometheus has a 10 second scrape timeout default.
@@ -852,7 +852,7 @@ type TargetConfig struct {
 	profile          *Profile
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 // Collectors returns the collectors referenced by the target, resolved.
@@ -866,7 +866,7 @@ func (t *TargetConfig) setFromFile(file_path string) {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for TargetConfig.
-func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *TargetConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain TargetConfig
 	// set default value for target
 	t.QueryRetry = -1
@@ -940,7 +940,7 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // checkLabelCollisions checks for label collisions between StaticConfig labels and Metric labels.
 func (t *TargetConfig) checkLabelCollisions() error {
-	sclabels := make(map[string]interface{})
+	sclabels := make(map[string]any)
 	for _, l := range t.Labels {
 		sclabels[l] = nil
 	}
@@ -1047,20 +1047,20 @@ type CollectorConfig struct {
 	// id to print in log and to follow request action
 	id string
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
+	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 type CollectorConfigParser struct {
-	Name           string                 `yaml:"collector_name"`          // name of this collector
-	MetricPrefix   string                 `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
-	MinInterval    model.Duration         `yaml:"min_interval,omitempty"`  // minimum interval between query executions
-	Templates      map[string]string      `yaml:"templates,omitempty"`     // share custom templates/funcs for results templating
-	CollectScripts map[string]yaml.Node   `yaml:"scripts,omitempty"`       // map of all independent scripts to collect metrics - each script can run in parallel
-	XXX            map[string]interface{} `yaml:",inline" json:"-"`
+	Name           string               `yaml:"collector_name"`          // name of this collector
+	MetricPrefix   string               `yaml:"metric_prefix,omitempty"` // a prefix to ad dto all metric name; may be redefined in collector files
+	MinInterval    model.Duration       `yaml:"min_interval,omitempty"`  // minimum interval between query executions
+	Templates      map[string]string    `yaml:"templates,omitempty"`     // share custom templates/funcs for results templating
+	CollectScripts map[string]yaml.Node `yaml:"scripts,omitempty"`       // map of all independent scripts to collect metrics - each script can run in parallel
+	XXX            map[string]any       `yaml:",inline" json:"-"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for CollectorConfig.
-// func (c *CollectorConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// func (c *CollectorConfig) UnmarshalYAML(unmarshal func(any) error) error {
 func (c *CollectorConfig) UnmarshalYAML(value *yaml.Node) error {
 	// Default to undefined (a negative value) so it can be overridden by the global default when not explicitly set.
 	c.MinInterval = -1
@@ -1141,7 +1141,7 @@ func (c *CollectorConfig) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 
-	return checkOverflow(c.XXX, "collector")
+	return checkOverflow(tmp.XXX, "collector")
 }
 
 func build_YAMLScript(registry *goja_modules.JSRegistry, nodes map[string]yaml.Node) (map[string]*YAMLScript, error) {
@@ -1212,13 +1212,13 @@ func GetCollectorsDef(src_colls []*CollectorConfig) []*dumpCollectorConfig {
 type Secret string
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Secrets.
-func (s *Secret) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *Secret) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain Secret
 	return unmarshal((*plain)(s))
 }
 
 // MarshalYAML implements the yaml.Marshaler interface for Secrets.
-func (s Secret) MarshalYAML() (interface{}, error) {
+func (s Secret) MarshalYAML() (any, error) {
 	if s != "" {
 		return "<secret>", nil
 	}
@@ -1265,7 +1265,7 @@ func check_env_var(value string) string {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for authConfig
-func (auth *AuthConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (auth *AuthConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// auth.DisableWarn = false
 	type plain AuthConfig
 	if err := unmarshal((*plain)(auth)); err != nil {
@@ -1353,7 +1353,7 @@ func checkLabel(label string, ctx ...string) error {
 	return nil
 }
 
-func checkOverflow(m map[string]interface{}, ctx string) error {
+func checkOverflow(m map[string]any, ctx string) error {
 	if len(m) > 0 {
 		var keys []string
 		for k := range m {
