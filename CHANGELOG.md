@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 
-## 0.4.10 / not release
+## 0.4.10 / 2026-11-15
 
 - Fixed deadlock exception when a ping sequence initiates a successful login sequence, followed by a second ping failing with the same error. Now, it stops with a specific message: "Received MsgLogin after a valid login sequence. Check the login parameters."
 - Fixed *when* condition: if it starts with blank chars, the prefix `js`: or `$var` were not detected.
