@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/peekjef72/httpapi_exporter/goja_modules"
+	"gopkg.in/yaml.v3"
 )
 
 // ***************************************************************************************
@@ -19,18 +20,19 @@ import (
 // ***************************************************************************************
 // ***************************************************************************************
 type QueryActionConfig struct {
-	Query      string             `yaml:"url" json:"url"`
-	Method     string             `yaml:"method,omitempty" json:"method,omitempty"`
-	Data       string             `yaml:"data,omitempty" json:"data,omitempty"`
-	Debug      ConvertibleBoolean `yaml:"debug,omitempty" json:"debug,omitempty"`
-	VarName    string             `yaml:"var_name,omitempty" json:"var_name,omitempty"`
-	OkStatus   any                `yaml:"ok_status,omitempty" json:"ok_status,omitempty"`
-	AuthConfig *AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
-	Timeout    int                `yaml:"timeout,omitempty" json:"timeout,omitempty"`
-	Parser     string             `yaml:"parser,omitempty" json:"parser,omitempty"`
-	Trace      ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
-	Status     ConvertibleBoolean `yaml:"status,omitempty" json:"status,omitempty"`
-	Alternate  string             `yaml:"alternate,omitempty" json:"alternate,omitempty"`
+	Query             string             `yaml:"url" json:"url"`
+	Method            string             `yaml:"method,omitempty" json:"method,omitempty"`
+	Data              string             `yaml:"data,omitempty" json:"data,omitempty"`
+	Debug             ConvertibleBoolean `yaml:"debug,omitempty" json:"debug,omitempty"`
+	VarName           string             `yaml:"var_name,omitempty" json:"var_name,omitempty"`
+	OkStatus          any                `yaml:"ok_status,omitempty" json:"ok_status,omitempty"`
+	AuthConfig        *AuthConfig        `yaml:"auth_config,omitempty" json:"auth_config,omitempty"`
+	Timeout           int                `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+	Parser            string             `yaml:"parser,omitempty" json:"parser,omitempty"`
+	Trace             ConvertibleBoolean `yaml:"trace,omitempty" json:"trace,omitempty"`
+	Status            ConvertibleBoolean `yaml:"status,omitempty" json:"status,omitempty"`
+	Alternate         string             `yaml:"alternate,omitempty" json:"alternate,omitempty"`
+	FollowRedirection ConvertibleBoolean `yaml:"follow_redirection,omitempty" json:"follow_redirection,omitempty"`
 
 	registry *goja_modules.JSRegistry
 
@@ -47,20 +49,31 @@ type QueryActionConfig struct {
 	ok_status []int
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]any `yaml:",inline" json:"-"`
+	XXX     map[string]any `yaml:",inline" json:"-"`
+	checker map[string]bool
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for QueryActionConfig.
-func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
+func (qc *QueryActionConfig) UnmarshalYAML(node *yaml.Node) error {
 	type plain QueryActionConfig
+	var aux plain
 	var err error
-	if err := unmarshal((*plain)(qc)); err != nil {
+
+	aux.FollowRedirection = true
+	aux.registry = qc.registry
+	checker := qc.checker
+	if err := node.Decode(&aux); err != nil {
 		return err
 	}
+	*qc = QueryActionConfig(aux)
+
 	// Check required fields
+	if qc.Query == "" {
+		return fmt.Errorf("line %d, col %d: missing url for query", node.Line, node.Column)
+	}
 	qc.query, err = NewField(qc.Query, nil, qc.registry)
 	if err != nil {
-		return fmt.Errorf("invalid template for query %q: %s", qc.Query, err)
+		return fmt.Errorf("line %d, col %d: invalid template url for query %q: %s", node.Line, node.Column, qc.Query, err)
 	}
 
 	if qc.Method == "" {
@@ -68,12 +81,12 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	}
 	qc.method, err = NewField(qc.Method, nil, qc.registry)
 	if err != nil {
-		return fmt.Errorf("invalid template for method %q: %s", qc.Method, err)
+		return fmt.Errorf("line %d, col %d: invalid template for method %q: %s", node.Line, node.Column, qc.Method, err)
 	}
 	if qc.Data != "" {
 		qc.data, err = NewField(qc.Data, nil, qc.registry)
 		if err != nil {
-			return fmt.Errorf("invalid template for data %q: %s", qc.Data, err)
+			return fmt.Errorf("line %d, col %d: invalid template for data %q: %s", node.Line, node.Column, qc.Data, err)
 		}
 	} else {
 		qc.data = nil
@@ -84,7 +97,7 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	}
 	qc.var_name, err = NewField(qc.VarName, nil, qc.registry)
 	if err != nil {
-		return fmt.Errorf("invalid template for var_name %q: %s", qc.VarName, err)
+		return fmt.Errorf("line %d, col %d: invalid template for var_name %q: %s", node.Line, node.Column, qc.VarName, err)
 	}
 
 	if qc.OkStatus != nil {
@@ -99,25 +112,25 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 		if qc.AuthConfig.Mode != "" {
 			qc.auth_mode, err = NewField(qc.AuthConfig.Mode, nil, qc.registry)
 			if err != nil {
-				return fmt.Errorf("invalid template for query auth_mode %q: %s", qc.AuthConfig.Mode, err)
+				return fmt.Errorf("line %d, col %d: invalid template for query auth_mode %q: %s", node.Line, node.Column, qc.AuthConfig.Mode, err)
 			}
 		}
 		if qc.AuthConfig.Username != "" {
 			qc.user, err = NewField(qc.AuthConfig.Username, nil, qc.registry)
 			if err != nil {
-				return fmt.Errorf("invalid template for query username %q: %s", qc.AuthConfig.Username, err)
+				return fmt.Errorf("line %d, col %d: invalid template for query username %q: %s", node.Line, node.Column, qc.AuthConfig.Username, err)
 			}
 		}
 		if qc.AuthConfig.Password != "" {
 			qc.passwd, err = NewField(string(qc.AuthConfig.Password), nil, qc.registry)
 			if err != nil {
-				return fmt.Errorf("invalid template for query password %q: %s", qc.AuthConfig.Password, err)
+				return fmt.Errorf("line %d, col %d: invalid template for query password %q: %s", node.Line, node.Column, qc.AuthConfig.Password, err)
 			}
 		}
 		if qc.AuthConfig.Token != "" {
 			qc.token, err = NewField(string(qc.AuthConfig.Token), nil, qc.registry)
 			if err != nil {
-				return fmt.Errorf("invalid template for query auth_token %q: %s", qc.AuthConfig.Token, err)
+				return fmt.Errorf("line %d, col %d: invalid template for query auth_token %q: %s", node.Line, node.Column, qc.AuthConfig.Token, err)
 			}
 		}
 	}
@@ -133,10 +146,10 @@ func (qc *QueryActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
 		case "xml":
 		case "yaml":
 		default:
-			return fmt.Errorf("invalid value for parser: '%s': should be ('json', 'none', 'prometheus', 'text-lines', 'xml', 'yaml')", qc.Parser)
+			return fmt.Errorf("line %d, col %d: invalid value for parser: '%s': should be ('json', 'none', 'prometheus', 'text-lines', 'xml', 'yaml')", node.Line, node.Column, qc.Parser)
 		}
 	}
-	return checkOverflow(qc.XXX, "query action")
+	return checkOverflow(qc.XXX, checker, "query action")
 }
 
 func buildStatus(raw_status any) []int {
@@ -424,25 +437,26 @@ func (a *QueryAction) CustomAction(script *YAMLScript, symtab map[string]any, lo
 	}
 
 	params := &CallClientExecuteParams{
-		Payload:   payload,
-		Method:    method,
-		Url:       query,
-		Debug:     bool(a.Query.Debug),
-		Trace:     bool(a.Query.Trace),
-		Status:    bool(a.Query.Status),
-		VarName:   var_name,
-		OkStatus:  a.Query.ok_status,
-		AuthMode:  auth_mode,
-		Username:  user,
-		Password:  passwd,
-		Token:     auth_token,
-		Timeout:   time.Duration(a.Query.Timeout) * time.Second,
-		Parser:    a.Query.Parser,
-		Alternate: a.Query.Alternate,
+		Payload:           payload,
+		Method:            method,
+		Url:               query,
+		Debug:             bool(a.Query.Debug),
+		Trace:             bool(a.Query.Trace),
+		Status:            bool(a.Query.Status),
+		FollowRedirection: bool(a.Query.FollowRedirection),
+		VarName:           var_name,
+		OkStatus:          a.Query.ok_status,
+		AuthMode:          auth_mode,
+		Username:          user,
+		Password:          passwd,
+		Token:             auth_token,
+		Timeout:           time.Duration(a.Query.Timeout) * time.Second,
+		Parser:            a.Query.Parser,
+		Alternate:         a.Query.Alternate,
 	}
 
 	logger.Debug(
-		fmt.Sprintf("    query: '%s' - method: '%s' - target_var: '%s'", query, method, a.Query.VarName),
+		fmt.Sprintf("    query: '%s' - method: '%s' - target_var: '%s' - follow_redirection: '%v", query, method, a.Query.VarName, a.Query.FollowRedirection),
 		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))

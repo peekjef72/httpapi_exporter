@@ -456,8 +456,13 @@ scripts:
       when: .populate_groups
       set_stats:
         # svclb: $svclb
-        .config.svclb: $svclb
-        .config.svcgrplb: $svcgrplb
+        config: >-
+          js:
+            var conf = {
+              "svclb": svclb,
+              "svcgrplb": $svcgrplb,
+            }
+            conf
 
 #***************************************************
 # get stat_servicegroup:

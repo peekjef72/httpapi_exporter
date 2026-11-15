@@ -42,6 +42,8 @@ type MetricFamily struct {
 	logContext   []any
 }
 
+const MFUnknownValueType dto.MetricType = 255
+
 // NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
 func NewMetricFamily(
 	logContext []any,
@@ -118,7 +120,7 @@ func NewMetricFamily(
 		labels:       labels,
 		valuesLabels: valuesLabels,
 		logContext:   logContext,
-		value_type:   255,
+		value_type:   MFUnknownValueType,
 	}, nil
 }
 
@@ -227,7 +229,7 @@ func (mf MetricFamily) Collect(rawdatas any, logger *slog.Logger, ch chan<- Metr
 			mf.help = help
 		}
 	}
-	if mf.value_type == 255 {
+	if mf.value_type == MFUnknownValueType {
 		value_type, err := mf.config.ValueType(symtab, logger)
 		if err != nil {
 			err := fmt.Errorf("metric %s can't get metric type", mf.config.metric_type.String())

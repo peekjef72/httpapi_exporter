@@ -58,7 +58,12 @@ scripts:
                     1
         - name: keep config[cluster]
           set_stats:
-            config.cluster : $config.cluster
+            config: >-
+              js:
+                var conf = {
+                  "cluster": cluster,
+                }
+                conf
 
     - name: proceed cluster config elements
       loop: $config.cluster

@@ -672,7 +672,7 @@ func TestMetricsJSTempo(t *testing.T) {
           # scope: none
           type: gauge
           help: reset timestamp
-          keys_labels:
+          key_labels:
             device: $dev1
           values:
             _: >-

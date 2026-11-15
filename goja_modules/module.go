@@ -18,6 +18,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja_nodejs/require"
+	goja_url "github.com/dop251/goja_nodejs/url"
 )
 
 type printer struct{}
@@ -64,6 +65,9 @@ func getIdentifiersFromExpression(val ast.Expression, identifiers map[string]str
 		case *ast.AssignExpression:
 			getIdentifiersFromExpression(expr.Left, identifiers, token)
 			getIdentifiersFromExpression(expr.Right, identifiers, token)
+
+		case *ast.UnaryExpression:
+			getIdentifiersFromExpression(expr.Operand, identifiers, token)
 
 		case *ast.BinaryExpression:
 			getIdentifiersFromExpression(expr.Left, identifiers, token)
@@ -246,6 +250,11 @@ type JSCode struct {
 }
 
 func NewJSCode(registry *JSRegistry, code string) (*JSCode, error) {
+
+	if registry == nil {
+		return nil, fmt.Errorf("JSRegistry is nil")
+	}
+
 	jsCode := &JSCode{
 		registry: registry,
 	}
@@ -325,6 +334,9 @@ func (jsCode *JSCode) initRunTime() error {
 				continue
 			case "process":
 				process.Enable(jsCode.vm)
+				continue
+			case "URL":
+				goja_url.Enable(jsCode.vm)
 				continue
 			}
 

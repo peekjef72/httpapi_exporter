@@ -7,6 +7,7 @@ global:
   min_interval: 0s
   # all unsuccessful queries will be retried this number of times
   query_retry: 3
+  exporter_name: apache_exporter
 
 profiles_file_config:
   - "profiles/*_profile.yml"

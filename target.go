@@ -511,6 +511,12 @@ func (t *target) Collect(ctx context.Context, met_ch chan<- Metric, health_only 
 						collectChan <- MsgQuit
 					}
 				}
+			} else if has_logged {
+				t.logger.Error(
+					"received MsgLogin after a valid login sequence. Check the login parameters",
+					"coll", fmt.Sprintf("ping/%s", t.name),
+					"script", "ping/login")
+				collectChan <- MsgQuit
 			}
 		case MsgPing:
 			t.content_mutex.Lock()

@@ -25,9 +25,6 @@ type PlayScriptAction struct {
 
 	playScriptAction *YAMLScript
 	vars             [][]any
-
-	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 func (a *PlayScriptAction) Type() int {

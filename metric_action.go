@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/spf13/cast"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -44,6 +45,11 @@ type MetricConfig struct {
 	Scope        string            `yaml:"scope,omitempty" json:"scope,omitempty"`                 // var path where to collect data: shortcut for {{ .scope.path.var }}
 
 	HistogramInfos any `yaml:"histogram,omitempty" json:"histogram,omitempty"`
+
+	// Catches all undefined fields and must be empty after parsing.
+	XXX map[string]any `yaml:",inline" json:"-"`
+
+	checker map[string]bool
 
 	// valueType_old prometheus.ValueType // TypeString converted to prometheus.ValueType
 	valueType dto.MetricType
@@ -83,22 +89,27 @@ func (m *MetricConfig) ValueType(symtab map[string]any, logger *slog.Logger) (dt
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for MetricConfig.
-func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (m *MetricConfig) UnmarshalYAML(node *yaml.Node) error {
 	type plain MetricConfig
+	var aux plain
 
 	// set default type to gauge
-	m.valueType = metric_type_UNKNOWN
-	m.TypeString = "gauge"
+	aux.valueType = metric_type_UNKNOWN
+	aux.TypeString = "gauge"
+	aux.registry = m.registry
+	checker := m.checker
 
-	if err := unmarshal((*plain)(m)); err != nil {
+	if err := node.Decode(&aux); err != nil {
 		return err
 	}
+	*m = MetricConfig(aux)
+
 	// Check required fields
 	if m.Name == "" {
-		return fmt.Errorf("missing name for metric %+v", m)
+		return fmt.Errorf("line %d, col %d: missing name for metric", node.Line, node.Column)
 	}
 	if name, err := NewField(m.Name, nil, m.registry); err != nil {
-		return err
+		return fmt.Errorf("line %d, col %d: invalid name variable: %w", node.Line, node.Column, err)
 	} else {
 		m.name = name
 	}
@@ -107,7 +118,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if help, err := NewField(m.Help, nil, m.registry); err == nil {
 			m.help = help
 		} else {
-			return err
+			return fmt.Errorf("line %d, col %d: invalid help variable: %w", node.Line, node.Column, err)
 		}
 	}
 
@@ -115,7 +126,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if type_str, err := NewField(m.TypeString, nil, m.registry); err == nil {
 			m.metric_type = type_str
 		} else {
-			return err
+			return fmt.Errorf("line %d, col %d: invalid type variable: %w", node.Line, node.Column, err)
 		}
 	}
 
@@ -125,7 +136,8 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		case map[string]string:
 			for key, val := range ktype {
 				if err := checkLabel(key, "metric", m.Name); err != nil {
-					return err
+					return fmt.Errorf("line %d, col %d: invalid label: %w", node.Line, node.Column, err)
+
 				}
 				// specific for format key_name: _ => replace by ${key_name}
 				if val == "_" {
@@ -137,7 +149,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			m.key_labels_map = make(map[string]string, len(ktype))
 			for key, val_raw := range ktype {
 				if err := checkLabel(key, "metric", m.Name); err != nil {
-					return err
+					return fmt.Errorf("line %d, col %d: invalid label: %w", node.Line, node.Column, err)
 				}
 				if val, ok := val_raw.(string); ok {
 					if val == "_" {
@@ -151,11 +163,11 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				if val, err := NewField(ktype, nil, m.registry); err == nil {
 					m.key_labels = val
 				} else {
-					return err
+					return fmt.Errorf("line %d, col %d: invalid label: %w", node.Line, node.Column, err)
 				}
 			}
 		default:
-			return fmt.Errorf("key_labels should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", m.Name)
+			return fmt.Errorf("line %d, col %d: key_labels should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", node.Line, node.Column, m.Name)
 		}
 	}
 
@@ -193,7 +205,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 									// check if bound of bucket is increasing strictly
 									if ind > 0 {
 										if buckets[ind] <= prev_v {
-											return fmt.Errorf("invalid value for buckets bounds definition for histogram metric %q: element[%d] %f <= %f", m.Name, ind, buckets[ind], prev_v)
+											return fmt.Errorf("line %d, col %d: invalid value for buckets bounds definition for histogram metric %q: element[%d] %f <= %f", node.Line, node.Column, m.Name, ind, buckets[ind], prev_v)
 										}
 										prev_v = buckets[ind]
 									}
@@ -206,7 +218,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 							invalid_format = true
 						}
 						if invalid_format {
-							return fmt.Errorf("invalid format for buckets bounds definition for histogram metric %q: must be slice", m.Name)
+							return fmt.Errorf("line %d, col %d: invalid format for buckets bounds definition for histogram metric %q: must be slice", node.Line, node.Column, m.Name)
 						}
 
 					case "value":
@@ -218,7 +230,7 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 								if val, err := NewField(t_v_v.String(), nil, m.registry); err == nil {
 									m.histogram.Histogram_value = val
 								} else {
-									return err
+									return fmt.Errorf("line %d, col %d: invalid variable value for bucket", node.Line, node.Column)
 								}
 							} else {
 								invalid_format = true
@@ -227,14 +239,14 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 							invalid_format = true
 						}
 						if invalid_format {
-							return fmt.Errorf("invalid format for value definition for histogram metric %q: must be string", m.Name)
+							return fmt.Errorf("line %d, col %d: invalid format for value definition for histogram metric %q: must be string", node.Line, node.Column, m.Name)
 						}
 					}
 				}
 			}
 			// need to check if both buckets and value are defined
 			if m.histogram.Buckets == nil || len(*m.histogram.Buckets) == 0 || m.histogram.Histogram_value == nil {
-				return fmt.Errorf("invalid definition for histogram metric %q: buckets and value must be set", m.Name)
+				return fmt.Errorf("line %d, col %d: invalid definition for histogram metric %q: buckets and value must be set", node.Line, node.Column, m.Name)
 				// } else {
 				// 	toto := prometheus.NewHistogramVec(
 				// 		prometheus.HistogramOpts {
@@ -251,25 +263,25 @@ func (m *MetricConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				if val, err := NewField(htype.String(), nil, m.registry); err == nil {
 					m.histogram.Histogram_var = val
 				} else {
-					return err
+					return fmt.Errorf("line %d, col %d: invalid variable type for histogram", node.Line, node.Column)
 				}
 			}
 		default:
-			return fmt.Errorf("histogram should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", m.Name)
+			return fmt.Errorf("line %d, col %d: histogram should be a map[string][string] or var(string) that will contain a map[string][string] for metric %q", node.Line, node.Column, m.Name)
 		}
 	} else if len(m.Values) == 0 {
-		return fmt.Errorf("no values defined for metric %q", m.Name)
+		return fmt.Errorf("line %d, col %d: no values defined for metric %q", node.Line, node.Column, m.Name)
 	}
 
 	if len(m.Values) > 1 {
 		// Multiple value columns but no value label to identify them
 		if m.ValueLabel == "" {
-			return fmt.Errorf("value_label must be defined for metric with multiple values %q", m.Name)
+			return fmt.Errorf("line %d, col %d: value_label must be defined for metric with multiple values %q", node.Line, node.Column, m.Name)
 		}
 		checkLabel(m.ValueLabel, "value_label for metric", m.Name)
 	}
 
-	return nil
+	return checkOverflow(m.XXX, checker, "metric action")
 }
 
 // ***************************************************************************************
@@ -289,9 +301,6 @@ type MetricAction struct {
 	mc           *MetricConfig
 	metricFamily *MetricFamily
 	vars         [][]any
-
-	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]interface{} `yaml:",inline" json:"-"`
 }
 
 func (a *MetricAction) Type() int {

@@ -382,7 +382,7 @@ collectors:
 	// reserve collector ref;
 	c.collectors = colls
 
-	return checkOverflow(c.XXX, "config")
+	return checkOverflow(c.XXX, nil, "config")
 }
 
 func (c *Config) FindAuthConfig(auth_name string) *AuthConfig {
@@ -813,7 +813,7 @@ func (g *GlobalConfig) UnmarshalYAML(unmarshal func(any) error) error {
 			}
 		}
 	}
-	return checkOverflow(g.XXX, "global")
+	return checkOverflow(g.XXX, nil, "global")
 }
 
 // *
@@ -935,7 +935,7 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(any) error) error {
 		t.AuthConfig.Mode = "basic"
 	}
 
-	return checkOverflow(t.XXX, "target")
+	return checkOverflow(t.XXX, nil, "target")
 }
 
 // checkLabelCollisions checks for label collisions between StaticConfig labels and Metric labels.
@@ -1141,7 +1141,7 @@ func (c *CollectorConfig) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 
-	return checkOverflow(tmp.XXX, "collector")
+	return checkOverflow(tmp.XXX, nil, "collector")
 }
 
 func build_YAMLScript(registry *goja_modules.JSRegistry, nodes map[string]yaml.Node) (map[string]*YAMLScript, error) {
@@ -1353,13 +1353,20 @@ func checkLabel(label string, ctx ...string) error {
 	return nil
 }
 
-func checkOverflow(m map[string]any, ctx string) error {
+func checkOverflow(m map[string]any, checker map[string]bool, ctx string) error {
 	if len(m) > 0 {
 		var keys []string
 		for k := range m {
+			if checker != nil {
+				if _, ok := checker[k]; ok {
+					continue
+				}
+			}
 			keys = append(keys, k)
 		}
-		return fmt.Errorf("unknown fields '%s' in '%s'", strings.Join(keys, ", "), ctx)
+		if len(keys) > 0 {
+			return fmt.Errorf("unknown field '%s' in '%s'", strings.Join(keys, ", "), ctx)
+		}
 	}
 	return nil
 }

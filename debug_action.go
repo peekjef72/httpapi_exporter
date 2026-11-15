@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/peekjef72/httpapi_exporter/goja_modules"
+	"gopkg.in/yaml.v3"
 )
 
 // ***************************************************************************************
@@ -24,28 +25,38 @@ type DebugActionConfig struct {
 	msg, level *Field
 
 	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]any `yaml:",inline" json:"-"`
+	XXX     map[string]any `yaml:",inline" json:"-"`
+	checker map[string]bool
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for DebugActionConfig.
-func (dc *DebugActionConfig) UnmarshalYAML(unmarshal func(any) error) error {
+func (dc *DebugActionConfig) UnmarshalYAML(node *yaml.Node) error {
 	type plain DebugActionConfig
+	var aux plain
 	var err error
-	dc.Level = "debug"
-	if err := unmarshal((*plain)(dc)); err != nil {
+
+	aux.Level = "debug"
+	aux.registry = dc.registry
+	checker := dc.checker
+	if err := node.Decode(&aux); err != nil {
 		return err
 	}
+	*dc = DebugActionConfig(aux)
+
 	// Check required fields
+	if dc.MsgVal == "" {
+		return fmt.Errorf("line %d, col %d: missing msg for debug", node.Line, node.Column)
+	}
 	dc.msg, err = NewField(dc.MsgVal, nil, dc.registry)
 	if err != nil {
-		return fmt.Errorf("invalid template for debug message %q: %s", dc.MsgVal, err)
+		return fmt.Errorf("line %d, col %d: invalid template for debug message %q: %s", node.Line, node.Column, dc.MsgVal, err)
 	}
 	dc.level, err = NewField(dc.Level, nil, dc.registry)
 	if err != nil {
-		return fmt.Errorf("invalid template for debug level %q: %s", dc.Level, err)
+		return fmt.Errorf("line %d, col %d: invalid template for debug level %q: %s", node.Line, node.Column, dc.Level, err)
 	}
 
-	return checkOverflow(dc.XXX, "debug action")
+	return checkOverflow(dc.XXX, checker, "debug action")
 }
 
 // ****************************

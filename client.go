@@ -26,6 +26,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/mitchellh/copystructure"
 	"github.com/peekjef72/passwd_encrypt/encrypt"
+	"github.com/prometheus/common/version"
 	"github.com/spf13/cast"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
@@ -134,10 +135,13 @@ func newClient(target *TargetConfig, sc map[string]*YAMLScript, logger *slog.Log
 		CustomProperties: target.CustomProperties,
 	}
 	cl.symtab["__collector_id"] = target.Name
+	cl.symtab["user_agent"] = fmt.Sprintf("%s/%s", gc.ExporterName, version.Version)
+
 	if err := cl.Init(params); err != nil {
 		logger.Error(fmt.Sprintf("target client init error: %s", err.Error()))
 		return nil
 	}
+
 	delete(cl.symtab, "__collector_id")
 
 	return cl
@@ -572,9 +576,11 @@ func (c *Client) Execute(
 	}
 
 	req := c.client.NewRequest()
+	req.SetCookies(c.client.Cookies)
 	if body != nil {
 		req.SetBody(body)
 	}
+
 	if len(params) > 0 {
 		req.SetQueryParams(params)
 	}
@@ -1081,21 +1087,22 @@ func _set_query_result(logger *slog.Logger, var_name string, symtab map[string]a
 }
 
 type CallClientExecuteParams struct {
-	Payload   string
-	Method    string
-	Url       string
-	Debug     bool
-	VarName   string
-	OkStatus  []int
-	AuthMode  string
-	Username  string
-	Password  string
-	Token     string
-	Timeout   time.Duration
-	Parser    string
-	Alternate string
-	Trace     bool
-	Status    bool
+	Payload           string
+	Method            string
+	Url               string
+	Debug             bool
+	VarName           string
+	OkStatus          []int
+	AuthMode          string
+	Username          string
+	Password          string
+	Token             string
+	Timeout           time.Duration
+	Parser            string
+	Alternate         string
+	Trace             bool
+	Status            bool
+	FollowRedirection bool
 	// Check_invalid_Auth bool
 }
 
@@ -1259,6 +1266,18 @@ func (c *Client) callClientExecute(params *CallClientExecuteParams, symtab map[s
 
 		if params.Trace {
 			c.client.EnableTrace()
+		}
+
+		if params.FollowRedirection {
+			c.client.SetRedirectPolicy(resty.RedirectPolicyFunc(
+				func(req *http.Request, via []*http.Request) error {
+					return nil
+				}))
+		} else {
+			c.client.SetRedirectPolicy(resty.RedirectPolicyFunc(
+				func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				}))
 		}
 
 		//******************
@@ -1632,6 +1651,11 @@ func (cl *Client) Init(params *ClientInitParams) error {
 			"script", ScriptName(cl.symtab, cl.logger))
 		return nil
 	}
+
+	if user_agent := GetMapValueString(cl.symtab, "user_agent"); user_agent != "" {
+		cl.client.SetHeader("User-Agent", user_agent)
+	}
+
 	timeout := time.Duration(cl.symtab["timeout"].(time.Duration))
 	cl.client.SetTimeout(timeout)
 
