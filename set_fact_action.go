@@ -129,70 +129,16 @@ func (a *SetFactAction) SetPlayAction(scripts map[string]*YAMLScript) error {
 // it does nothing at all... it is only en entry point for calling target to collect
 // vars from the collector and so to make them persistent across calls
 func (a *SetFactAction) CustomAction(script *YAMLScript, symtab map[string]any, logger *slog.Logger) error {
-
-	var (
-		key_name   string
-		err        error
-		value_name any
-	)
-
+ 
 	logger.Debug(
 		"[Type: SetFactAction]",
 		"coll", CollectorId(symtab, logger),
 		"script", ScriptName(symtab, logger),
 		"name", a.GetName(symtab, logger))
-
-	for _, pair := range a.setFact {
-		if pair == nil {
-			return errors.New("set_fact: invalid key value")
-		}
-		if key, ok := pair[0].(*Field); ok {
-			key_name, err = key.GetValueString(symtab, logger)
-			if err == nil {
-				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
-					return err
-				}
-				if len(key_name) > 2 && key_name[0] == '_' && key_name[1] == '_' {
-					return errors.New("set_fact: variable names starting with __ are forbidden")
-				}
-
-				if value_name == nil {
-					logger.Debug(
-						fmt.Sprintf("    remove from symbols table: %s", key_name),
-						"coll", CollectorId(symtab, logger),
-						"script", ScriptName(symtab, logger),
-						"name", a.GetName(symtab, logger))
-					DeleteSymtab(symtab, key_name)
-				} else {
-					if key_name != "_" {
-						logger.Debug(
-							fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name),
-							"coll", CollectorId(symtab, logger),
-							"script", ScriptName(symtab, logger),
-							"name", a.GetName(symtab, logger))
-						if err := SetSymTab(symtab, key_name, value_name); err != nil {
-							logger.Warn(
-								fmt.Sprintf("error setting map value for key '%s'", key_name), "errmsg", err,
-								"coll", CollectorId(symtab, logger),
-								"script", ScriptName(symtab, logger),
-								"name", a.GetName(symtab, logger))
-							continue
-						}
-					} else {
-						logger.Debug(
-							"    result discard (key >'_')",
-							"coll", CollectorId(symtab, logger),
-							"script", ScriptName(symtab, logger),
-							"name", a.GetName(symtab, logger))
-
-					}
-				}
-			}
-		}
-	}
-
-	return nil
+ 
+	return applyVariableAssignments(symtab, a.setFact, logger, a.GetName(symtab, logger), nil)
 }
+
 
 func (a *SetFactAction) AddCustomTemplate(customTemplate *exporterTemplate) error {
 

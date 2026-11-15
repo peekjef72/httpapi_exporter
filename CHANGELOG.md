@@ -6,6 +6,21 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
 
  <!--next-version-placeholder-->
 
+## 0.4.10 / 2026-11-15
+
+- Fixed deadlock exception when a ping sequence initiates a successful login sequence, followed by a second ping failing with the same error. Now, it stops with a specific message: "Received MsgLogin after a valid login sequence. Check the login parameters."
+- Fixed *when* condition: if it starts with blank chars, the prefix `js`: or `$var` were not detected.
+- Fixed js code parsing: identifier used with unary operator were not detected. E.g.: "js: ++login_retry" was causing an error "undefined identifier".
+- Added: follow_redirection \[bool] attribute in  **query** action, to enable(default)/disable the behavior of the client when it receives a 3xx status code.
+- Added: import goja module **URL** to manipulate urls: port from ECMAScript default URL object.
+- Added: now set request header User-Agent to **&lt;exporter_name&gt;**/**&lt;exporter_version&gt;**.
+- Fixed: actions parsing and return error when
+  - url is not defined in query
+  - msg is not defined in debug
+  - unknown fields are used
+- Fixed: set_fact : delete simple var by setting to empty now remove var
+- Upgraded: go and modules version
+
 ## 0.4.9 / 2026-10-24
 
 - Minor syntax improvements (interface{} to any)

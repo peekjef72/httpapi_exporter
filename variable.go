@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"reflect"
 	"strings"
+	"unicode"
 
 	"github.com/spf13/cast"
 )
@@ -269,7 +270,7 @@ func (v *Variable) toStringFragment(output *strings.Builder) {
 	output.WriteString(v.raw)
 
 	for _, attr := range v.attributes {
-		if len(attr.attributes) > 0 {
+		if attr.vartype == vartype_var || unicode.IsDigit(rune(attr.raw[0])) {
 			output.WriteRune('[')
 			attr.toStringFragment(output)
 			output.WriteRune(']')
@@ -372,6 +373,7 @@ func (v *Variable) GetVar(
 			err = newVarError(error_var_not_found,
 				fmt.Sprintf("%s not found", var_name))
 			tmp_symtab = nil
+			return nil, err
 		}
 	} else {
 		raw_value = v.raw
@@ -388,4 +390,146 @@ func rawGetValueInt64(current_val any) (num_value int, err error) {
 		num_value = 0
 	}
 	return num_value, err
+}
+
+func (v *Variable) SetVar(
+	symtab map[string]any,
+	value any,
+	logger *slog.Logger,
+) error {
+	if v.vartype != vartype_var {
+		return fmt.Errorf("SetVar only supports variables starting with '$', got %s", v.String())
+	}
+
+	if len(v.attributes) == 0 {
+		if sValue, ok := value.(string); ok && sValue == "_" {
+			value = nil
+		}
+		if value == nil {
+			delete(symtab, v.raw)
+		} else {
+			symtab[v.raw] = value
+		}
+		return nil
+	}
+
+	_, ok := symtab[v.raw]
+	if !ok {
+		return newVarError(error_var_not_found, fmt.Sprintf("%s not found", v.raw))
+	}
+
+	return v.setRecursive(symtab, v.raw, v.attributes, value, logger)
+}
+
+func (v *Variable) setRecursive(
+	symtab map[string]any,
+	currentKey string,
+	attributes []*Variable,
+	value any,
+	logger *slog.Logger,
+) error {
+	obj := symtab[currentKey]
+	isLast := len(attributes) == 1
+	attr := attributes[0]
+	nextAttrs := attributes[1:]
+
+	attrKeyAny, err := attr.GetVar(symtab, nil, logger)
+	if err != nil {
+		return err
+	}
+	attrKey := RawGetValueString(attrKeyAny)
+	vObj := reflect.ValueOf(obj)
+
+	switch vObj.Kind() {
+	case reflect.Map:
+		if vObj.IsNil() {
+			return newVarError(error_var_invalid_type, fmt.Sprintf("cannot set attribute on nil map %s", currentKey))
+		}
+		if isLast {
+			vObj.SetMapIndex(reflect.ValueOf(attrKey), reflect.ValueOf(value))
+			return nil
+		}
+		nextVal := vObj.MapIndex(reflect.ValueOf(attrKey))
+		if !nextVal.IsValid() {
+			return newVarError(error_var_mapkey_not_found, fmt.Sprintf("key '%s' not found in map %s", attrKey, currentKey))
+		}
+		return v.setRecursiveNested(nextVal.Interface(), attrKey, nextAttrs, value, logger)
+	case reflect.Slice:
+		index, err := rawGetValueInt64(attrKeyAny)
+		if err != nil {
+			return newVarError(error_var_invalid_type, fmt.Sprintf("slice index must be integer, got %s", attrKey))
+		}
+		if index < 0 || int(index) >= vObj.Len() {
+			return newVarError(error_var_sliceindex_not_found, fmt.Sprintf("index %d out of bounds for slice %s", index, currentKey))
+		}
+		if isLast {
+			vObj.Index(int(index)).Set(reflect.ValueOf(value))
+			return nil
+		}
+		nextVal := vObj.Index(int(index))
+		return v.setRecursiveNested(nextVal.Interface(), attrKey, nextAttrs, value, logger)
+	default:
+		return newVarError(error_var_invalid_type, fmt.Sprintf("object at %s is not a map or slice", currentKey))
+	}
+}
+
+func (v *Variable) setRecursiveNested(
+	currentObj any,
+	currentKey string,
+	attributes []*Variable,
+	value any,
+	logger *slog.Logger,
+) error {
+	if len(attributes) == 0 {
+		return fmt.Errorf("path resolution ended unexpectedly")
+	}
+	isLast := len(attributes) == 1
+	attr := attributes[0]
+	nextAttrs := attributes[1:]
+
+	attrKeyAny, err := attr.GetVar(nil, nil, logger)
+	if err != nil {
+		return err
+	}
+	attrKey := RawGetValueString(attrKeyAny)
+	vObj := reflect.ValueOf(currentObj)
+
+	for vObj.Kind() == reflect.Ptr || vObj.Kind() == reflect.Interface {
+		if vObj.IsNil() {
+			return fmt.Errorf("nil pointer encountered in path at %s", currentKey)
+		}
+		vObj = vObj.Elem()
+	}
+
+	switch vObj.Kind() {
+	case reflect.Map:
+		if isLast {
+			// value nil or '_' cause the attrKey be removed from map.
+			if sValue, ok := value.(string); ok && sValue == "_" {
+				value = nil
+			}
+			vObj.SetMapIndex(reflect.ValueOf(attrKey), reflect.ValueOf(value))
+			return nil
+		}
+		nextVal := vObj.MapIndex(reflect.ValueOf(attrKey))
+		if !nextVal.IsValid() {
+			return fmt.Errorf("key %s not found", attrKey)
+		}
+		return v.setRecursiveNested(nextVal.Interface(), attrKey, nextAttrs, value, logger)
+	case reflect.Slice:
+		index, err := rawGetValueInt64(attrKeyAny)
+		if err != nil {
+			return err
+		}
+		if index < 0 || int(index) >= vObj.Len() {
+			return fmt.Errorf("index %d out of bounds", index)
+		}
+		if isLast {
+			vObj.Index(int(index)).Set(reflect.ValueOf(value))
+			return nil
+		}
+		return v.setRecursiveNested(vObj.Index(int(index)).Interface(), attrKey, nextAttrs, value, logger)
+	default:
+		return fmt.Errorf("cannot traverse into non-container type at %s", currentKey)
+	}
 }

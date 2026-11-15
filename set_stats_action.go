@@ -145,45 +145,46 @@ func (a *SetStatsAction) CustomAction(script *YAMLScript, symtab map[string]any,
 		if pair == nil {
 			return errors.New("set_stats: invalid key value")
 		}
-		if key, ok := pair[0].(*Field); ok {
-			key_name, err = key.GetValueString(symtab, logger)
-			if err == nil {
-				if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
-					return err
-				}
-				if value_name == nil {
-					logger.Debug(
-						fmt.Sprintf("    %s is nil: not set into set_stats", key_name),
-						"coll", CollectorId(symtab, logger),
-						"script", ScriptName(symtab, logger),
-						"name", a.GetName(symtab, logger))
-				} else {
-					if value_name == "_" {
-						// null op key_name :
-					} else {
-						if key_name != "_" {
-							logger.Debug(
-								fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name),
-								"coll", CollectorId(symtab, logger),
-								"script", ScriptName(symtab, logger),
-								"name", a.GetName(symtab, logger))
-							if err := SetSymTab(dst_symtab, key_name, value_name); err != nil {
-								logger.Warn(
-									fmt.Sprintf("error setting map value for key '%s'", key_name),
-									"errmsg", err,
-									"coll", CollectorId(symtab, logger),
-									"script", ScriptName(symtab, logger),
-									"name", a.GetName(symtab, logger))
-								continue
+		if len(pair) < 2 {
+			return fmt.Errorf("set_stats: invalid key value pair")
+		}
 
-							}
-						} else {
-							logger.Debug(
-								"    result discard (key >'_')",
-								"coll", CollectorId(symtab, logger),
-								"script", ScriptName(symtab, logger),
-								"name", a.GetName(symtab, logger))
-						}
+		key, ok := pair[0].(*Field)
+		if !ok {
+			continue
+		}
+		if key.vartype == field_var {
+			return fmt.Errorf("$var format not authorized in set_stat")
+		}
+
+		key_name, err = key.GetValueString(symtab, logger)
+		if err == nil {
+			if value_name, err = ValorizeValue(symtab, pair[1], logger, a.GetName(symtab, logger), false); err != nil {
+				return err
+			}
+			if value_name == nil {
+				logger.Debug(
+					fmt.Sprintf("    %s is nil: not set into set_stats", key_name),
+					"coll", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+					"name", a.GetName(symtab, logger))
+			} else {
+				if value_name == "_" {
+					// null op key_name :
+				} else {
+					if key_name != "_" {
+						logger.Debug(
+							fmt.Sprintf("    add to symbols table: %s = '%v'", key_name, value_name),
+							"coll", CollectorId(symtab, logger),
+							"script", ScriptName(symtab, logger),
+							"name", a.GetName(symtab, logger))
+						dst_symtab[key_name] = value_name
+					} else {
+						logger.Debug(
+							"    result discard (key >'_')",
+							"coll", CollectorId(symtab, logger),
+							"script", ScriptName(symtab, logger),
+							"name", a.GetName(symtab, logger))
 					}
 				}
 			}

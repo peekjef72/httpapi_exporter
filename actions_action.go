@@ -24,9 +24,6 @@ type ActionsAction struct {
 	Actions []Action       `yaml:"actions,omitempty" json:"actions,omitempty"`
 
 	vars [][]any
-
-	// Catches all undefined fields and must be empty after parsing.
-	XXX map[string]any `yaml:",inline" json:"-"`
 }
 
 func (a *ActionsAction) Type() int {

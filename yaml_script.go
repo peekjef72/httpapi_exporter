@@ -349,15 +349,16 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 			if value == nil {
 				value = ""
 			}
-			if err := SetSymTab(ldata, key_val, value); err != nil {
-				logger.Warn(
-					fmt.Sprintf("error setting map value for key '%s'", key_val),
-					"errmsg", err,
-					"coll", CollectorId(symtab, logger),
-					"script", ScriptName(symtab, logger),
-					"name", action_name)
-				continue
-			}
+			ldata[key_val] = value
+			// if err := SetSymTab(ldata, key_val, value); err != nil {
+			// 	logger.Warn(
+			// 		fmt.Sprintf("error setting map value for key '%s'", key_val),
+			// 		"errmsg", err,
+			// 		"coll", CollectorId(symtab, logger),
+			// 		"script", ScriptName(symtab, logger),
+			// 		"name", action_name)
+			// 	continue
+			// }
 		}
 		data = ldata
 	case []any:
@@ -383,82 +384,181 @@ func ValorizeValue(symtab map[string]any, item any, logger *slog.Logger, action_
 	return data, nil
 }
 
-func DeleteSymtab(symtab map[string]any, key_name string) error {
-	var err error
-	tmp_symtab := symtab
-	scope := key_name
-	if scope[0] == '.' {
-		scope = scope[1:]
-	}
-	vars := strings.Split(scope, ".")
-	last_elmt := len(vars) - 1
-	for i, var_name := range vars {
-		if raw_value, ok := tmp_symtab[var_name]; ok {
-			switch cur_value := raw_value.(type) {
-			case map[string]any:
-				if i == last_elmt {
-					delete(tmp_symtab, var_name)
-					break
-				}
-				tmp_symtab = cur_value
-			default:
-				if i != last_elmt {
-					err = fmt.Errorf("can't set scope: '%s' has invalid type", var_name)
-					break
-				}
-			}
-		} else {
-			break
-		}
-	}
-	return err
-}
-func SetSymTab(symtab map[string]any, key_name string, value any) error {
-	var err error
-	tmp_symtab := symtab
-	scope := key_name
-	if scope[0] == '.' {
-		scope = scope[1:]
-	}
-	vars := strings.Split(scope, ".")
-	last_elmt := len(vars) - 1
-	for i, var_name := range vars {
-		if i == last_elmt {
-			tmp_symtab[var_name] = value
-			break
-		}
-		if raw_value, ok := tmp_symtab[var_name]; ok {
-			switch cur_value := raw_value.(type) {
-			case map[string]any:
-				tmp_symtab = cur_value
-			default:
-				if i != last_elmt {
-					err = fmt.Errorf("can't set scope: '%s' has invalid type", var_name)
-					break
-				}
-			}
-		} else {
-			// key doesn't exist currently: add it
-			cur_value := make(map[string]any)
-			tmp_symtab[var_name] = cur_value
-			tmp_symtab = cur_value
-		}
-	}
-	return err
-}
+// func DeleteSymtab(symtab map[string]any, key_name string) error {
+// 	var err error
+// 	tmp_symtab := symtab
+// 	scope := key_name
+// 	if scope[0] == '.' {
+// 		scope = scope[1:]
+// 	}
+// 	vars := strings.Split(scope, ".")
+// 	last_elmt := len(vars) - 1
+// 	for i, var_name := range vars {
+// 		if raw_value, ok := tmp_symtab[var_name]; ok {
+// 			switch cur_value := raw_value.(type) {
+// 			case map[string]any:
+// 				if i == last_elmt {
+// 					delete(tmp_symtab, var_name)
+// 					break
+// 				}
+// 				tmp_symtab = cur_value
+// 			default:
+// 				if i != last_elmt {
+// 					err = fmt.Errorf("can't set scope: '%s' has invalid type", var_name)
+// 					break
+// 				}
+// 				delete(tmp_symtab, var_name)
+// 			}
+// 		} else {
+// 			break
+// 		}
+// 	}
+// 	return err
+// }
+
+// func SetSymTab(symtab map[string]any, key_name string, value any) error {
+// 	var err error
+// 	tmp_symtab := symtab
+// 	scope := key_name
+// 	if scope[0] == '.' {
+// 		scope = scope[1:]
+// 	}
+// 	vars := strings.Split(scope, ".")
+// 	last_elmt := len(vars) - 1
+// 	for i, var_name := range vars {
+// 		if i == last_elmt {
+// 			tmp_symtab[var_name] = value
+// 			break
+// 		}
+// 		if raw_value, ok := tmp_symtab[var_name]; ok {
+// 			switch cur_value := raw_value.(type) {
+// 			case map[string]any:
+// 				tmp_symtab = cur_value
+// 			default:
+// 				if i != last_elmt {
+// 					err = fmt.Errorf("can't set scope: '%s' has invalid type", var_name)
+// 					break
+// 				}
+// 			}
+// 		} else {
+// 			// key doesn't exist currently: add it
+// 			cur_value := make(map[string]any)
+// 			tmp_symtab[var_name] = cur_value
+// 			tmp_symtab = cur_value
+// 		}
+// 	}
+// 	return err
+// }
 
 func preserve_sym_tab(symtab map[string]any, old_values map[string]any, key string, val any) error {
 	if old_val, ok := symtab[key]; ok {
-		if err := SetSymTab(old_values, key, old_val); err != nil {
-			return err
-		}
+		old_values[key] = old_val
+		// if err := SetSymTab(old_values, key, old_val); err != nil {
+		// 	return err
+		// }
 	} else {
-		if err := SetSymTab(old_values, key, "_"); err != nil {
-			return err
-		}
+		old_values[key] = "_"
+		// if err := SetSymTab(old_values, key, "_"); err != nil {
+		// 	return err
+		// }
 	}
-	if err := SetSymTab(symtab, key, val); err != nil {
-		return err
+	symtab[key] = val
+	// if err := SetSymTab(symtab, key, val); err != nil {
+	// 	return err
+	// }
+	return nil
+}
+
+func applyVariableAssignments(
+	symtab map[string]any,
+	pairs [][]any,
+	logger *slog.Logger,
+	contextName string,
+	preserve map[string]any,
+) error {
+	for _, pair := range pairs {
+		if len(pair) < 2 {
+			return fmt.Errorf("%s: invalid key value pair", contextName)
+		}
+
+		keyField, ok := pair[0].(*Field)
+		if !ok {
+			continue
+		}
+		if keyField.vartype == field_var {
+			var (
+				value any
+				err   error
+			)
+			if value, err = ValorizeValue(symtab, pair[1], logger, contextName, false); err != nil {
+				return err
+			}
+			err = keyField.vars.SetVar(symtab, value, logger)
+			if err != nil {
+				return err
+			}
+		} else {
+			keyName, err := keyField.GetValueString(symtab, logger)
+			if err != nil {
+				logger.Warn(fmt.Sprintf("no data found for var key: %v", pair[0]), "errmsg", err, "name", contextName)
+				continue
+			}
+
+			if len(keyName) > 2 && keyName[0] == '_' && keyName[1] == '_' {
+				return fmt.Errorf("%s: variable names starting with __ are forbidden", contextName)
+			}
+
+			value, err := ValorizeValue(symtab, pair[1], logger, contextName, false)
+			if err != nil {
+				return err
+			}
+
+			if value == nil {
+				if keyName != "_" {
+					delete(symtab, keyName)
+					logger.Debug(fmt.Sprintf("var(%s) removed (nil value)", keyName),
+						"coll", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+						"name", contextName)
+				}
+				continue
+			}
+
+			if sValue, ok := value.(string); ok && sValue == "_" {
+				if keyName != "_" {
+					delete(symtab, keyName)
+					logger.Debug(fmt.Sprintf("var(%s) removed ('_' value)", keyName),
+						"coll", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+						"name", contextName)
+				}
+				continue
+			}
+
+			if keyName != "_" {
+				if preserve != nil {
+					if err := preserve_sym_tab(symtab, preserve, keyName, value); err != nil {
+						logger.Warn(fmt.Sprintf("error preserve symtab (%s): %s", keyName, err),
+							"coll", CollectorId(symtab, logger),
+							"script", ScriptName(symtab, logger),
+							"name", contextName)
+					}
+				} else {
+					symtab[keyName] = value
+					logger.Debug(
+						fmt.Sprintf("    add to symbols table: %s = '%v'", keyName, value),
+						"coll", CollectorId(symtab, logger),
+						"script", ScriptName(symtab, logger),
+						"name", contextName)
+				}
+			} else {
+				logger.Debug(
+					"    result discard (key: '_')",
+					"coll", CollectorId(symtab, logger),
+					"script", ScriptName(symtab, logger),
+					"name", contextName)
+			}
+		}
 	}
 	return nil
 }
@@ -481,65 +581,8 @@ func PlayBaseAction(script *YAMLScript, symtab map[string]any, logger *slog.Logg
 	// add the local vars from the action to symbols table
 	baVars := ba.GetVars()
 	if len(baVars) > 0 {
-		for _, pair := range baVars {
-			if pair == nil {
-				logger.Warn(
-					"invalid key value pair for vars",
-					"coll", CollectorId(symtab, logger),
-					"script", ScriptName(symtab, logger),
-					"name", ba.GetName(symtab, logger))
-				continue
-			}
-			if key, ok := pair[0].(*Field); ok {
-				key_name, err := key.GetValueString(symtab, logger)
-				if err == nil {
-					value, err := ValorizeValue(symtab, pair[1], logger, ba.GetName(symtab, logger), false)
-					if err == nil {
-						if value != nil {
-							add_symbol := true
-							if s_value, ok := value.(string); ok {
-								if s_value == "_" {
-									DeleteSymtab(symtab, key_name)
-									logger.Debug(
-										fmt.Sprintf("vars(%s) has '_' value (removed)", key_name),
-										"coll", CollectorId(symtab, logger),
-										"script", ScriptName(symtab, logger),
-										"name", ba.GetName(symtab, logger))
-									add_symbol = false
-								}
-							}
-							if add_symbol {
-								if err := preserve_sym_tab(symtab, old_values, key_name, value); err != nil {
-									logger.Warn(
-										fmt.Sprintf("error preserve symtab (%s): %s", key_name, err),
-										"coll", CollectorId(symtab, logger),
-										"script", ScriptName(symtab, logger),
-										"name", ba.GetName(symtab, logger))
-								}
-							}
-						} else {
-							DeleteSymtab(symtab, key_name)
-							logger.Debug(
-								fmt.Sprintf("vars(%s) has nil value (removed)", key_name),
-								"coll", CollectorId(symtab, logger),
-								"script", ScriptName(symtab, logger),
-								"name", ba.GetName(symtab, logger))
-						}
-					} else {
-						logger.Warn(
-							fmt.Sprintf("no data found for vars(%s): %s", key, err),
-							"coll", CollectorId(symtab, logger),
-							"script", ScriptName(symtab, logger),
-							"name", ba.GetName(symtab, logger))
-					}
-				} else {
-					logger.Warn(
-						fmt.Sprintf("no data found for vars: %s", err),
-						"coll", CollectorId(symtab, logger),
-						"script", ScriptName(symtab, logger),
-						"name", ba.GetName(symtab, logger))
-				}
-			}
+		if err := applyVariableAssignments(symtab, baVars, logger, ba.GetName(symtab, logger), old_values); err != nil {
+			logger.Warn("error applying base variables", "errmsg", err, "name", ba.GetName(symtab, logger))
 		}
 	}
 	var items []any
@@ -821,7 +864,7 @@ func build_Cond(script *YAMLScript, raw yaml.Node) ([]*Field, error) {
 	if len(listElmt) > 0 {
 		cond_var = make([]*Field, len(listElmt))
 		for i, cond := range listElmt {
-
+			cond = strings.TrimSpace(cond)
 			if strings.HasPrefix(cond, "js:") || cond[0] == '$' {
 				if tmp_cond, err := NewField(cond, nil, script.registry); err != nil {
 					return nil, err
@@ -943,7 +986,7 @@ func (script *YAMLScript) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, parentNode *yaml.Node) (ActionsList, error) {
-	main_checker := map[string]bool{
+	checker := map[string]bool{
 		"name":       true,
 		"loop":       true,
 		"loop_var":   true,
@@ -952,6 +995,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 		"when":       true,
 		"with_items": true,
 	}
+	delete_checker := make(map[string]bool)
 
 	for i := range tmp {
 		var name *Field
@@ -960,7 +1004,6 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 		var until, when []*Field
 		var vars [][]any
 		var err error
-		checker := main_checker
 		skip_checker := false
 		cur_act := tmp[i]
 
@@ -1048,6 +1091,7 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 			checker["debug"] = true
 			da := &DebugActionConfig{
 				registry: script.registry,
+				checker:  checker,
 			}
 			if err := raw.Decode(da); err != nil {
 				err = fmt.Errorf("%v: for action '%s'", err, name.String())
@@ -1059,6 +1103,9 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				return nil, err
 			}
 			actions = append(actions, a)
+
+			// add field to remove from checker after checking unknown key.
+			delete_checker["debug"] = true
 		} else if raw, ok := cur_act["set_fact"]; ok {
 			// ***********************************************
 			// set_fact
@@ -1092,12 +1139,15 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				return nil, err
 			}
 			actions = append(actions, a)
+			// reset the checker to avoid error on unknown key in set_fact
+			delete_checker["set_fact"] = true
 		} else if raw, ok := cur_act["query"]; ok {
 			// ***********************************************
 			// url/query
 			checker["query"] = true
 			qa := &QueryActionConfig{
 				registry: script.registry,
+				checker:  checker,
 			}
 			if err := raw.Decode(qa); err != nil {
 				err = fmt.Errorf("%v: for action '%s'", err, name.String())
@@ -1112,6 +1162,8 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 
 			//*** append current metrics list to the global list
 			script.queryActions = append(script.queryActions, a)
+			// reset the checker to avoid error on unknown key in query
+			delete_checker["query"] = true
 		} else if raw, ok := cur_act["play_script"]; ok {
 			// ***********************************************
 			// play_script
@@ -1128,17 +1180,19 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				return nil, err
 			}
 			actions = append(actions, a)
+			// reset the checker to avoid error on unknown key in play_script
+			delete_checker["play_script"] = true
 		} else if _, ok := cur_act["metric_name"]; ok {
 			// ***********************************************
-			// play_script
+			// metric_name
 			checker["metric_name"] = true
 			mc := &MetricConfig{
 				registry: script.registry,
+				checker:  checker,
 			}
 			if err := parentNode.Content[i].Decode(mc); err != nil {
 				return nil, err
 			}
-			// MAYBE mc.Name should be a Field so that the name could be a template !!
 			a := &MetricAction{
 				mc: mc,
 			}
@@ -1147,6 +1201,8 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				return nil, err
 			}
 			actions = append(actions, a)
+			// reset the checker to avoid error on unknown key in metric_name
+			delete_checker["metric_name"] = true
 			skip_checker = true
 		} else if raw, ok := cur_act["actions"]; ok {
 			// ***********************************************
@@ -1178,9 +1234,11 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 				}
 				actions = append(actions, a)
 			}
+			// reset the checker to avoid error on unknown key in actions
+			delete_checker["actions"] = true
 		} else if raw, ok := cur_act["metrics"]; ok {
 			// ***********************************************
-			// metric name
+			// metrics
 			checker["metrics"] = true
 			checker["scope"] = true
 			checker["metric_prefix"] = true
@@ -1247,9 +1305,13 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 					}
 				}
 			}
+			// reset the checker to avoid error on unknown key in metrics
+			delete_checker["metrics"] = true
+			delete_checker["scope"] = true
+			delete_checker["metric_prefix"] = true
 		} else if raw, ok := cur_act["set_stats"]; ok {
 			// ***********************************************
-			// set_fact
+			// set_stats
 			checker["set_stats"] = true
 			ssa := make(map[string]any)
 			if err := raw.Decode(&ssa); err != nil {
@@ -1283,6 +1345,9 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 
 			//*** append current metrics list to the global list
 			script.setStatsActions = append(script.setStatsActions, a)
+
+			// reset the checker to avoid error on unknown key in metrics
+			delete_checker["set_stats"] = true
 		} else {
 			// we haven't found any label in action that we should understand
 			// display first key of the map and context (line, column)
@@ -1300,6 +1365,9 @@ func ActionsListDecode(script *YAMLScript, actions ActionsList, tmp tmpActions, 
 					return nil, fmt.Errorf("unknown attribute '%s' for action '%v' on line: %d column: %d", name, reflect.TypeOf(actions[len(actions)-1]), raw.Line, raw.Column)
 
 				}
+			}
+			for name := range delete_checker {
+				delete(checker, name)
 			}
 		}
 	}

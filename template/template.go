@@ -101,6 +101,15 @@ func getHeader(headers http.Header, header string) (string, error) {
 }
 
 // allow to retrieve string header from response's headers
+func getHeaders(headers http.Header) ([]string, error) {
+	var header_names []string
+	for header, _ := range headers {
+		header_names = append(header_names, header)
+	}
+	return header_names, nil
+}
+
+// allow to retrieve string header from response's headers
 func getCookie(cookies []*http.Cookie, find_cookie string) (string, error) {
 	found_cookie := ""
 
@@ -437,6 +446,7 @@ func MyMap() ttemplate.FuncMap {
 	sprig_map["convertToBytes"] = convertToBytes
 	sprig_map["convertBoolToInt"] = convertBoolToInt
 	sprig_map["getHeader"] = getHeader
+	sprig_map["getHeaders"] = getHeaders
 	sprig_map["getCookie"] = getCookie
 	sprig_map["queryEscape"] = QueryEscape
 
@@ -472,6 +482,7 @@ func Js_func_map() map[string]any {
 	//js_map["exists"] = exists
 
 	js_map["getHeader"] = getHeader
+	js_map["getHeaders"] = getHeaders
 	js_map["getCookie"] = getCookie
 
 	js_map["length"] = exporterLEN

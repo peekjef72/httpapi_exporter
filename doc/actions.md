@@ -179,6 +179,11 @@ In this stupid example, we build a loop with 3 elements 1,2,3 then we loop on ea
   - **response_time**: is a float64 fractional number representing the duration in seconds since the first response byte from the server to request completion.
   - **total_time**: is a float64 fractional number representing the duration in seconds of the total time request taken end-to-end.
 
+#### set variables:
+ - **status_code**: the query http status code
+ - **response_headers**: the map[string][]string representing the headers with their associated list of values
+ - **response_cookies**: the map[string][]string representing the cookies with their associated list of values
+
 ### metric_name
 
 Define a metric family.
